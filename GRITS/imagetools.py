@@ -5,6 +5,9 @@ import numpy as np
 from lsl.common.paths import DATA as dataPath
 from lsl.common.mcs import mjdmpm_to_datetime
 
+from bifrost import ndarray as BFArray
+from bifrost import map as BFMap 
+
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
@@ -104,3 +107,22 @@ def hdrtoworld(hdr,imSize,sRad,x,y):
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     pixcrd = [(x,y)]
     return w.wcs_pix2world(pixcrd, 0)
+
+def maskislands(data, stdarray, meanarray, ints, nchan, ngrid):
+    dataislands = np.copy(data)
+    islandmasks = np.zeros(data.shape,dtype=bool)
+    for i in range(ints):
+        for j in range(nchan):
+            k=0
+            islandcond = np.nan_to_num(data[i,j,k]) < (meanarray[i,j,k] + stdarray[i,j,k]*5)
+            islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
+    sumisland = np.sum(islandmasks,axis=1) 
+    sumisland = BFArray(sumisland,space='cuda',dtype='f32')
+    islanddata = BFArray(islandmasks, space='system', dtype='i8')
+    islanddata = islanddata.copy('cuda')
+    # MULTI Channel detections only
+    BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},
+        axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+    return islanddata
+
+    

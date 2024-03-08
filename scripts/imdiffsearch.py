@@ -27,9 +27,10 @@ from astropy.coordinates import SkyCoord
 from bifrost import ndarray as BFArray
 from bifrost import map as BFMap 
 
+from GRITS.constants import floatmax
+from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows
-from GRITS.constants import CYG_A, CAS_A, SGR_A, TAU_A, VIRGO_A, HERC_A, floatmax
-from GRITS.imagetools import maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld
+from GRITS.imagetools import maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.readoims import readoims
 from tqdm import tqdm
@@ -58,263 +59,19 @@ def main(args):
         # Get a mask for the parts of the image beyond 60 degrees from the center
         invalid = maskhorizon(data,hdrlist,ngrid,sRad)
         data[:,:,:,invalid[0], invalid[1]] = np.nan
+        
+        minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
 
+        # Flux calibrate data and mask off A-Team
+        imagedata, data = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
+        
 
-        # Pre-calibration RMS measurement. 
-        # IN: imagedata, sRad
-        # OUT: rmsdata np.array
-        # Set up center region for minrms calculation
-        # We want a box in the center that does not go beyond the horizon. Also 
-        # We need to account for the extra one pixel perimeter in the computations.
-        boxhalflen = np.sin(np.pi/4)*sRad - 2
-        imdata = BFArray(imagedata,dtype='f32',space='cuda')
-        gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
-        BFMap("""auto boxhalflen = %f;
-                 auto center = %f/2;
-                 auto x = (float) i - center + 0.5 ;
-                 auto y = (float) j - center + 0.5 ;
-                 auto intermediate = 0.0 ;
-                 if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
-                     for (auto offi=-2; offi<3; offi++) { 
-                         for (auto offj=-2; offj<3; offj++){
-                             intermediate+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
-                         }
-                     }
+        # Get S/N and RMS from calibrated data
+        sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
 
-                     rmsdat(time,chan,i,j) = sqrt(intermediate/25.0) ;
-                 }
-                 else {
-                     rmsdat(time,chan,i,j) = 9999;
-                     }""" % (boxhalflen,float(ngrid),),
-                     {"dat":imdata, "rmsdat":gpurmsdata},
-                     axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
-        gpurmsdata = gpurmsdata.copy('system')
+        islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid)
 
-        minrms = np.zeros((nchan))
-        avindices = np.where((gpurmsdata!=0) & (gpurmsdata[:,c:,:]!=9999))
-        for c in range(nchan):
-            if c not in avindices[1]:
-                continue
-            minrms[c] = np.amin(gpurmsdata[:,c,:,:])
-
-        # we can calibrate off of cyg a, cas a, virgo a, or tau a for now
-        # We do all the masking of regions we don't want to detect transients from here
-        # Also we are getting the max flux from the aforementioned a team sources for 
-        # flux calibration
-        cygaflux = [] 
-        casaflux = []
-        viraflux = []
-        tauaflux = []
-        completemask = np.zeros((len(data),ngrid,ngrid),dtype=bool)
-        x = np.arange(ngrid) + 0.5
-        y = np.arange(ngrid) + 0.5
-        x,y = np.meshgrid(x,y)
-        for i in range(len(data)):
-            ateammask = np.zeros((ngrid,ngrid),dtype=bool)
-            pixcoord = []
-            for src in [SGR_A,HERC_A,sunpos[i],juppos[i]]:
-                pixcoord.extend(hdrtopixmask(hdrlist[i],ngrid,sRad,src[0],src[1]))
-            for p in pixcoord:
-                if p[0]: 
-                    currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
-                    completemask[i] = completemask[i] | currcond
-                    ateammask = ateammask | currcond
-            cygacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CYG_A[0],CYG_A[1])
-            for p in cygacoord:
-                if p[0]: 
-                    currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
-                    ateammask = ateammask | currcond
-                    completemask[i] = completemask[i] | currcond
-                    cygmask = np.where(currcond)
-                    if np.sum(currcond) >0:
-                        for c in range(nchan):
-                            cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[c],c))
-            casacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CAS_A[0],CAS_A[1])
-            for p in casacoord:
-                if p[0]: 
-                    currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
-                    ateammask = ateammask | currcond
-                    completemask[i] = completemask[i] | currcond
-                    casmask = np.where(currcond)
-                    if np.sum(currcond) >0:
-                        for c in range(nchan):
-                            casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[c],c))
-            viracoord = hdrtopixmask(hdrlist[i],ngrid,sRad,VIRGO_A[0],VIRGO_A[1])
-            for p in viracoord:
-                if p[0]: 
-                    currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
-                    ateammask = ateammask | currcond
-                    completemask[i] = completemask[i] | currcond
-                    virmask = np.where(currcond)
-                    if np.sum(currcond) >0:
-                        for c in range(nchan):
-                            viraflux.append((imagedata[i,c,0,virmask[0],virmask[1]].max() - minrms[c],c))
-            tauacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,TAU_A[0],TAU_A[1])
-            for p in tauacoord:
-                if p[0]: 
-                    currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
-                    ateammask = ateammask | currcond
-                    completemask[i] = completemask[i] | currcond
-                    taumask = np.where(currcond)
-                    if np.sum(currcond) >0:
-                        for c in range(nchan):
-                            tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[c],c))
-            invalid = np.where( completemask[i] )
-
-
-            data[i,:,:,invalid[0], invalid[1]] = np.nan
-
-        freq = lambda c: (int(hdrlist[0]['start_freq'])  + ((c+1)*int(hdrlist[0]['bandwidth'])/2))*1e-6
-        allcorr = []
-        for cyg,c in cygaflux:
-            if cyg!=0:
-                allcorr.append((c,getcyga(freq(c))/cyg))
-        for cas,c in casaflux:
-            if cas!=0:
-                allcorr.append((c,getcasa(freq(c))/cas))
-        for vir,c in viraflux:
-            if vir!=0:
-                allcorr.append((c,getvira(freq(c))/vir))
-        for tau,c in tauaflux:
-            if tau!=0:
-                allcorr.append((c,getcrab(freq(c))/tau))
-        allcorr = np.array(allcorr,dtype=[('channel','i8'),('corrfac','f8')])
-        calchans = np.unique(allcorr['channel'])
-        removechan = []
-        for c in range(nchan):
-            if c not in calchans:
-                print("Channel",c,"not calibrated. Removing this channel.")
-                removechan.append(c)
-        keepchan = []
-        if removechan:
-            for c in range(nchan):
-                if c not in removechan:
-                    keepchan.append(c)
-            nchan = len(keepchan)
-            keepchan = tuple(keepchan)
-            imagedata = imagedata[:,keepchan,:,:,:]
-            data = data[:,keepchan,:,:,:]
-        if nchan < 4:
-            print("less than 4 channels calibrated. Skipping file.")
-            continue
-        #### flux correct, 
-        for c in range(nchan):
-            if keepchan:
-                chan = keepchan[c]
-            else:
-                chan = c
-            corrflux = np.nanmean(allcorr['corrfac'][(allcorr['channel']==chan)])
-            imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
-            data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
-
-        # Set up center region for minrms calculation
-        # We want a box in the center that does not go beyond the horizon. Also 
-        # We need to account for the extra one pixel perimeter in the computations.
-        boxhalflen = np.sin(np.pi/4)*sRad - 2
-        calimdata = BFArray(np.zeros(imagedata.shape),dtype='f32',space='system')
-        calimdata[...] = imagedata
-        calimdata = calimdata.copy('cuda')
-        calrmsdata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='cuda')
-        immean = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)), dtype='f32',space='cuda')
-        imstd = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)), dtype='f32',space='cuda')
-        BFMap("""auto boxhalflen = %f;
-                 auto center = %f/2;
-                 auto x = (float) i - center + 0.5 ;
-                 auto y = (float) j - center + 0.5 ;
-                 auto mean = 0.0;
-                 auto intermediaterms = 0.0;
-                 auto intermediatemean = 0.0;
-                 auto intermediatestd = 0.0;
-                 if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
-                     for (auto offi=-2; offi<3; offi++) { 
-                         for (auto offj=-2; offj<3; offj++){
-                             intermediaterms+= dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
-                             intermediatemean+=dat(time,chan,0,i+offi,j+offj);
-                         }
-                     }
-                     rmsdat(time,chan,stokes,i,j) = sqrt(intermediaterms/25.0);
-                     mean = intermediatemean/25.0;
-                     meandat(time,chan,stokes,i,j) = mean;
-                     for (auto offi=-2; offi<3; offi++) { 
-                         for (auto offj=-2; offj<3; offj++){
-                             intermediatestd+=(dat(time,chan,0,i+offi,j+offj) - mean)*(dat(time,chan,0,i+offi,j+offj) - mean);
-                         }
-                     }
-                     std(time,chan,stokes,i,j) = sqrt(intermediatestd/25.0) ;
-                 }
-                 else {
-                     rmsdat(time,chan,stokes,i,j) = 9999;
-                     }""" % (boxhalflen,float(ngrid),),
-                     {"dat":calimdata,"rmsdat":calrmsdata,'meandat':immean,'std':imstd},
-                     axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-        calrmsdata = calrmsdata.copy('system')
-        calimdata = calimdata.copy('system')
-        rmsdata = []
-        sndata = []
-        for avdat,im in zip(calrmsdata[:,:,0,:,:],calimdata[:,:,:,:,:]):
-            currms = np.amin(avdat[avdat!=0])
-            rmsdata.append(currms)
-            sndata.append(np.amax(im)/currms)
-        immean= np.array(immean.copy('system'))
-        imstd = np.array(imstd.copy('system'))
-        meanstokeep = []
-        stdtokeep = []
-        meanarray = np.zeros((ints,nchan,4))
-        stdarray = np.zeros((ints,nchan,4))
-        for i in range(ints):
-            for c in range(nchan):
-                for s in range(4):
-                    meanarr = immean[i,c,s]
-                    stdarr = imstd[i,c,s]
-                    nonzero = meanarr!=0
-                    valid1 = meanarr!=9999
-                    meanarr = meanarr[nonzero & valid1]
-                    stdarr = stdarr[nonzero & valid1]
-                    if np.sum(nonzero & valid1)==0:
-                        print("all mean values are zero")
-                        print(i,c,s)
-                        meanarray[i,c,s] = floatmax
-                        stdarray[i,c,s] = floatmax
-                    else:
-                        minabsmean = np.abs(meanarr)
-                        minmean = np.amin(minabsmean)
-                        mincond = minabsmean==minmean
-                        meanarray[i,c,s] = meanarr[mincond]
-                        stdarray[i,c,s] = stdarr[mincond]
-
-        dataislands = np.copy(data)
-        islandmasks = np.zeros(data.shape,dtype=bool)
-        for i in range(ints):
-            for j in range(nchan):
-                k=0
-                islandcond = np.nan_to_num(data[i,j,k]) < (meanarray[i,j,k] + stdarray[i,j,k]*5)
-                islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
-               #  k=3 
-               #  negislandcond = (np.nan_to_num(data[i,j,k]) > (meanarray[i,j,0] - stdarray[i,j,0]*5)) 
-               #  islandcond = (np.nan_to_num(data[i,j,k]) < (meanarray[i,j,0] + stdarray[i,j,0]*5)) | negislandcond
-               #  islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
-                   #      islandcond = np.zeros(islandcond.shape,
-              #   for k in range(4):
-                   #  if j>0:
-                   #      negislandcond = (np.nan_to_num(data[i,j,k]) > (meanarray[i,j,0] - stdarray[i,j,0]*10)) 
-                   #      islandcond = (np.nan_to_num(data[i,j,k]) < (meanarray[i,j,0] + stdarray[i,j,0]*10)) | negislandcond
-                   #      islandcond = np.zeros(islandcond.shape,
-                   #      sumisland = np.sum(~islandcond)
-                   #      if sumisland>0:
-                   #          print(sumisland)
-                   #  else:
-                #     whereislandcond = np.where(islandcond)
-                #     dataislands[i,j,k,whereislandcond[0],whereislandcond[1]] = np.nan
-        sumisland = np.sum(islandmasks,axis=1) 
         t1 = datetime.datetime.now()
-        sumisland = BFArray(sumisland,space='cuda',dtype='f32')
-        islanddata = BFArray(islandmasks, space='system', dtype='i8')
-        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
-        islanddata = islanddata.copy('cuda')
-        # MULTI Channel detections only
-        BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},
-            axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-
         # LABELGROUPS
         BFMap("""
         auto counter = 0;
@@ -339,6 +96,7 @@ def main(args):
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         # ROTATE Island data
+        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
         BFMap("""rm(time,chan,stokes,i+j-1,%i-i+j) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
@@ -573,19 +331,20 @@ def main(args):
         print(tracklist)
         trackarray = np.array(tracklist,dtype=int)
         trackprop = []
-        for trackid in np.unique(trackarray[:,0]):
-            srcs = trackarray[:,1][trackarray[:,0]==trackid]
-            angvel = []
-            for i in range(len(srcs)-1):
-                id1 = srcs[i]
-                id2 = srcs[i+1]
-                src1 = srcarray[srcarray['srcid']==id1]
-                src2 = srcarray[srcarray['srcid']==id2]
-                datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
-                angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
-                angvel.append(angsep/datediff)
-            print(angvel)
-            trackprop.append((trackid,np.average(angvel)))
+        if trackarray.size >0:
+            for trackid in np.unique(trackarray[:,0]):
+                srcs = trackarray[:,1][trackarray[:,0]==trackid]
+                angvel = []
+                for i in range(len(srcs)-1):
+                    id1 = srcs[i]
+                    id2 = srcs[i+1]
+                    src1 = srcarray[srcarray['srcid']==id1]
+                    src2 = srcarray[srcarray['srcid']==id2]
+                    datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
+                    angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
+                    angvel.append(angsep/datediff)
+                print(angvel)
+                trackprop.append((trackid,np.average(angvel)))
         print(trackprop)
         for i in np.unique(whereislands[0]):
             mean=meanofdiff[i]
