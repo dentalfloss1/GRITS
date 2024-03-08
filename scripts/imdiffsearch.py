@@ -181,35 +181,48 @@ def main(args):
             datecond = (datediff < 120)
             poscond = isclose(posangle1,posangle2,rel_tol=0.1) 
             if poscond and datecond:
-                for id in idlist:
-                    tracklist.append((trackno,id))
+                for id,sc,d in zip(idlist,sclist,datelist):
+                    imid = srcarray['imid'][srcarray['srcid']==id][0]
+                    tracklist.append([trackno,imid,sc,d])
                 justfinishedtrack=True
             else:
                 if tracklist and justfinishedtrack:
                     trackno += 1
                 justfinishedtrack=False
 
-                
-        print('--------------')        
-        print("trackno,srcid")
-        print(tracklist)
-        trackarray = np.array(tracklist,dtype=int)
-        trackprop = []
-        if trackarray.size >0:
-            for trackid in np.unique(trackarray[:,0]):
-                srcs = trackarray[:,1][trackarray[:,0]==trackid]
-                angvel = []
-                for i in range(len(srcs)-1):
-                    id1 = srcs[i]
-                    id2 = srcs[i+1]
-                    src1 = srcarray[srcarray['srcid']==id1]
-                    src2 = srcarray[srcarray['srcid']==id2]
-                    datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
-                    angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
-                    angvel.append(angsep/datediff)
-                print(angvel)
-                trackprop.append((trackid,np.average(angvel)))
-        print(trackprop)
+        for i,t1 in enumerate(tracklist[:-1]):
+            j = i + 1 
+            t2 = tracklist[j]
+            if t1[0]==t2[0]:
+                angle = abs(t1[2].separation(t2[2]).degree)
+                tracklist[i].append(angle[0])
+                tracklist[j].append(angle[0])
+                time = abs(t1[3] - t2[3])*3600*24
+                angvel = angle/time
+                tracklist[i].append(angvel[0])
+                tracklist[j].append(angvel[0])
+        for t in tracklist:
+            print(t)
+       #  print('--------------')        
+       #  print("trackno,srcid")
+       #  print(tracklist)
+       #  trackarray = np.array(tracklist,dtype=int)
+       #  trackprop = []
+       #  if trackarray.size >0:
+       #      for trackid in np.unique(trackarray[:,0]):
+       #          srcs = trackarray[:,1][trackarray[:,0]==trackid]
+       #          angvel = []
+       #          for i in range(len(srcs)-1):
+       #              id1 = srcs[i]
+       #              id2 = srcs[i+1]
+       #              src1 = srcarray[srcarray['srcid']==id1]
+       #              src2 = srcarray[srcarray['srcid']==id2]
+       #              datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
+       #              angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
+       #              angvel.append(angsep/datediff)
+       #          print(angvel)
+       #          trackprop.append((trackid,np.average(angvel)))
+       #  print(trackprop)
 
         #### Set up extent ###
         pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
