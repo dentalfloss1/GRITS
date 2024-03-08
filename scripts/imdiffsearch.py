@@ -4,6 +4,7 @@ import os
 import sys
 import datetime
 import argparse
+from configparser import ConfigParser 
 from math import isclose
 
 import matplotlib as mpl
@@ -27,11 +28,13 @@ from astropy.coordinates import SkyCoord
 from bifrost import ndarray as BFArray
 from bifrost import map as BFMap 
 
-from GRITS.constants import floatmax
-from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat
-from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows
-from GRITS.imagetools import maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
+from GRITS.configtemplate import configfile
+from GRITS.constants import floatmax
+from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
+from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
+from GRITS.imagetools import maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
+from GRITS.qc import restrictnumsrc
 from GRITS.readoims import readoims
 from tqdm import tqdm
 
@@ -72,23 +75,8 @@ def main(args):
         islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid)
 
         t1 = datetime.datetime.now()
-        # LABELGROUPS
-        BFMap("""
-        auto counter = 0;
-	for (auto i = 1; i < %i; i++) {
-		for (auto j = 1; j < %i; j++) {
-			if (0 != isldata(time,chan,stokes,i,j)) {
-				counter++;
-				isldata(time,chan,stokes,i,j) += counter - 1;
-				if (0 != isldata(time,chan,stokes,i,j - 1)){
-                                    isldata(time,chan,stokes,i,j) = isldata(time,chan,stokes,i,j - 1);
-                                    }
-			}
-		}
-     	}
-            """ % (ngrid,ngrid,), 
-            {'isldata':islanddata}, 
-            axis_names=('time','chan','stokes'), shape=(ints,nchan,4))
+        # LABEL GROUPS 
+        labelgroups(islanddata,ngrid,ints,nchan)
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         # GROUPROWS
@@ -130,157 +118,33 @@ def main(args):
         width = BFArray(np.zeros((ints,nchan,4,maxind)),space='cuda',dtype='f32')
         index = BFArray(np.arange(maxind)+1,space='cuda',dtype='i8')
         islanddata = islanddata.copy('cuda')
-        # COMPUTE vert length of non-rotated data
-        BFMap("""
-            for (auto i=0; i<%i; i++){
-                if (isldata(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,0,ind,j)+=1.0;
-                }""" % (ngrid,),
-                {'isldata':islanddata, 'length': length, 'index':index},
-                axis_names = ('time','chan','stokes','j','ind'), shape=(ints,nchan,4,ngrid,maxind))
-        # COMPUTE horiz length of non-rotated data
-        BFMap("""
-            for (auto j=0; j<%i; j++){
-                if (isldata(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,1,ind,j)+=1.0;
-                }""" % (ngrid,),
-                {'isldata':islanddata, 'length': length, 'index':index},
-                axis_names = ('time','chan','stokes','i','ind'), shape=(ints,nchan,4,ngrid,maxind))
-        # COMPUTE vert length of rotated data
-        BFMap("""
-            for (auto i=0; i<%i; i++){
-                if (rm(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,2,ind,j)+=1.0;
-                }
-            for (auto i=0; i<%i; i++){
-                length(time,chan,stokes,2,ind,i) = (length(time,chan,stokes,2,ind,j)/2.0)*sqrt(2.0) ;
-                }""" % (rotgrid,rotgrid,),
-                {'rm':rotateddata, 'length': length,'index':index},
-                axis_names = ('time','chan','stokes','j','ind'), shape=(ints,nchan,4,rotgrid,maxind))
-        # COMPUTE horiz length of rotated data
-        BFMap("""
-            for (auto j=0; j<%i; j++){
-                if (rm(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,3,ind,j)+=1.0;
-                }
-            for (auto j=0; j<%i; j++){
-                length(time,chan,stokes,3,ind,j) = (length(time,chan,stokes,3,ind,j)/2.0)*sqrt(2.0);
-                }""" % (rotgrid,rotgrid,),
-                {'rm':rotateddata, 'length': length, 'index':index},
-                axis_names = ('time','chan','stokes','i','ind'), shape=(ints,nchan,4,rotgrid,maxind))
-        BFMap("""
-             auto maxlen = 0.0;
-             auto maxlenk = 0;
-             auto widthplane = 0;
-             auto maxwidth =0.0 ; 
-             for (auto k=0; k<4; k++){
-                for (auto i=0; i<%i; i++){
-                    if (length(time,chan,stokes,k,ind,i) > maxlen) {
-                        maxlen = length(time,chan,stokes,k,ind,i);
-                        maxlenk = k;
-                        }
-                    }
-                }
-             length(time,chan,stokes,0,ind,0) = maxlen;
-             if (maxlenk==0) widthplane = 1;
-             if (maxlenk==1) widthplane = 0;
-             if (maxlenk==2) widthplane = 3;
-             if (maxlenk==3) widthplane = 2;
-             for (auto i=0; i<%i; i++){
-                 if (length(time,chan,stokes,widthplane,ind,i) > maxwidth){
-                     maxwidth = length(time,chan,stokes,widthplane,ind,i);
-                 }
-                 }
-             width(time,chan,stokes,ind) = maxwidth;""" % (rotgrid,rotgrid,),
-             {'length':length, 'width':width},
-             axis_names = ('time','chan','stokes','ind'), shape=(ints,nchan,4,maxind))
+        # COMPUTE length 
+        computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rotgrid,maxind)
+
         t3 = datetime.datetime.now()
         print("Measure length and width on the GPU:", (t3-t2))
+        
         islanddata = islanddata.copy('system')
         rotateddata = rotateddata.copy('system')
         length = length.copy('system')
         width = width.copy('system')
-        #### Set up extent ###
-        pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
-        x = np.arange(1, data.shape[-2]+1, dtype=np.float32) - pCntr
-        y = np.arange(1, data.shape[-1]+1, dtype=np.float32) - pCntr
-        x /= -sRad
-        y /= sRad
-        x,y = np.meshgrid(x,y)
-        x2 = x - 1 / sRad
-        y2 = y - 1 / sRad
-        extent = (x2.max(), x2.min(), y.min(), y.max())
 
-        # Set up center region for mean and std calculations of diff ims
-        # We want a box in the center that does not go beyond the horizon. Also 
-        # We need to account for the extra one pixel perimeter in the computations.
-        boxhalflen = np.sin(np.pi/4)*sRad - 1
         data = np.where(data==np.nan,floatmax,data)
-        diffdata = BFArray(np.zeros(data.shape),dtype='f32',space='system')
-        diffdata[...] = data
-        diffdata = diffdata.copy('cuda')
-        meandata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
-        stddata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
-        BFMap("""auto boxhalflen = %f;
-                 auto center = %f/2;
-                 auto x = (float) i - center + 0.5 ;
-                 auto y = (float) j - center + 0.5 ;
-                 auto mean = 0.0;
-                 if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
-                     auto tl = dat(time,chan,0,i-1,j+1);
-                     auto tp = dat(time,chan,0,i,j+1);
-                     auto tr = dat(time,chan,0,i+1,j+1);
-                     auto lt = dat(time,chan,0,i-1,j);
-                     auto mid = dat(time,chan,0,i-1,j);
-                     auto rt = dat(time,chan,0,i+1,j);
-                     auto bl = dat(time,chan,0,i-1,j-1);
-                     auto bm = dat(time,chan,0,i,j-1);
-                     auto br = dat(time,chan,0,i+1,j-1);
-                     mean = (tl + tp + tr + lt + mid + rt + bl + bm + br)/9.0 ;
-                     meandat(time,chan,i,j) = mean;
-                     std(time,chan,i,j) = sqrt(((tl-mean)*(tl-mean) + (tp-mean)*(tp-mean) + (tr-mean)*(tr-mean) + (lt-mean)*(lt-mean) + (mid-mean)*(mid-mean) + (rt-mean)*(rt-mean) + (bl-mean)*(bl-mean) + (bm-mean)*(bm-mean) + (br-mean)*(br-mean))/9.0) ;
-                 }
-                 else {
-                     meandat(time,chan,i,j) = 9999;
-                     std(time,chan,i,j) = 9999;
-                     }""" % (boxhalflen,float(ngrid),),
-                     {"dat":diffdata, "meandat":meandata,"std":stddata},
-                     axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
-        diffmean= np.array(meandata.copy('system'))
-        diffstd = np.array(stddata.copy('system'))
-        meanstokeep = []
-        stdtokeep = []
-        for i in range(ints):
-            meanarr = diffmean[i]
-            stdarr = diffstd[i]
-            nonzero = meanarr!=0
-            valid1 = meanarr!=9999
-            valid2 = ~np.isnan(meanarr)
-            toeval = np.where(nonzero & valid1 & valid2)
-            meanarr = meanarr[toeval[0],toeval[1],toeval[2]]
-            stdarr = stdarr[toeval[0],toeval[1],toeval[2]]
-            minabsmean = np.abs(meanarr)
-            minmean = np.amin(minabsmean)
-            wheremin = np.where(minabsmean==minmean)
-            meanstokeep.append(meanarr[wheremin[0]][0])
-            stdtokeep.append(stdarr[wheremin[0]][0])
-        meanofdiff = np.array(meanstokeep)
-        stdofdiff = np.array(stdtokeep)
+        meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid) 
         data = np.where(data==floatmax,np.nan,data)
 
         maxwids = np.max(width,axis=(1,2,3))
-        numsrcs = np.zeros(ints,dtype=int)
-        for i in range(ints):
-            for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
-                for c in range(nchan):
-                    for s in [0,3]:
-                        srcwid = width[i,c,s,label-1]
-                        if srcwid > 1:
-                            numsrcs[i] += 1
-        numsrccond = numsrcs < 2
+        # impose restrictions on conditions 
+        numsrccond = restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
         islandcondition = islanddata >0
-        stdcondition = np.array(stdofdiff) < 15
-        rmscond  = np.array(rmsdata) < 100
-        absmeancond = np.abs(np.array(meanofdiff)) < 1e-3
+        stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
+        rmscond  = np.array(rmsdata) < float(config['Quality Control']['maxrms'])
+        absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
         widcond = maxwids > 0
-        drcondition = np.array(sndata) < 1e4
+        drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
         whereislands = np.where(numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
+
+
         srcinfo = []
         srcid=0
         for i in np.sort(np.unique(whereislands[0])):
@@ -346,6 +210,17 @@ def main(args):
                 print(angvel)
                 trackprop.append((trackid,np.average(angvel)))
         print(trackprop)
+
+        #### Set up extent ###
+        pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
+        x = np.arange(1, data.shape[-2]+1, dtype=np.float32) - pCntr
+        y = np.arange(1, data.shape[-1]+1, dtype=np.float32) - pCntr
+        x /= -sRad
+        y /= sRad
+        x,y = np.meshgrid(x,y)
+        x2 = x - 1 / sRad
+        y2 = y - 1 / sRad
+        extent = (x2.max(), x2.min(), y.min(), y.max())
         for i in np.unique(whereislands[0]):
             mean=meanofdiff[i]
             std=stdofdiff[i]
@@ -448,4 +323,11 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     args = parser.parse_args()
-    main(args)
+    config = ConfigParser()
+    if not os.path.isfile("config.ini"):
+        print("config.ini does not exist. Creating one and stopping.")
+        with open("config.ini","w") as f:
+            f.write(configfile)
+    else:
+        config.read("config.ini")
+        main(args)
