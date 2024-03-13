@@ -134,6 +134,16 @@ def main(args):
 
         maxwids = np.max(width,axis=(1,2,3))
         # impose restrictions on conditions 
+        zeroimagedata = (imagedata.sum(axis=(-1,-2))==0)
+        invalidimages = np.where(zeroimagedata)
+        for i in invalidimages[0]:
+            for j in invalidimages[1]:
+                for k in invalidimages[2]:
+                    if i!=0:
+                        zeroimagedata[i-1,j,k] = True
+                    if (i!=(ints-1)):
+                        zeroimagedata[i+1,j,k] = True
+        zeroimagedata = ~np.any(zeroimagedata,axis=(1,2))
         numsrccond = restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
         islandcondition = islanddata >0
         stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
@@ -141,11 +151,11 @@ def main(args):
         absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
         widcond = maxwids > 0
         drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
-        whereislands = np.where(numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
+        whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
         angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']))
 
-        whereislands = np.where(angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
+        whereislands = np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
 
        #  print('--------------')        
