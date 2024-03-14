@@ -71,7 +71,7 @@ def main(args):
         # Get S/N and RMS from calibrated data
         sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
 
-        islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid)
+        islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
         t1 = datetime.datetime.now()
         # LABEL GROUPS 
@@ -154,8 +154,17 @@ def main(args):
         whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
         angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']))
+        print(ints - np.sum(angvelcond),"slow moving sources rejected")
+        nsigmacondition = np.zeros(ints,dtype=bool)
+        islandloc = np.where(islandcondition) 
+        rmsdataarray = np.array(rmsdata)
+        for i in np.unique(islandloc[0]):
+            islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
+            brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
+            nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
 
-        whereislands = np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
+        print(np.sum(nsigmacondition), "passed nsigma condition")
+        whereislands = np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)
 
 
        #  print('--------------')        

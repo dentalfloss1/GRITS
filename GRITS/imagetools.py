@@ -108,13 +108,13 @@ def hdrtoworld(hdr,imSize,sRad,x,y):
     pixcrd = [(x,y)]
     return w.wcs_pix2world(pixcrd, 0)
 
-def maskislands(data, stdarray, meanarray, ints, nchan, ngrid):
+def maskislands(data, stdarray, meanarray, ints, nchan, ngrid,nsigma=3):
     dataislands = np.copy(data)
     islandmasks = np.zeros(data.shape,dtype=bool)
     for i in range(ints):
         for j in range(nchan):
             k=0
-            islandcond = np.nan_to_num(data[i,j,k]) < (meanarray[i,j,k] + stdarray[i,j,k]*5)
+            islandcond = np.nan_to_num(data[i,j,k]) < (meanarray[i,j,k] + stdarray[i,j,k]*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
