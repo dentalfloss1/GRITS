@@ -34,8 +34,8 @@ from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
 from GRITS.imagetools import angsep, maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.qc import restrictnumsrc,restrictangvel
-from GRITS.readoims import readoims
-from GRITS.catalogs import cat3c, VLSSr50jy
+from GRITS.readimage import readoims,readpims
+from GRITS.VLSSr50jy import cat3c,VLSSr50jy
 from tqdm import tqdm
 
 
@@ -44,13 +44,22 @@ def main(args):
     for filename in args.filename:
         print("--------",filename,"------")
         # DATA and HEADER
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata = readoims(filename)
+        if ".oims" in filename:
+            ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename)
+            filetype="oims"
+        elif ".pims" in filename:
+            ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename)
+            filetype="pims"
+        else:
+            print("unrecognized filename")
+            exit()
         
         # Do pbcorr
         for c in range(nchan):
-            XX,YY = pbcorroims(hdrlist[0],ngrid,c)
+            XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
             imagedata[:,c,0,:,:]/=((XX+YY)/2)
             data[:,c,0,:,:]/=((XX+YY)/2)
+            
 
         # Get sun and jupiter position for every time in the file. 
         # This part of the code could use some optimization. 
