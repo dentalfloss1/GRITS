@@ -32,10 +32,10 @@ from GRITS.configtemplate import configfile
 from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
-from GRITS.imagetools import angsep, maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
+from GRITS.imagetools import angsep, maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
-from GRITS.VLSSr50jy import cat3c,VLSSr50jy
+from GRITS.catalogs import cat3c,VLSSr50jy
 from tqdm import tqdm
 
 
@@ -271,7 +271,7 @@ def main(args):
             hdr = hdrlist[i]
             mintime = max(0,i-2)
             maxtime = min(ints-1,i+2)
-            vmax = 8000
+            vmax = float(config['Plot Settings']['vmax']) 
             for timenum, t in enumerate(range(mintime,maxtime+1)):
                 currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
                 for c in range(nchan):
@@ -305,7 +305,7 @@ def main(args):
                 tInt = hdr['int_len']*86400.0
             dateObs = mjdmpm_to_datetime(mjd, mpm)
             fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
-            plotfile = filename.replace(".oims",f"-{i}.png")
+            plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i}.png")
             plt.savefig(plotfile)
             print("saving file as ",plotfile)
             plt.close()

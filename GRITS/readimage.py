@@ -35,17 +35,18 @@ def readpims(filename):
         ngrid = db.header['xSize']
         psize = db.header['xPixelSize']
         nchan = 1 
-        sRad = 360.0/pScale/numpy.pi / 2
+        sRad = 360.0/psize/np.pi / 2
         hdrlist = []
         data = np.zeros((ints,nchan,4,ngrid,ngrid))
         for i in range(ints):
             db.seek(i)
-            hdr,alldata,spec = db.read_image()
+            hdr,alldata,spec = db.readImage()
             hdr['start_time'] = hdr['startTime']
             hdr['start_freq'] = hdr['freq'] - hdr['bandwidth']/2
             hdr['stop_freq'] = hdr['freq'] - hdr['bandwidth']/2
             hdr['center_ra'] = hdr['zenithRA']
             hdr['center_dec'] = hdr['zenithDec']
+            hdr['int_len'] = hdr['intLen']
             hdrlist.append(hdr)
             data[i] = np.asarray(alldata.data)
         imagedata = np.copy(data)
