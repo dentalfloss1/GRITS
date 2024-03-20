@@ -13,6 +13,15 @@ from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.time import Time
 
+def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
+    ra1 = ra1deg*np.pi/180
+    dec1 = dec1deg*np.pi/180
+    ra2 = ra2deg*np.pi/180
+    dec2 = dec2deg*np.pi/180
+
+    sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
+    return 180*sep/np.pi
+
 def maskhorizon(data,hdrlist,ngrid,sRad):
     # return a mask for the part of the image beyond 60 degrees from the center
     x = np.arange(ngrid) + 0.5

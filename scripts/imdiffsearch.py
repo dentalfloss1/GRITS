@@ -32,9 +32,10 @@ from GRITS.configtemplate import configfile
 from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
-from GRITS.imagetools import maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
+from GRITS.imagetools import angsep, maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readoims import readoims
+from GRITS.VLSSr50jy import VLSSr50jy
 from tqdm import tqdm
 
 
@@ -164,7 +165,17 @@ def main(args):
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
 
         print(np.sum(nsigmacondition), "passed nsigma condition")
+        VLSSrclose = 
         whereislands = np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)
+        print(whereislands.shape)
+        for i in np.sort(np.unique(whereislands[0])):
+            for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+                for c in range(nchan):
+                    for s in [0,3]:
+                        srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+                        avx, avy = np.average(srclocs+0.5,axis=0)
+                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                        VLSSrclose = angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1])
 
 
        #  print('--------------')        
