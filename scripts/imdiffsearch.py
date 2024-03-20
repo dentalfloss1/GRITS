@@ -165,17 +165,19 @@ def main(args):
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
 
         print(np.sum(nsigmacondition), "passed nsigma condition")
-        VLSSrclose = 
-        whereislands = np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)
-        print(whereislands.shape)
-        for i in np.sort(np.unique(whereislands[0])):
-            for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
-                for c in range(nchan):
-                    for s in [0,3]:
-                        srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
-                        avx, avy = np.average(srclocs+0.5,axis=0)
-                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-                        VLSSrclose = angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1])
+        whereislands = list(np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
+        
+       #  for i  in np.sort(np.unique(whereislands)):
+       #      for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+       #          for c in range(nchan):
+       #              for s in [0]:
+       #                  srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+       #                  if srclocs.size > 0:
+       #                      avx, avy = np.average(srclocs+0.5,axis=0)
+       #                      radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+       #                      VLSSrclose = angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1])
+       #                      print(np.amin(VLSSrclose))
+
 
 
        #  print('--------------')        
@@ -209,7 +211,7 @@ def main(args):
         x2 = x - 1 / sRad
         y2 = y - 1 / sRad
         extent = (x2.max(), x2.min(), y.min(), y.max())
-        for i in np.unique(whereislands[0]):
+        for i in np.unique(whereislands):
             mean=meanofdiff[i]
             std=stdofdiff[i]
             rms=rmsdata[i]
@@ -229,7 +231,16 @@ def main(args):
                             radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
                             axs[1,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
                             ytextloc -= 0.15
+                            VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
+                            VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
+                            VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
+                            axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
+                            ytextloc -= 0.15
             axs[1,4].set_axis_off()
+
+            VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
+            VLSSrname = VLSSr50jy['name'][VLSSrclose] 
+            VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
             islandplot = np.zeros((ngrid,ngrid))
             for c in range(nchan):
                 islandplot+=islanddata[i,c,0]
