@@ -11,7 +11,7 @@ setup(name="GRITS",
       packages=["GRITS"],
       scripts = glob.glob('scripts/*.py'),
       python_requires ='>3.6',
-      install_requires = ['numpy','matplotlib','lsl','scipy','astropy','datetime','bifrost','ephem','tqdm'],
+      install_requires = ['numpy','matplotlib','lsl','scipy','astropy','datetime','bifrost','ephem','tqdm','lsl-toolkits-pasiimage'],
       test_suite="tests")
 
 

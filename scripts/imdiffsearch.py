@@ -35,7 +35,7 @@ from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdi
 from GRITS.imagetools import angsep, maskhorizon, pbcorroims, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readoims import readoims
-from GRITS.VLSSr50jy import VLSSr50jy
+from GRITS.catalogs import cat3c, VLSSr50jy
 from tqdm import tqdm
 
 
@@ -234,8 +234,16 @@ def main(args):
                             VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
                             VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
                             VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-                            axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
-                            ytextloc -= 0.15
+                            if VLSSrsep < float(config['Quality Control']['catsep']):
+                                axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
+                                ytextloc -= 0.15
+                            cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
+                            cat3cnum = cat3c['3C'][cat3cclose]
+                            cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
+                            if cat3csep < float(config['Quality Control']['catsep']):
+                                axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
+                                ytextloc -= 0.15
+
             axs[1,4].set_axis_off()
 
             VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        

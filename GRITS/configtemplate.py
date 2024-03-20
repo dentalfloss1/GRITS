@@ -16,4 +16,6 @@ initialnsigma=2
 ; Final, higher nsigma. This nsigma will determine what candidates are returned.
 finalnsigma=5
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
-rtol = 0.2"""
+rtol = 0.2
+; Maximum separation from catalog for reporting
+catsep = 5"""
