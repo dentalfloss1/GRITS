@@ -66,8 +66,7 @@ def calcbeamprops(az,alt,header,freq):
     beamDict.close()
     return polarpatterns[0], polarpatterns[1]
 
-def pbcorroims(header,imSize,chan):
-    pScale = header['pixel_size']
+def pbcorr(header,imSize,chan,pScale,station):
     sRad   = 360.0/pScale/np.pi / 2
     w = WCS(naxis=2)
     w.wcs.crpix = [imSize/2 + 1 + 0.5 * ((imSize+1)%2),imSize/2 + 1 + 0.5 * ((imSize+1)%2)]
@@ -86,9 +85,13 @@ def pbcorroims(header,imSize,chan):
     mpm = int((header['start_time'] - mjd)*86400.0*1000.0)
     tInt = header['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
-    lwasv = EarthLocation.from_geodetic(-106.885664,34.348562, height=1475) 
     time = Time(dateObs.strftime("%Y-%m-%dT%H:%M:%S"),format="isot")
-    aa = AltAz(location=lwasv, obstime=time)
+    if station==b'LWASV':
+        lwasv = EarthLocation.from_geodetic(-106.885664,34.348562, height=1475) 
+        aa = AltAz(location=lwasv, obstime=time)
+    elif station==b'LWA1':
+        lwa1 = EarthLocation.of_site('lwa1')
+        aa = AltAz(location=lwa1, obstime=time)
     myaltaz = sc.transform_to(aa)
     alt = myaltaz.alt.deg
     az = myaltaz.az.deg
