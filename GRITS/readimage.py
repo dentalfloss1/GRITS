@@ -12,6 +12,7 @@ def readoims(filename):
         ngrid = db.header.ngrid # image size (x-axis)
         psize = db.header.pixel_size # angular size of a pixel (at zenith)
         nchan = db.header.nchan # number of frequency channels
+        station = db.header.station
         sRad   = 360.0/psize/np.pi / 2
         # Collect header and data from the whole file
         hdrlist = []
@@ -24,7 +25,7 @@ def readoims(filename):
         imagedata = np.copy(data)
         # diffim stokes I only, last image is not a diff, we'll mask it later
         data[:-1,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
-    return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
+    return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
 
 def readpims(filename):
 

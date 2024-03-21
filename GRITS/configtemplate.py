@@ -18,7 +18,4 @@ finalnsigma=5
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
 rtol = 0.2
 ; Maximum separation from catalog for reporting
-catsep = 5
-[Plot Settings]
-; Adjust image vmax
-vmax = 8000"""
+catsep = 5"""

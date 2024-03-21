@@ -39,6 +39,18 @@ from GRITS.readimage import readoims,readpims
 from GRITS.catalogs import cat3c,VLSSr50jy
 from tqdm import tqdm
 
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx],idx
+    
+def constrainsources(i,hdr1,j,hdr2,npfile1mask,npfile2mask):
+    file1time = hdr1['start_time']
+    file2time =  hdr2['start_time']
+    timeconstraint = (np.abs(file1time-file2time)*24*60*60) < 30
+    hasmask = (np.nansum(npfile1mask[i,:,:,:,:]) > 0) & (np.nansum(npfile2mask[j,:,:,:,:]) > 0)
+    if timeconstraint & hasmask: 
+        return (i,j)
 
 
 def main(args):
@@ -94,25 +106,26 @@ def main(args):
             if fileno==0:
                 file1mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                 file1mask[...] = islanddata
+                npfile1mask = np.zeros(file1mask.shape,dtype='i8')
+                npfile1mask[...] = file1mask
                 file1hdrlist = hdrlist
                 ngrid1 = ngrid
                 sRad1 = sRad
+                diff1data = np.copy(data)
                 continue
             elif fileno==1:
                 file2mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                 file2mask[...] = islanddata
+                npfile2mask = np.zeros(file2mask.shape,dtype='i8')
+                npfile2mask[...] = file2mask
                 islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
                 print("constraining time and detections between stations")
-                def constrainsources(i,hdr1,j,hdr2):
-                    file1time = hdr1['start_time']
-                    file2time =  hdr2['start_time']
-                    timeconstraint = (np.abs(file1time-file2time)*24*60*60) < 30
-                    hasmask = (np.nansum(file1mask[i,:,:,:,:]) > 0) & (np.nansum(file2mask[j,:,:,:,:]) > 0)
-                    if timeconstraint & hasmask: 
-                        return (i,j)
+                ijkeep = []
                 for i,hdr1 in enumerate(tqdm(file1hdrlist)):
-                    with Pool(10) as pool:
-                        ijkeep = pool.starmap(constrainsources,[(i,hdr1,j,hdr2) for j,hdr2 in enumerate(hdrlist)])
+              #       with Pool(10) as pool:
+              #           ijkeep = pool.starmap(constrainsources,[(i,hdr1,j,hdr2) for j,hdr2 in enumerate(hdrlist)])
+                    for j,hdr2 in enumerate(hdrlist):
+                        ijkeep.append(constrainsources(i,hdr1,j,hdr2,npfile1mask,npfile2mask))
                 ijkeep = [ij for ij in ijkeep if ij is not None]
 
                  #    file1time = hdr1['start_time']
@@ -244,6 +257,16 @@ def main(args):
             x2 = x - 1 / sRad
             y2 = y - 1 / sRad
             extent = (x2.max(), x2.min(), y.min(), y.max())
+
+            pCntr1 = ngrid1/2 + 1 + 0.5 * ((ngrid1+1)%2)
+            x1 = np.arange(1, diff1data.shape[-2]+1, dtype=np.float32) - pCntr1
+            y1 = np.arange(1, diff1data.shape[-1]+1, dtype=np.float32) - pCntr1
+            x1 /= -sRad1
+            y1 /= sRad1
+            x1,y1 = np.meshgrid(x1,y1)
+            x1_2 = x1 - 1 / sRad1
+            y1_2 = y1 - 1 / sRad1
+            extent1 = (x1_2.max(), x1_2.min(), y1_2.min(), y1_2.max())
             for i in np.unique(whereislands):
                 mean=meanofdiff[i]
                 std=stdofdiff[i]
@@ -251,7 +274,7 @@ def main(args):
                 dynamicrange = sndata[i]
                 skip = False
                 chantoplot = 0
-                fig, axs = plt.subplots(3,5,figsize=(30,15))
+                fig, axs = plt.subplots(4,5,figsize=(30,25))
                 ytextloc = 0.9
                 for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
                     for c in range(nchan):
@@ -295,13 +318,29 @@ def main(args):
                 hdr = hdrlist[i]
                 mintime = max(0,i-2)
                 maxtime = min(ints-1,i+2)
-                vmax = float(config['Plot Settings']['vmax']) 
+                if "oims" in filepair[1]:
+                    vmax=8000
+                else:
+                    vmax=1.8e5
+                if "oims" in filepair[0]:
+                    vmax1=8000
+                else:
+                    vmax1=1.8e5
+
+                allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
                     for c in range(nchan):
                         currimage += data[t,c,0,:,:]
                     currimage/=nchan
                     axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+                    # Now plot file 1
+                    file1time,file1timeindex = find_nearest(allfile1times,t)
+                    currimage = np.zeros(diff1data[file1timeindex,chantoplot,0,:,:].shape)
+                    for c in range(diff1data.shape[1]):
+                        currimage += diff1data[t,c,0,:,:]
+                    currimage/=nchan
+                    axs[3,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent1)
                     # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
