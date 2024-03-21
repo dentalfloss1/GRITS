@@ -333,7 +333,7 @@ def main(args):
                     islandplot+=islanddata[i,c,0]
                 xval = np.arange(ngrid)
                 yval = np.arange(ngrid)
-                circle = np.where(round(xval**2 + yval**2,0) == round(sRad**2,0))
+                circle = np.where(np.round(xval**2 + yval**2,0) == np.round(sRad**2,0))
                 islandplot[circle] = 1
                 axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
                 axs[1,2].set_title('I src')
