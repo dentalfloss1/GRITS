@@ -54,26 +54,32 @@ def constrainsources(i,hdr1,j,hdr2,npfile1mask,npfile2mask):
 
 
 def main(args):
-    f1times = []
-    for f1 in args.station1:
-        if "oims" in f1:
-            _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f1)
-        else:
-            _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f1)
-        f1times.append((f1,file_start + (file_end-file_start)/2))
-    f2times = []
-    for f2 in args.station2:
-        if "oims" in f2:
-            _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f2)
-        else:
-            _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f2)
-        f2times.append((f2,file_start + (file_end-file_start)/2))
-    matchingfilepairs = []
-    for f1,f1t in f1times:
-        for f2,f2t in f2times:
-            difftime = np.abs(f1t-f2t)*24*60 # minutes
-            if difftime < 30:
+    if args.ignorematching:
+        matchingfilepairs = []
+        for f1 in args.station1:
+            for f2 in args.station2:
                 matchingfilepairs.append((f1,f2))
+    else:
+        f1times = []
+        for f1 in args.station1:
+            if "oims" in f1:
+                _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f1)
+            else:
+                _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f1)
+            f1times.append((f1,file_start + (file_end-file_start)/2))
+        f2times = []
+        for f2 in args.station2:
+            if "oims" in f2:
+                _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f2)
+            else:
+                _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f2)
+            f2times.append((f2,file_start + (file_end-file_start)/2))
+        matchingfilepairs = []
+        for f1,f1t in f1times:
+            for f2,f2t in f2times:
+                difftime = np.abs(f1t-f2t)*24*60 # minutes
+                if difftime < 30:
+                    matchingfilepairs.append((f1,f2))
     for filepair in matchingfilepairs:
         for fileno,filename in enumerate(filepair):
             print("--------",filename,"------")
@@ -102,7 +108,7 @@ def main(args):
             sunpos, juppos = getsunjup(file_start, file_end, ints)
 
             # Get a mask for the parts of the image beyond 60 degrees from the center
-            invalid = maskhorizon(data,hdrlist,ngrid,sRad)
+            invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad)
             data[:,:,:,invalid[0], invalid[1]] = np.nan
             
             minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
@@ -289,7 +295,7 @@ def main(args):
             y1_2 = y1 - 1 / sRad1
             extent1 = (x1_2.max(), x1_2.min(), y1_2.min(), y1_2.max())
             for i in np.unique(whereislands):
-                if i==len(data)-1:
+                if i==(len(data)-1):
                     continue
                 mean=meanofdiff[i]
                 std=stdofdiff[i]
@@ -329,36 +335,34 @@ def main(args):
                 VLSSrname = VLSSr50jy['name'][VLSSrclose] 
                 VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
                 islandplot = np.zeros((ngrid,ngrid))
+                xc = np.arange(ngrid) + 0.5
+                yc = np.arange(ngrid) + 0.5
+                xc,yc = np.meshgrid(xc,yc)
+                # circle = np.where(np.isclose((xc - ngrid/2)**2 + (yc-ngrid/2)**2,(2*sRad/3),rtol=0.2))
                 for c in range(nchan):
                     islandplot+=islanddata[i,c,0]
+                islandplot[circle[0],circle[1]] = np.nan
                 xval = np.arange(ngrid)
                 yval = np.arange(ngrid)
-                circle = np.where(np.round(xval**2 + yval**2,0) == np.round(sRad**2,0))
-                islandplot[circle] = 1
-                axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
+                axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
+
                 axs[1,2].set_title('I src')
 
                 islandplot = np.zeros((ngrid,ngrid))
                 for c in range(nchan):
                     islandplot+=islanddata[i,c,3]
-                islandplot[circle] = 1
-                axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
+                islandplot[circle[0],circle[1]] = np.nan
+                axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
                 axs[1,3].set_title('V src')
                 hdr = hdrlist[i]
                 mintime = max(0,i-2)
                 maxtime = min(ints-1,i+2)
                 if not args.vmax2:
-                    if "oims" in filepair[1]:
-                        vmax=8000
-                    else:
-                        vmax=1.8e5
+                    vmax=8000
                 else:
                     vmax = args.vmax2
                 if not args.vmax1:
-                    if "oims" in filepair[0]:
-                        vmax1=8000
-                    else:
-                        vmax1=1.8e5
+                    vmax1=8000
                 else:
                     vmax1 = args.vmax1
 
@@ -392,6 +396,7 @@ def main(args):
                 for c in range(nchan):
                     currimage += imagedata[i,c,0,:,:]
                 currimage/=nchan
+                currimage[circle[0],circle[1]] = np.nan
                 axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
                 currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
                 for c in range(nchan):
@@ -429,6 +434,7 @@ if __name__ == "__main__":
                         required=True)
     parser.add_argument("--vmax1", type=float, help="manually specify vmax1")
     parser.add_argument("--vmax2", type=float, help="manually specify vmax2")
+    parser.add_argument("--ignorematching", action="store_true", help="No matching files by time. Data is sorted already")
     args = parser.parse_args()
     config = ConfigParser()
     if not os.path.isfile("config.ini"):

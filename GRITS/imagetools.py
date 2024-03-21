@@ -27,7 +27,9 @@ def maskhorizon(data,hdrlist,ngrid,sRad):
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
-    return  np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((2*sRad/3)**2) )
+    gtboundary = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((2*sRad/3)**2) )
+    cboundary =  np.where( np.isclose(((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) , ((2*sRad/3)**2),rtol=0.02 ))
+    return gtboundary, cboundary
 def calcbeamprops(az,alt,header,freq):
 
     # az and alt need to be the same shape as the image we will correct
