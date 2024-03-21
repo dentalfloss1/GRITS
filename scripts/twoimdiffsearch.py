@@ -5,6 +5,7 @@ import sys
 import datetime
 import argparse
 from configparser import ConfigParser 
+from multiprocessing import Pool
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -101,16 +102,26 @@ def main(args):
                 file2mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                 file2mask[...] = islanddata
                 islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
-                ijkeep = []
                 print("constraining time and detections between stations")
-                for i,hdr1 in enumerate(tqdm(file1hdrlist)):
+                def constrainsources(i,hdr1,j,hdr2):
                     file1time = hdr1['start_time']
-                    for j,hdr2 in enumerate(hdrlist):
-                       file2time =  hdr2['start_time']
-                       timeconstraint = (np.abs(file1time-file2time)*24*60*60) < 30
-                       hasmask = (np.nansum(file1mask[i,:,:,:,:]) > 0) & (np.nansum(file2mask[j,:,:,:,:]) > 0)
-                       if timeconstraint & hasmask: 
-                           ijkeep.append((i,j))
+                    file2time =  hdr2['start_time']
+                    timeconstraint = (np.abs(file1time-file2time)*24*60*60) < 30
+                    hasmask = (np.nansum(file1mask[i,:,:,:,:]) > 0) & (np.nansum(file2mask[j,:,:,:,:]) > 0)
+                    if timeconstraint & hasmask: 
+                        return (i,j)
+                for i,hdr1 in enumerate(tqdm(file1hdrlist)):
+                    with Pool(10) as pool:
+                        ijkeep = pool.starmap(constrainsources,[(i,hdr1,j,hdr2) for j,hdr2 in enumerate(hdrlist)])
+                ijkeep = [ij for ij in ijkeep if ij is not None]
+
+                 #    file1time = hdr1['start_time']
+                 #    for j,hdr2 in enumerate(hdrlist):
+                 #       file2time =  hdr2['start_time']
+                 #       timeconstraint = (np.abs(file1time-file2time)*24*60*60) < 30
+                 #       hasmask = (np.nansum(file1mask[i,:,:,:,:]) > 0) & (np.nansum(file2mask[j,:,:,:,:]) > 0)
+                 #       if timeconstraint & hasmask: 
+                 #           ijkeep.append((i,j))
                 print("Checking for matches between stations")
                 for i,j in tqdm(ijkeep):
                     # Images have different x and y sizes, get around this by
