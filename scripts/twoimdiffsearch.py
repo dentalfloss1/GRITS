@@ -54,7 +54,28 @@ def constrainsources(i,hdr1,j,hdr2,npfile1mask,npfile2mask):
 
 
 def main(args):
-    for filepair in zip(args.station1,args.station2):
+    f1times = []
+    for f1 in args.station1:
+        if "oims" in f1:
+            _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f1)
+        else:
+            _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f1)
+        f1times.append((f1,file_start + (file_end-file_start)/2))
+    f2times = []
+    for f2 in args.station2:
+        if "oims" in f2:
+            _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f2)
+        else:
+            _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f2)
+        f2times.append((f2,file_start + (file_end-file_start)/2))
+    matchingfilepairs = []
+    for f1,f1t in f1times:
+        for f2,f2t in f2times:
+            difftime = np.abs(f1t-f2t)*24*60 # minutes
+            if difftime < 30:
+                matchingfilepairs.append((f1,f2))
+
+    for filepair in matchingfilepairs:
         for fileno,filename in enumerate(filepair):
             print("--------",filename,"------")
             # DATA and HEADER
@@ -341,6 +362,10 @@ def main(args):
                         currimage += diff1data[t,c,0,:,:]
                     currimage/=nchan
                     axs[3,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent1)
+                    mjd = int(file1hdrlist[timenum]['start_time'])
+                    mpm = int((file1hdrlist[timenum]['start_time'] - mjd)*86400.0*1000.0)
+                    file1Obs = mjdmpm_to_datetime(mjd,mpm)
+                    axs[3,timenum].set_title(f"{file1Obs.isoformat()[11:]}")
                     # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
