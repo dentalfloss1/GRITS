@@ -109,7 +109,10 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec):
     w.wcs.cdelt = np.array([-360.0/(2*sRad)/np.pi, 360.0/(2*sRad)/np.pi])
     w.wcs.crval = [hdr['center_ra'], hdr['center_dec']]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
-    pixcrd = [(ra,dec)]
+    try: 
+        pixcrd = [(r,d) for r,d in zip(ra,dec)]
+    except TypeError:
+        pixcrd = [(ra,dec)]
     return w.wcs_world2pix(pixcrd, 0)
 def hdrtoworld(hdr,imSize,sRad,x,y):
     w = WCS(naxis=2)
@@ -117,7 +120,10 @@ def hdrtoworld(hdr,imSize,sRad,x,y):
     w.wcs.cdelt = np.array([-360.0/(2*sRad)/np.pi, 360.0/(2*sRad)/np.pi])
     w.wcs.crval = [hdr['center_ra'], hdr['center_dec']]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
-    pixcrd = [(x,y)]
+    try:
+        pixcrd = [(xp,yp) for xp,yp in zip(x,y)]
+    except TypeError:
+        pixcrd = [(x,y)]
     return w.wcs_pix2world(pixcrd, 0)
 
 def maskislands(data, stdarray, meanarray, ints, nchan, ngrid,nsigma=3):
