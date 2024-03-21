@@ -74,7 +74,6 @@ def main(args):
             difftime = np.abs(f1t-f2t)*24*60 # minutes
             if difftime < 30:
                 matchingfilepairs.append((f1,f2))
-
     for filepair in matchingfilepairs:
         for fileno,filename in enumerate(filepair):
             print("--------",filename,"------")
@@ -88,7 +87,6 @@ def main(args):
             else:
                 print("unrecognized filename")
                 exit()
-            
             # Do pbcorr
             for c in range(nchan):
                 XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
@@ -333,24 +331,36 @@ def main(args):
                 islandplot = np.zeros((ngrid,ngrid))
                 for c in range(nchan):
                     islandplot+=islanddata[i,c,0]
+                xval = np.arange(ngrid)
+                yval = np.arange(ngrid)
+                circle = np.where(round(xval**2 + yval**2,0) == round(sRad**2,0))
+                islandplot[circle] = 1
                 axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
                 axs[1,2].set_title('I src')
+
                 islandplot = np.zeros((ngrid,ngrid))
                 for c in range(nchan):
                     islandplot+=islanddata[i,c,3]
+                islandplot[circle] = 1
                 axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
                 axs[1,3].set_title('V src')
                 hdr = hdrlist[i]
                 mintime = max(0,i-2)
                 maxtime = min(ints-1,i+2)
-                if "oims" in filepair[1]:
-                    vmax=8000
+                if not args.vmax2:
+                    if "oims" in filepair[1]:
+                        vmax=8000
+                    else:
+                        vmax=1.8e5
                 else:
-                    vmax=1.8e5
-                if "oims" in filepair[0]:
-                    vmax1=8000
+                    vmax = args.vmax2
+                if not args.vmax1:
+                    if "oims" in filepair[0]:
+                        vmax1=8000
+                    else:
+                        vmax1=1.8e5
                 else:
-                    vmax1=1.8e5
+                    vmax1 = args.vmax1
 
                 allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
@@ -358,18 +368,18 @@ def main(args):
                     for c in range(nchan):
                         currimage += data[t,c,0,:,:]
                     currimage/=nchan
-                    axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+                    axs[3,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
                     # Now plot file 1
                     file1time,file1timeindex = find_nearest(allfile1times,hdrlist[i]['start_time'])
                     currimage = np.zeros(diff1data[file1timeindex,chantoplot,0,:,:].shape)
                     for c in range(diff1data.shape[1]):
                         currimage += diff1data[file1timeindex,c,0,:,:]
                     currimage/=nchan
-                    axs[3,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent1)
+                    axs[0,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent1)
                     mjd = int(file1hdrlist[file1timeindex]['start_time'])
                     mpm = int((file1hdrlist[file1timeindex]['start_time'] - mjd)*86400.0*1000.0)
                     file1Obs = mjdmpm_to_datetime(mjd,mpm)
-                    axs[3,timenum].set_title(f"{file1Obs.isoformat()[11:]}")
+                    axs[0,2].set_title(f"{file1Obs.isoformat()[11:]}")
                     # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
@@ -417,6 +427,8 @@ if __name__ == "__main__":
     parser.add_argument('--station2', type=str, nargs='+',
                         help="images from the station we check anti-concidence with",
                         required=True)
+    parser.add_argument("--vmax1", type=float, help="manually specify vmax1")
+    parser.add_argument("--vmax2", type=float, help="manually specify vmax2")
     args = parser.parse_args()
     config = ConfigParser()
     if not os.path.isfile("config.ini"):

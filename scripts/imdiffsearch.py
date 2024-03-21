@@ -271,7 +271,10 @@ def main(args):
             hdr = hdrlist[i]
             mintime = max(0,i-2)
             maxtime = min(ints-1,i+2)
-            vmax = float(config['Plot Settings']['vmax']) 
+            if args.vmax:
+                vmax = args.vmax
+            else:
+                vmax = 8000
             for timenum, t in enumerate(range(mintime,maxtime+1)):
                 currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
                 for c in range(nchan):
@@ -336,6 +339,7 @@ if __name__ == "__main__":
                         help='Only output this index')
     parser.add_argument('-p', '--pbcorr', action='store_true',
                         help='Perform primary beam correction on Stokes I')
+    parser.add_argument("--vmax", type=float, help="manually specify vmax")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     args = parser.parse_args()

@@ -49,7 +49,8 @@ def readpims(filename):
             hdr['center_dec'] = hdr['zenithDec']
             hdr['int_len'] = hdr['intLen']
             hdrlist.append(hdr)
-            data[i] = np.asarray(alldata.data)
+            thisdata = alldata.data
+            data[i,0] = np.asarray(alldata.data).transpose(0,2,1)
         imagedata = np.copy(data)
         # diffim stokes I only, last image is not a diff, we'll mask it later
         data[:-1,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
