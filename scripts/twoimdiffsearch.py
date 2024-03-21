@@ -216,6 +216,8 @@ def main(args):
             print("Source Grouping Steps:",t2-t1)
             islanddata = islanddata.copy('system')
             maxind = np.amax(islanddata)
+            if maxind==0:
+                continue
             length = BFArray(np.zeros((ints,nchan,4,4,maxind,rotgrid)),space='cuda',dtype='f32')
             width = BFArray(np.zeros((ints,nchan,4,maxind)),space='cuda',dtype='f32')
             index = BFArray(np.arange(maxind)+1,space='cuda',dtype='i8')
@@ -289,6 +291,8 @@ def main(args):
             y1_2 = y1 - 1 / sRad1
             extent1 = (x1_2.max(), x1_2.min(), y1_2.min(), y1_2.max())
             for i in np.unique(whereislands):
+                if i==len(data)-1:
+                    continue
                 mean=meanofdiff[i]
                 std=stdofdiff[i]
                 rms=rmsdata[i]
@@ -359,11 +363,11 @@ def main(args):
                     file1time,file1timeindex = find_nearest(allfile1times,t)
                     currimage = np.zeros(diff1data[file1timeindex,chantoplot,0,:,:].shape)
                     for c in range(diff1data.shape[1]):
-                        currimage += diff1data[t,c,0,:,:]
+                        currimage += diff1data[file1timeindex,c,0,:,:]
                     currimage/=nchan
                     axs[3,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent1)
-                    mjd = int(file1hdrlist[timenum]['start_time'])
-                    mpm = int((file1hdrlist[timenum]['start_time'] - mjd)*86400.0*1000.0)
+                    mjd = int(file1hdrlist[file1timeindex]['start_time'])
+                    mpm = int((file1hdrlist[file1timeindex]['start_time'] - mjd)*86400.0*1000.0)
                     file1Obs = mjdmpm_to_datetime(mjd,mpm)
                     axs[3,timenum].set_title(f"{file1Obs.isoformat()[11:]}")
                     # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
@@ -393,7 +397,7 @@ def main(args):
                     tInt = hdr['int_len']*86400.0
                 dateObs = mjdmpm_to_datetime(mjd, mpm)
                 fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
-                plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i}.png")
+                plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i}.png").rsplit('/')[-1]
                 plt.savefig(plotfile)
                 print("saving file as ",plotfile)
                 plt.close()
