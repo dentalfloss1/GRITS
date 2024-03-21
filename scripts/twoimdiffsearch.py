@@ -353,6 +353,7 @@ def main(args):
                     vmax1=1.8e5
 
                 allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
+                print(allfile1times)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
                     for c in range(nchan):
@@ -360,7 +361,7 @@ def main(args):
                     currimage/=nchan
                     axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
                     # Now plot file 1
-                    file1time,file1timeindex = find_nearest(allfile1times,t)
+                    file1time,file1timeindex = find_nearest(allfile1times,hdrlist[i]['start_time'])
                     currimage = np.zeros(diff1data[file1timeindex,chantoplot,0,:,:].shape)
                     for c in range(diff1data.shape[1]):
                         currimage += diff1data[file1timeindex,c,0,:,:]
