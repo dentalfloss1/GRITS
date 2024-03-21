@@ -353,7 +353,6 @@ def main(args):
                     vmax1=1.8e5
 
                 allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
-                print(allfile1times)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
                     for c in range(nchan):
