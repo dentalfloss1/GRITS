@@ -133,9 +133,9 @@ def maskislands(data, stdarray, meanarray, ints, nchan, ngrid,nsigma=3):
     islandmasks = np.zeros(data.shape,dtype=bool)
     for i in range(ints):
         for j in range(nchan):
-            k=0
-            islandcond = np.nan_to_num(data[i,j,k]) < (meanarray[i,j,k] + stdarray[i,j,k]*nsigma)
-            islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
+            for k in [0,3]:
+                islandcond = np.nan_to_num(data[i,j,k]) < (meanarray[i,j,0] + stdarray[i,j,0]*nsigma)
+                islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
     islanddata = BFArray(islandmasks, space='system', dtype='i8')

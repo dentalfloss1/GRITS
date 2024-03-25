@@ -133,18 +133,22 @@ def main(args):
                 file1mask[...] = islanddata
                 file1mask[file1mask==np.nan] = 0
                 npfile1mask = np.zeros(file1mask.shape,dtype='i8')
-                npfile1mask[...] = file1mask
+                npfile1mask[...] = islanddata
+                file1mask[...] = npfile1mask
                 file1hdrlist = hdrlist
                 ngrid1 = ngrid
                 sRad1 = sRad
                 diff1data = np.copy(data)
+                file1imagedata = np.copy(imagedata)
+                file1mask = file1mask.copy('cuda')
                 continue
             elif fileno==1:
                 file2mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                 file2mask[...] = islanddata
+                npfile2mask = np.zeros(file2mask.shape,dtype='i8')
+                npfile2mask[...] = islanddata
                 file2mask[file2mask==np.nan] = 0
                 file2mask = file2mask.copy('cuda')
-                file1mask = file1mask.copy('cuda')
                 print("constraining time and detections between stations")
                 file2hdrlist = hdrlist
                 matchgrid = BFArray(np.zeros((len(file1hdrlist),len(file2hdrlist))),space='cuda',dtype='i8')
@@ -172,22 +176,25 @@ def main(args):
                 matchgrid = matchgrid.copy("system")
                 file1mask = file1mask.copy("system")
                 file2mask = file2mask.copy("system")
-                ijkeep = [(i,j) for i in range(len(file1hdrlist)) for j in range(len(file2hdrlist)) if (matchgrid[i,j]==1)]
+                ijkeep = np.array([(i,j) for i in range(len(file1hdrlist)) for j in range(len(file2hdrlist)) if (matchgrid[i,j]==1)],dtype=int)
                 islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
                 print("Checking for matches between stations")
+                if np.array_equal(npfile1mask,npfile2mask, equal_nan=True):
+                    print("File masks are the same, something went wrong.")
+                    exit()
                 for i,j in tqdm(ijkeep):
                     # Images have different x and y sizes, get around this by
                     # converting to RA and Dec and do angular separation check
-                    _,_,x1all,y1all = np.where(file1mask[i,:,:,:,:])
+                    _,_,x1all,y1all = np.where(npfile1mask[i,:,:,:,:])
                     try:
                         radec1 =  hdrtoworld(file1hdrlist[i],ngrid1,sRad1,x1all,y1all)
                         ra1 = np.array([rd[0] for rd in radec1])
                         dec1 = np.array([rd[1] for rd in radec1])
                     except IndexError:
-                        print(np.where(file1mask[i,:,:,:,:]))
+                        print(np.where(npfile1mask[i,:,:,:,:]))
                         print("empty coordinate list")
                         continue
-                    _,_,x2all,y2all = np.where(file2mask[j,:,:,:,:])
+                    _,_,x2all,y2all = np.where(npfile2mask[j,:,:,:,:])
                     radec2 =  hdrtoworld(hdrlist[j],ngrid,sRad,x2all,y2all)
                     ra2 = np.array([rd[0] for rd in radec2])
                     dec2 = np.array([rd[1] for rd in radec2])
@@ -326,8 +333,9 @@ def main(args):
                 dynamicrange = sndata[i]
                 skip = False
                 chantoplot = 0
-                fig, axs = plt.subplots(4,5,figsize=(30,25))
+                fig, axs = plt.subplots(5,5,figsize=(30,35))
                 ytextloc = 0.9
+                srclist = []
                 for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
                     for c in range(nchan):
                         for s in [0,3]:
@@ -337,46 +345,48 @@ def main(args):
                             if ((srclen > 0) and (srcwid >0)):
                                 avx, avy = np.average(srclocs+0.5,axis=0)
                                 radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-                                axs[1,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
+                                srclist.append((radec[0][0],radec[0][1]))
+                                axs[4,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
                                 ytextloc -= 0.15
                                 VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
                                 VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
                                 VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
                                 if VLSSrsep < float(config['Quality Control']['catsep']):
-                                    axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
+                                    axs[4,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
                                     ytextloc -= 0.15
                                 cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
                                 cat3cnum = cat3c['3C'][cat3cclose]
                                 cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
                                 if cat3csep < float(config['Quality Control']['catsep']):
-                                    axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
+                                    axs[4,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
                                     ytextloc -= 0.15
 
-                axs[1,4].set_axis_off()
+                axs[4,4].set_axis_off()
 
                 VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
                 VLSSrname = VLSSr50jy['name'][VLSSrclose] 
                 VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-                islandplot = np.zeros((ngrid,ngrid))
                 xc = np.arange(ngrid) + 0.5
                 yc = np.arange(ngrid) + 0.5
                 xc,yc = np.meshgrid(xc,yc)
                 # circle = np.where(np.isclose((xc - ngrid/2)**2 + (yc-ngrid/2)**2,(2*sRad/3),rtol=0.2))
+                if "pims" in filepair[1]:
+                    islanddata = islanddata.transpose(0,1,2,4,3)
+                islandplot = np.zeros((ngrid,ngrid))
+
                 for c in range(nchan):
                     islandplot+=islanddata[i,c,0]
                 islandplot[circle[0],circle[1]] = np.nan
-                xval = np.arange(ngrid)
-                yval = np.arange(ngrid)
-                axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
+                axs[4,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
 
-                axs[1,2].set_title('I src')
+                axs[4,2].set_title('I file 2 mask')
 
                 islandplot = np.zeros((ngrid,ngrid))
                 for c in range(nchan):
                     islandplot+=islanddata[i,c,3]
                 islandplot[circle[0],circle[1]] = np.nan
-                axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
-                axs[1,3].set_title('V src')
+                axs[4,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
+                axs[4,3].set_title('V file 2 mask')
                 hdr = hdrlist[i]
                 mintime = max(0,i-2)
                 maxtime = min(ints-1,i+2)
@@ -388,44 +398,99 @@ def main(args):
                     vmax1=8000
                 else:
                     vmax1 = args.vmax1
-
-                allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
+                # file 2 stokes I 
+                currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
+                for c in range(nchan):
+                    currimage += imagedata[i,c,0,:,:]
+                currimage/=nchan
+                currimage[circle[0],circle[1]] = np.nan
+                axs[4,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
+                axs[4,0].set_title("File 2 stokes I")
+                # file 2 stokes V
+                currimage = np.zeros(imagedata[i,chantoplot,3,:,:].shape)
+                for c in range(nchan):
+                    currimage += imagedata[i,c,3,:,:]
+                currimage/=nchan
+                axs[4,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
+                axs[4,1].set_title("File 2 stokes V")
+                xvals = np.arange(data.shape[-2])
+                yvals = np.arange(data.shape[-1])
+                xvals,yvals = np.meshgrid(xvals,yvals)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
                     for c in range(nchan):
                         currimage += data[t,c,0,:,:]
+                    for src in srclist:
+                        xycoords = hdrtopixmask(hdrlist[i], data.shape[-1], sRad, src[0],src[1])
+                        src = xycoords[0]
+                        wheresrc = np.where(np.isclose((xvals - src[0])**2 + (yvals - src[1])**2, 8**2,rtol=0.1))
+                        currimage[wheresrc[0],wheresrc[1]] = np.nan
                     currimage/=nchan
                     axs[3,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
-                    # Now plot file 1
-                    file1time,file1timeindex = find_nearest(allfile1times,hdrlist[i]['start_time'])
-                    currimage = np.zeros(diff1data[file1timeindex,chantoplot,0,:,:].shape)
-                    for c in range(diff1data.shape[1]):
-                        currimage += diff1data[file1timeindex,c,0,:,:]
-                    currimage/=nchan
-                    axs[0,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent1)
-                    mjd = int(file1hdrlist[file1timeindex]['start_time'])
-                    mpm = int((file1hdrlist[file1timeindex]['start_time'] - mjd)*86400.0*1000.0)
-                    file1Obs = mjdmpm_to_datetime(mjd,mpm)
-                    axs[0,2].set_title(f"{file1Obs.isoformat()[11:]}")
-                    # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
                 for timenum, t in enumerate(range(mintime,maxtime+1)):
                     currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
                     for c in range(nchan):
                         currimage += data[t,c,3,:,:]
                     currimage/=nchan
                     axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap='coolwarm')
+                # Now file 1 
+                if "pims" in filepair[0]:
+                    npfile1mask = npfile1mask.transpose(0,1,2,4,3)
+                matchingind = ijkeep[ijkeep[:,1]==i]
+                j = matchingind[0][0]
+                allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
+                mintime = max(0,j-2)
+                maxtime = min(len(file1imagedata)-1,j+2)
+                for timenum, t in enumerate(range(mintime,maxtime+1)):
+                    currimage = np.zeros(diff1data[t,chantoplot,0,:,:].shape)
+                    for c in range(diff1data.shape[1]):
+                        currimage += diff1data[t,c,0,:,:]
+                    currimage/=diff1data.shape[1]
+                    for src in srclist:
+                        xycoords = hdrtopixmask(file1hdrlist[j], diff1data.shape[-1], sRad1, src[0],src[1])
+                        src = xycoords[0]
+                        wheresrc = np.where(np.isclose((xvals - src[0])**2 + (yvals - src[1])**2, 8**2,rtol=0.1))
+                        currimage[wheresrc[0],wheresrc[1]] = np.nan
+                    axs[0,timenum].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent)
+                    mjd = int(file1hdrlist[j]['start_time'])
+                    mpm = int((file1hdrlist[j]['start_time'] - mjd)*86400.0*1000.0)
+                    file1Obs = mjdmpm_to_datetime(mjd,mpm)
+                    axs[0,2].set_title(f"{file1Obs.isoformat()[11:]}")
                     # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-                currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
+                    # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+                # file 1 stokes I
+                currimage = np.zeros(file1imagedata[j,chantoplot,0,:,:].shape)
                 for c in range(nchan):
-                    currimage += imagedata[i,c,0,:,:]
-                currimage/=nchan
+                    currimage += file1imagedata[j,c,0,:,:]
+                currimage/=file1imagedata.shape[1]
                 currimage[circle[0],circle[1]] = np.nan
-                axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
-                currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
+                axs[1,0].imshow(currimage,vmin=0,vmax=vmax1,origin='lower',extent=extent)
+                axs[1,0].set_title("File 1 stokes I")
+
+                # file 1 stokes V
+                currimage = np.zeros(file1imagedata[j,chantoplot,0,:,:].shape)
                 for c in range(nchan):
-                    currimage += imagedata[i,c,3,:,:]
-                currimage/=nchan
-                axs[1,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
+                    currimage += file1imagedata[j,c,3,:,:]
+                currimage/=file1imagedata.shape[1]
+                currimage[circle[0],circle[1]] = np.nan
+                axs[1,1].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent,cmap="coolwarm")
+                axs[1,1].set_title("File 1 stokes V")
+                
+                islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
+                for c in range(nchan):
+                    islandplot+=npfile1mask[j,c,0]
+                islandplot[circle[0],circle[1]] = np.nan
+                axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
+
+                axs[1,2].set_title('I file 1 mask')
+                islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
+                for c in range(nchan):
+                    islandplot+=npfile1mask[j,c,3]
+                islandplot[circle[0],circle[1]] = np.nan
+                axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
+
+                axs[1,3].set_title('V file 1 mask')
+
                 mjd = int(hdr['start_time'])
                 mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
                 # determine if header is in seconds or days
@@ -435,7 +500,7 @@ def main(args):
                     tInt = hdr['int_len']*86400.0
                 dateObs = mjdmpm_to_datetime(mjd, mpm)
                 fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
-                plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i}.png").rsplit('/')[-1]
+                plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i}.png").rsplit('/')[-1].replace(':','_')
                 plt.savefig(plotfile)
                 print("saving file as ",plotfile)
                 plt.close()
