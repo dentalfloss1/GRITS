@@ -69,7 +69,7 @@ def main(args):
         sunpos, juppos = getsunjup(file_start, file_end, ints)
 
         # Get a mask for the parts of the image beyond 60 degrees from the center
-        invalid = maskhorizon(data,hdrlist,ngrid,sRad)
+        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad)
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
@@ -159,7 +159,7 @@ def main(args):
         stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
         rmscond  = np.array(rmsdata) < float(config['Quality Control']['maxrms'])
         absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
-        widcond = maxwids > 0
+        widcond = maxwids > float(config['Quality Control']['minwid'])
         drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
         whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
@@ -229,6 +229,7 @@ def main(args):
             chantoplot = 0
             fig, axs = plt.subplots(3,5,figsize=(30,15))
             ytextloc = 0.9
+            annotatesrc = []
             for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
                 for c in range(nchan):
                     for s in [0,3]:
@@ -237,8 +238,10 @@ def main(args):
                         srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
                         if ((srclen > 0) and (srcwid >0)):
                             avx, avy = np.average(srclocs+0.5,axis=0)
+                            annotatesrc.append((avx,avy,
                             radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
                             axs[1,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
+                            
                             ytextloc -= 0.15
                             VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
                             VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
@@ -261,12 +264,14 @@ def main(args):
             islandplot = np.zeros((ngrid,ngrid))
             for c in range(nchan):
                 islandplot+=islanddata[i,c,0]
-            axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
+            islandplot[circle[0],circle[1]] = np.nan
+            axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
             axs[1,2].set_title('I src')
             islandplot = np.zeros((ngrid,ngrid))
             for c in range(nchan):
                 islandplot+=islanddata[i,c,3]
-            axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='binary')
+            islandplot[circle[0],circle[1]] = np.nan
+            axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
             axs[1,3].set_title('V src')
             hdr = hdrlist[i]
             mintime = max(0,i-2)
@@ -293,6 +298,7 @@ def main(args):
             for c in range(nchan):
                 currimage += imagedata[i,c,0,:,:]
             currimage/=nchan
+            currimage[circle[0],circle[1]] = np.nan
             axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
             currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
             for c in range(nchan):

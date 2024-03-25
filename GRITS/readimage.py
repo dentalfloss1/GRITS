@@ -3,7 +3,7 @@ from contextlib import closing
 import numpy as np 
 from lsl_toolkits.PasiImage import PasiImageDB
 
-def readoims(filename):
+def readoims(filename,hdronly=False):
     with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
         # Get parameters from the input file
         ints = db.nint # number of integrations
@@ -14,20 +14,23 @@ def readoims(filename):
         nchan = db.header.nchan # number of frequency channels
         station = db.header.station
         sRad   = 360.0/psize/np.pi / 2
-        # Collect header and data from the whole file
-        hdrlist = []
-        data = np.zeros((ints,nchan,4,ngrid,ngrid))
-        for i in range(ints):
-            db.seek(i)
-            hdr,alldata = db.read_image()
-            hdrlist.append(hdr)
-            data[i] = np.asarray(alldata.data)
-        imagedata = np.copy(data)
-        # diffim stokes I only, last image is not a diff, we'll mask it later
-        data[:-1,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
-    return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
-
-def readpims(filename):
+        if not hdronly:
+            # Collect header and data from the whole file
+            hdrlist = []
+            data = np.zeros((ints,nchan,4,ngrid,ngrid))
+            for i in range(ints):
+                db.seek(i)
+                hdr,alldata = db.read_image()
+                hdrlist.append(hdr)
+                data[i] = np.asarray(alldata.data)
+            imagedata = np.copy(data)
+            # diffim stokes I only, last image is not a diff, we'll mask it later
+            data[:-1,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
+            return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
+        else:
+            
+            return file_start,file_end
+def readpims(filename,hdronly=False):
 
     with closing(PasiImageDB(filename, 'r')) as db:
         ints = len(db)
@@ -39,21 +42,25 @@ def readpims(filename):
         sRad = 360.0/psize/np.pi / 2
         hdrlist = []
         data = np.zeros((ints,nchan,4,ngrid,ngrid))
-        for i in range(ints):
-            db.seek(i)
-            hdr,alldata,spec = db.readImage()
-            hdr['start_time'] = hdr['startTime']
-            hdr['start_freq'] = hdr['freq'] - hdr['bandwidth']/2
-            hdr['stop_freq'] = hdr['freq'] - hdr['bandwidth']/2
-            hdr['center_ra'] = hdr['zenithRA']
-            hdr['center_dec'] = hdr['zenithDec']
-            hdr['int_len'] = hdr['intLen']
-            hdrlist.append(hdr)
-            thisdata = alldata.data
-            data[i,0] = np.asarray(alldata.data).transpose(0,2,1)
-        imagedata = np.copy(data)
-        # diffim stokes I only, last image is not a diff, we'll mask it later
-        data[:-1,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
-    return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
+        if not hdronly:
+            for i in range(ints):
+                db.seek(i)
+                hdr,alldata,spec = db.readImage()
+                hdr['start_time'] = hdr['startTime']
+                hdr['start_freq'] = hdr['freq'] - hdr['bandwidth']/2
+                hdr['stop_freq'] = hdr['freq'] - hdr['bandwidth']/2
+                hdr['center_ra'] = hdr['zenithRA']
+                hdr['center_dec'] = hdr['zenithDec']
+                hdr['int_len'] = hdr['intLen']
+                hdrlist.append(hdr)
+                thisdata = alldata.data
+                data[i,0] = np.asarray(alldata.data).transpose(0,2,1)
+            imagedata = np.copy(data)
+            # diffim stokes I only, last image is not a diff, we'll mask it later
+            data[:-1,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
+            return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
+        else:
+            
+            return file_start,file_end
 
 

@@ -63,16 +63,16 @@ def main(args):
         f1times = []
         for f1 in args.station1:
             if "oims" in f1:
-                _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f1)
+                file_start,file_end = readoims(f1,hdronly=True)
             else:
-                _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f1)
+                file_start,file_end = readpims(f1,hdronly=True)
             f1times.append((f1,file_start + (file_end-file_start)/2))
         f2times = []
         for f2 in args.station2:
             if "oims" in f2:
-                _,file_start,file_end,_,_,_,_,_,_,_,_ = readoims(f2)
+                file_start,file_end = readoims(f2,hdronly=True)
             else:
-                _,file_start,file_end,_,_,_,_,_,_,_,_ = readpims(f2)
+                file_start,file_end = readpims(f2,hdronly=True)
             f2times.append((f2,file_start + (file_end-file_start)/2))
         matchingfilepairs = []
         for f1,f1t in f1times:
@@ -131,6 +131,7 @@ def main(args):
             if fileno==0:
                 file1mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                 file1mask[...] = islanddata
+                file1mask[file1mask==np.nan] = 0
                 npfile1mask = np.zeros(file1mask.shape,dtype='i8')
                 npfile1mask[...] = file1mask
                 file1hdrlist = hdrlist
@@ -141,33 +142,51 @@ def main(args):
             elif fileno==1:
                 file2mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                 file2mask[...] = islanddata
-                npfile2mask = np.zeros(file2mask.shape,dtype='i8')
-                npfile2mask[...] = file2mask
-                islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
+                file2mask[file2mask==np.nan] = 0
+                file2mask = file2mask.copy('cuda')
+                file1mask = file1mask.copy('cuda')
                 print("constraining time and detections between stations")
-                ijkeep = []
-                for i,hdr1 in enumerate(tqdm(file1hdrlist)):
-              #       with Pool(10) as pool:
-              #           ijkeep = pool.starmap(constrainsources,[(i,hdr1,j,hdr2) for j,hdr2 in enumerate(hdrlist)])
-                    for j,hdr2 in enumerate(hdrlist):
-                        ijkeep.append(constrainsources(i,hdr1,j,hdr2,npfile1mask,npfile2mask))
-                ijkeep = [ij for ij in ijkeep if ij is not None]
-
-                 #    file1time = hdr1['start_time']
-                 #    for j,hdr2 in enumerate(hdrlist):
-                 #       file2time =  hdr2['start_time']
-                 #       timeconstraint = (np.abs(file1time-file2time)*24*60*60) < 30
-                 #       hasmask = (np.nansum(file1mask[i,:,:,:,:]) > 0) & (np.nansum(file2mask[j,:,:,:,:]) > 0)
-                 #       if timeconstraint & hasmask: 
-                 #           ijkeep.append((i,j))
+                file2hdrlist = hdrlist
+                matchgrid = BFArray(np.zeros((len(file1hdrlist),len(file2hdrlist))),space='cuda',dtype='i8')
+                file1time = BFArray(np.array([hdr1['start_time'] for hdr1 in file1hdrlist]),space='cuda',dtype='f64')
+                file2time = BFArray(np.array([hdr2['start_time'] for hdr2 in hdrlist]),space='cuda',dtype='f64')
+                BFMap("""auto timediff = 0.0;
+                         timediff = fabs(f1t(i) - f2t(j))*24.0*60.0*60.0;
+                         auto f1msum = 0;
+                         auto f2msum = 0;
+                         for (auto c = 0; c < %i; c++){
+                             for (auto s = 0; s < %i; s++){
+                                 for (auto x=0; x< %i; x++){
+                                     for (auto y=0; y<%i; y++){
+                                         f1msum += f1m(i,c,s,x,y) ; 
+                                         f2msum += f2m(j,c,s,x,y) ; 
+                                         }
+                                     }
+                                 }
+                             }
+                         if ( (timediff < 30.0) && (f1msum > 0) && (f2msum > 0) ) {
+                             matchgrid(i,j) = 1;
+                             }"""        % (nchan,4,ngrid,ngrid,),
+                    {'f1t':file1time,'f2t':file2time,'matchgrid':matchgrid,"f1m":file1mask,"f2m":file2mask},
+                    axis_names = ('i','j'), shape=(len(file1hdrlist),len(file2hdrlist)))
+                matchgrid = matchgrid.copy("system")
+                file1mask = file1mask.copy("system")
+                file2mask = file2mask.copy("system")
+                ijkeep = [(i,j) for i in range(len(file1hdrlist)) for j in range(len(file2hdrlist)) if (matchgrid[i,j]==1)]
+                islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
                 print("Checking for matches between stations")
                 for i,j in tqdm(ijkeep):
                     # Images have different x and y sizes, get around this by
                     # converting to RA and Dec and do angular separation check
                     _,_,x1all,y1all = np.where(file1mask[i,:,:,:,:])
-                    radec1 =  hdrtoworld(file1hdrlist[i],ngrid1,sRad1,x1all,y1all)
-                    ra1 = np.array([rd[0] for rd in radec1])
-                    dec1 = np.array([rd[1] for rd in radec1])
+                    try:
+                        radec1 =  hdrtoworld(file1hdrlist[i],ngrid1,sRad1,x1all,y1all)
+                        ra1 = np.array([rd[0] for rd in radec1])
+                        dec1 = np.array([rd[1] for rd in radec1])
+                    except IndexError:
+                        print(np.where(file1mask[i,:,:,:,:]))
+                        print("empty coordinate list")
+                        continue
                     _,_,x2all,y2all = np.where(file2mask[j,:,:,:,:])
                     radec2 =  hdrtoworld(hdrlist[j],ngrid,sRad,x2all,y2all)
                     ra2 = np.array([rd[0] for rd in radec2])
@@ -220,6 +239,7 @@ def main(args):
             print("Source Grouping Steps:",t2-t1)
             islanddata = islanddata.copy('system')
             maxind = np.amax(islanddata)
+            islanddata = islanddata.copy('cuda')
             if maxind==0:
                 continue
             length = BFArray(np.zeros((ints,nchan,4,4,maxind,rotgrid)),space='cuda',dtype='f32')
@@ -227,8 +247,11 @@ def main(args):
             index = BFArray(np.arange(maxind)+1,space='cuda',dtype='i8')
             islanddata = islanddata.copy('cuda')
             # COMPUTE length 
-            computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rotgrid,maxind)
-
+            try:
+                computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rotgrid,maxind)
+            except RuntimeError as e:
+                print(e)
+                continue
             t3 = datetime.datetime.now()
             print("Measure length and width on the GPU:", (t3-t2))
             
@@ -258,7 +281,7 @@ def main(args):
             stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
             rmscond  = np.array(rmsdata) < float(config['Quality Control']['maxrms'])
             absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
-            widcond = maxwids > 0
+            widcond = maxwids > float(config['Quality Control']['minwid'])
             drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
             whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
@@ -416,6 +439,8 @@ def main(args):
                 plt.savefig(plotfile)
                 print("saving file as ",plotfile)
                 plt.close()
+                for obj in [data,imagedata,islanddata,length,width ,rotateddata]:
+                    del obj
 
             
         print("-------------------")
