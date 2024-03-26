@@ -127,6 +127,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 allcorr.append((c,getcrab(freq(c))/tau))
         allcorr = np.array(allcorr,dtype=[('channel','i8'),('corrfac','f8')])
         calchans = np.unique(allcorr['channel'])
+        print("calibrated channels",calchans)
         removechan = []
         startchan = nchan
         for c in range(nchan):
@@ -145,8 +146,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             keepchan = tuple(keepchan)
             imagedata = imagedata[:,keepchan,:,:,:]
             data = data[:,keepchan,:,:,:]
-        if (nchan < 4) and (startchan!=1):
-            print("less than 4 channels calibrated. Skipping file.")
+        if nchan == 0 :
+            print("No channels calibrated. Skipping file.")
             return False, False
         #### flux correct, 
         for c in range(nchan):

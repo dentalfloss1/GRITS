@@ -53,8 +53,9 @@ def main(args):
         else:
             print("unrecognized filename")
             exit()
-        
-        # Do pbcorr
+        if file_start==0.0:
+            print(filename, "has invalid data")
+            continue
         for c in range(nchan):
             XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
             imagedata[:,c,0,:,:]/=((XX+YY)/2)
@@ -77,6 +78,7 @@ def main(args):
         # Flux calibrate data and mask off A-Team
         imagedata, data = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         
+        
 
         # Get S/N and RMS from calibrated data
         sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
@@ -94,10 +96,11 @@ def main(args):
         groupvertcols(islanddata,ngrid)
         # ROTATE Island data
         rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
-        BFMap("""rm(time,chan,stokes,i+j-1,%i-i+j) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+        BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
         rotgrid = 2*ngrid-1
+
         # GROUP DIAG COLS
         groupdiagcols(rotateddata,rotgrid)
         # GROUPROWS
@@ -105,7 +108,7 @@ def main(args):
         # GROUPCOLS
         groupdiagcols(rotateddata,rotgrid)
         # UPDATE UNROTATED Island data
-        BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-1,%i-i+j);""" % (ngrid,),
+        BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-2,%i-i+j-1);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
         # GROUPCOLS
@@ -115,7 +118,7 @@ def main(args):
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         # UPDATE ROTATED Island data
-        BFMap("""rm(time,chan,stokes,i+j-1,%i-i+j) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+        BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
 
@@ -229,7 +232,6 @@ def main(args):
             chantoplot = 0
             fig, axs = plt.subplots(3,5,figsize=(30,15))
             ytextloc = 0.9
-            annotatesrc = []
             for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
                 for c in range(nchan):
                     for s in [0,3]:
@@ -238,7 +240,6 @@ def main(args):
                         srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
                         if ((srclen > 0) and (srcwid >0)):
                             avx, avy = np.average(srclocs+0.5,axis=0)
-                            annotatesrc.append((avx,avy,
                             radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
                             axs[1,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
                             

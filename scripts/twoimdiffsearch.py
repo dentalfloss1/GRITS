@@ -66,14 +66,20 @@ def main(args):
                 file_start,file_end = readoims(f1,hdronly=True)
             else:
                 file_start,file_end = readpims(f1,hdronly=True)
-            f1times.append((f1,file_start + (file_end-file_start)/2))
+            if file_start != 0.0:
+                f1times.append((f1,file_start + (file_end-file_start)/2))
+            else:
+                print(f1, "has invalid data")
         f2times = []
         for f2 in args.station2:
             if "oims" in f2:
                 file_start,file_end = readoims(f2,hdronly=True)
             else:
                 file_start,file_end = readpims(f2,hdronly=True)
-            f2times.append((f2,file_start + (file_end-file_start)/2))
+            if file_start != 0.0:
+                f2times.append((f2,file_start + (file_end-file_start)/2))
+            else:
+                print(f2, "has invalid data")
         matchingfilepairs = []
         for f1,f1t in f1times:
             for f2,f2t in f2times:
