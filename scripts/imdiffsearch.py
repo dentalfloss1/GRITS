@@ -56,269 +56,288 @@ def main(args):
         if file_start==0.0:
             print(filename, "has invalid data")
             continue
-        for c in range(nchan):
-            XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
-            imagedata[:,c,0,:,:]/=((XX+YY)/2)
-            data[:,c,0,:,:]/=((XX+YY)/2)
+        fullhdrlist = hdrlist
+        fulldata = data.copy()
+        fullimage = imagedata.copy()
+        final = 0
+        if "oims" in filename:
+            chunkt = 0
+            chunksize = 200
+        else:
+            chunksize = 1000
+        while final<ints:
+            final = min(ints,chunkt + chunksize)
+            hdrlist = fullhdrlist[chunkt:final]
+            data = fulldata[chunkt:final]
+            imagedata = fullimage[chunkt:final]
+            chunkt = chunkt + chunksize
+            print(imagedata.shape)
+            print(data.shape)
+            ints = len(data)
+            for c in range(nchan):
+                XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
+                imagedata[:,c,0,:,:]/=((XX+YY)/2)
+                data[:,c,0,:,:]/=((XX+YY)/2)
+                
+
+            # Get sun and jupiter position for every time in the file. 
+            # This part of the code could use some optimization. 
+            # There is FORTRAN code that is publically available to
+            # compute these positions. If it seems necessary,
+            # I could attempt to adapt that code to the GPU
+            sunpos, juppos = getsunjup(file_start, file_end, ints)
+
+            # Get a mask for the parts of the image beyond 60 degrees from the center
+            invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad)
+            data[:,:,:,invalid[0], invalid[1]] = np.nan
+           
+
+            minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
+
+            # Flux calibrate data and mask off A-Team
+            imagedata, data = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
+            
             
 
-        # Get sun and jupiter position for every time in the file. 
-        # This part of the code could use some optimization. 
-        # There is FORTRAN code that is publically available to
-        # compute these positions. If it seems necessary,
-        # I could attempt to adapt that code to the GPU
-        sunpos, juppos = getsunjup(file_start, file_end, ints)
+            # Get S/N and RMS from calibrated data
+            sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
 
-        # Get a mask for the parts of the image beyond 60 degrees from the center
-        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad)
-        data[:,:,:,invalid[0], invalid[1]] = np.nan
-        
-        minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
+            islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
-        # Flux calibrate data and mask off A-Team
-        imagedata, data = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
-        
-        
+            t1 = datetime.datetime.now()
+            # LABEL GROUPS 
+            labelgroups(islanddata,ngrid,ints,nchan)
+            # GROUPCOLS
+            groupvertcols(islanddata,ngrid)
+            # GROUPROWS
+            grouphorizrows(islanddata,ngrid)
+            # GROUPCOLS
+            groupvertcols(islanddata,ngrid)
+            # ROTATE Island data
+            rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
+            BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+                {'isldata':islanddata,'rm':rotateddata},
+                axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+            rotgrid = 2*ngrid-1
 
-        # Get S/N and RMS from calibrated data
-        sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
+            # GROUP DIAG COLS
+            groupdiagcols(rotateddata,rotgrid)
+            # GROUPROWS
+            groupdiagrows(rotateddata,rotgrid)
+            # GROUPCOLS
+            groupdiagcols(rotateddata,rotgrid)
+            # UPDATE UNROTATED Island data
+            BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-2,%i-i+j-1);""" % (ngrid,),
+                {'isldata':islanddata,'rm':rotateddata},
+                axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+            # GROUPCOLS
+            groupvertcols(islanddata,ngrid)
+            # GROUPROWS
+            grouphorizrows(islanddata,ngrid)
+            # GROUPCOLS
+            groupvertcols(islanddata,ngrid)
+            # UPDATE ROTATED Island data
+            BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+                {'isldata':islanddata,'rm':rotateddata},
+                axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
 
-        islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
+            t2 = datetime.datetime.now()
+            print("Source Grouping Steps:",t2-t1)
+            islanddata = islanddata.copy('system')
+            maxind = np.amax(islanddata)
+            length = BFArray(np.zeros((ints,nchan,4,4,maxind,rotgrid)),space='cuda',dtype='f32')
+            width = BFArray(np.zeros((ints,nchan,4,maxind)),space='cuda',dtype='f32')
+            index = BFArray(np.arange(maxind)+1,space='cuda',dtype='i8')
+            islanddata = islanddata.copy('cuda')
+            # COMPUTE length 
+            computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rotgrid,maxind)
 
-        t1 = datetime.datetime.now()
-        # LABEL GROUPS 
-        labelgroups(islanddata,ngrid,ints,nchan)
-        # GROUPCOLS
-        groupvertcols(islanddata,ngrid)
-        # GROUPROWS
-        grouphorizrows(islanddata,ngrid)
-        # GROUPCOLS
-        groupvertcols(islanddata,ngrid)
-        # ROTATE Island data
-        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
-        BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
-            {'isldata':islanddata,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-        rotgrid = 2*ngrid-1
+            t3 = datetime.datetime.now()
+            print("Measure length and width on the GPU:", (t3-t2))
+            
+            islanddata = islanddata.copy('system')
+            rotateddata = rotateddata.copy('system')
+            length = length.copy('system')
+            width = width.copy('system')
 
-        # GROUP DIAG COLS
-        groupdiagcols(rotateddata,rotgrid)
-        # GROUPROWS
-        groupdiagrows(rotateddata,rotgrid)
-        # GROUPCOLS
-        groupdiagcols(rotateddata,rotgrid)
-        # UPDATE UNROTATED Island data
-        BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-2,%i-i+j-1);""" % (ngrid,),
-            {'isldata':islanddata,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-        # GROUPCOLS
-        groupvertcols(islanddata,ngrid)
-        # GROUPROWS
-        grouphorizrows(islanddata,ngrid)
-        # GROUPCOLS
-        groupvertcols(islanddata,ngrid)
-        # UPDATE ROTATED Island data
-        BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
-            {'isldata':islanddata,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+            data = np.where(data==np.nan,floatmax,data)
+            meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid) 
+            data = np.where(data==floatmax,np.nan,data)
 
-        t2 = datetime.datetime.now()
-        print("Source Grouping Steps:",t2-t1)
-        islanddata = islanddata.copy('system')
-        maxind = np.amax(islanddata)
-        length = BFArray(np.zeros((ints,nchan,4,4,maxind,rotgrid)),space='cuda',dtype='f32')
-        width = BFArray(np.zeros((ints,nchan,4,maxind)),space='cuda',dtype='f32')
-        index = BFArray(np.arange(maxind)+1,space='cuda',dtype='i8')
-        islanddata = islanddata.copy('cuda')
-        # COMPUTE length 
-        computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rotgrid,maxind)
+            maxwids = np.max(width,axis=(1,2,3))
+            # impose restrictions on conditions 
+            zeroimagedata = (imagedata.sum(axis=(-1,-2))==0)
+            invalidimages = np.where(zeroimagedata)
+            for i in invalidimages[0]:
+                for j in invalidimages[1]:
+                    for k in invalidimages[2]:
+                        if i!=0:
+                            zeroimagedata[i-1,j,k] = True
+                        if (i!=(ints-1)):
+                            zeroimagedata[i+1,j,k] = True
+            zeroimagedata = ~np.any(zeroimagedata,axis=(1,2))
+            numsrccond = restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
+            islandcondition = islanddata >0
+            stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
+            rmscond  = np.array(rmsdata) < float(config['Quality Control']['maxrms'])
+            absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
+            widcond = maxwids > float(config['Quality Control']['minwid'])
+            drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
+            whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
-        t3 = datetime.datetime.now()
-        print("Measure length and width on the GPU:", (t3-t2))
-        
-        islanddata = islanddata.copy('system')
-        rotateddata = rotateddata.copy('system')
-        length = length.copy('system')
-        width = width.copy('system')
+            angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+            print(ints - np.sum(angvelcond),"slow moving sources rejected")
+            nsigmacondition = np.zeros(ints,dtype=bool)
+            islandloc = np.where(islandcondition) 
+            rmsdataarray = np.array(rmsdata)
+            for i in np.unique(islandloc[0]):
+                islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
+                brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
+                nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
 
-        data = np.where(data==np.nan,floatmax,data)
-        meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid) 
-        data = np.where(data==floatmax,np.nan,data)
-
-        maxwids = np.max(width,axis=(1,2,3))
-        # impose restrictions on conditions 
-        zeroimagedata = (imagedata.sum(axis=(-1,-2))==0)
-        invalidimages = np.where(zeroimagedata)
-        for i in invalidimages[0]:
-            for j in invalidimages[1]:
-                for k in invalidimages[2]:
-                    if i!=0:
-                        zeroimagedata[i-1,j,k] = True
-                    if (i!=(ints-1)):
-                        zeroimagedata[i+1,j,k] = True
-        zeroimagedata = ~np.any(zeroimagedata,axis=(1,2))
-        numsrccond = restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
-        islandcondition = islanddata >0
-        stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
-        rmscond  = np.array(rmsdata) < float(config['Quality Control']['maxrms'])
-        absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
-        widcond = maxwids > float(config['Quality Control']['minwid'])
-        drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
-        whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
-
-        angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
-        print(ints - np.sum(angvelcond),"slow moving sources rejected")
-        nsigmacondition = np.zeros(ints,dtype=bool)
-        islandloc = np.where(islandcondition) 
-        rmsdataarray = np.array(rmsdata)
-        for i in np.unique(islandloc[0]):
-            islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
-            brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
-            nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
-
-        print(np.sum(nsigmacondition), "passed nsigma condition")
-        whereislands = list(np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
-        
-       #  for i  in np.sort(np.unique(whereislands)):
-       #      for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
-       #          for c in range(nchan):
-       #              for s in [0]:
-       #                  srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
-       #                  if srclocs.size > 0:
-       #                      avx, avy = np.average(srclocs+0.5,axis=0)
-       #                      radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-       #                      VLSSrclose = angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1])
-       #                      print(np.amin(VLSSrclose))
+            print(np.sum(nsigmacondition), "passed nsigma condition")
+            whereislands = list(np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
+            
+           #  for i  in np.sort(np.unique(whereislands)):
+           #      for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+           #          for c in range(nchan):
+           #              for s in [0]:
+           #                  srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+           #                  if srclocs.size > 0:
+           #                      avx, avy = np.average(srclocs+0.5,axis=0)
+           #                      radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+           #                      VLSSrclose = angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1])
+           #                      print(np.amin(VLSSrclose))
 
 
 
-       #  print('--------------')        
-       #  print("trackno,srcid")
-       #  print(tracklist)
-       #  trackarray = np.array(tracklist,dtype=int)
-       #  trackprop = []
-       #  if trackarray.size >0:
-       #      for trackid in np.unique(trackarray[:,0]):
-       #          srcs = trackarray[:,1][trackarray[:,0]==trackid]
-       #          angvel = []
-       #          for i in range(len(srcs)-1):
-       #              id1 = srcs[i]
-       #              id2 = srcs[i+1]
-       #              src1 = srcarray[srcarray['srcid']==id1]
-       #              src2 = srcarray[srcarray['srcid']==id2]
-       #              datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
-       #              angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
-       #              angvel.append(angsep/datediff)
-       #          print(angvel)
-       #          trackprop.append((trackid,np.average(angvel)))
-       #  print(trackprop)
+           #  print('--------------')        
+           #  print("trackno,srcid")
+           #  print(tracklist)
+           #  trackarray = np.array(tracklist,dtype=int)
+           #  trackprop = []
+           #  if trackarray.size >0:
+           #      for trackid in np.unique(trackarray[:,0]):
+           #          srcs = trackarray[:,1][trackarray[:,0]==trackid]
+           #          angvel = []
+           #          for i in range(len(srcs)-1):
+           #              id1 = srcs[i]
+           #              id2 = srcs[i+1]
+           #              src1 = srcarray[srcarray['srcid']==id1]
+           #              src2 = srcarray[srcarray['srcid']==id2]
+           #              datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
+           #              angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
+           #              angvel.append(angsep/datediff)
+           #          print(angvel)
+           #          trackprop.append((trackid,np.average(angvel)))
+           #  print(trackprop)
 
-        #### Set up extent ###
-        pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
-        x = np.arange(1, data.shape[-2]+1, dtype=np.float32) - pCntr
-        y = np.arange(1, data.shape[-1]+1, dtype=np.float32) - pCntr
-        x /= -sRad
-        y /= sRad
-        x,y = np.meshgrid(x,y)
-        x2 = x - 1 / sRad
-        y2 = y - 1 / sRad
-        extent = (x2.max(), x2.min(), y.min(), y.max())
-        for i in np.unique(whereislands):
-            mean=meanofdiff[i]
-            std=stdofdiff[i]
-            rms=rmsdata[i]
-            dynamicrange = sndata[i]
-            skip = False
-            chantoplot = 0
-            fig, axs = plt.subplots(3,5,figsize=(30,15))
-            ytextloc = 0.9
-            for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
-                for c in range(nchan):
-                    for s in [0,3]:
-                        srclen = length[i,c,s,0,label-1,0]
-                        srcwid = width[i,c,s,label-1]
-                        srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
-                        if ((srclen > 0) and (srcwid >0)):
-                            avx, avy = np.average(srclocs+0.5,axis=0)
-                            radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-                            axs[1,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
-                            
-                            ytextloc -= 0.15
-                            VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
-                            VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
-                            VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-                            if VLSSrsep < float(config['Quality Control']['catsep']):
-                                axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
+            #### Set up extent ###
+            pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
+            x = np.arange(1, data.shape[-2]+1, dtype=np.float32) - pCntr
+            y = np.arange(1, data.shape[-1]+1, dtype=np.float32) - pCntr
+            x /= -sRad
+            y /= sRad
+            x,y = np.meshgrid(x,y)
+            x2 = x - 1 / sRad
+            y2 = y - 1 / sRad
+            extent = (x2.max(), x2.min(), y.min(), y.max())
+            for i in np.unique(whereislands):
+                mean=meanofdiff[i]
+                std=stdofdiff[i]
+                rms=rmsdata[i]
+                dynamicrange = sndata[i]
+                skip = False
+                chantoplot = 0
+                fig, axs = plt.subplots(3,5,figsize=(30,15))
+                ytextloc = 0.9
+                for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+                    for c in range(nchan):
+                        for s in [0,3]:
+                            srclen = length[i,c,s,0,label-1,0]
+                            srcwid = width[i,c,s,label-1]
+                            srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+                            if ((srclen > 0) and (srcwid >0)):
+                                avx, avy = np.average(srclocs+0.5,axis=0)
+                                radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                                axs[1,4].text(0,ytextloc,f"{c},{s},{label},({length[i,c,s,0,label-1,0]},{width[i,c,s,label-1]}), pos:{np.round(radec,2)}")
+                                
                                 ytextloc -= 0.15
-                            cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-                            cat3cnum = cat3c['3C'][cat3cclose]
-                            cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-                            if cat3csep < float(config['Quality Control']['catsep']):
-                                axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
-                                ytextloc -= 0.15
+                                VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
+                                VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
+                                VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
+                                if VLSSrsep < float(config['Quality Control']['catsep']):
+                                    axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
+                                    ytextloc -= 0.15
+                                cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
+                                cat3cnum = cat3c['3C'][cat3cclose]
+                                cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
+                                if cat3csep < float(config['Quality Control']['catsep']):
+                                    axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
+                                    ytextloc -= 0.15
 
-            axs[1,4].set_axis_off()
+                axs[1,4].set_axis_off()
 
-            VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
-            VLSSrname = VLSSr50jy['name'][VLSSrclose] 
-            VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-            islandplot = np.zeros((ngrid,ngrid))
-            for c in range(nchan):
-                islandplot+=islanddata[i,c,0]
-            islandplot[circle[0],circle[1]] = np.nan
-            axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
-            axs[1,2].set_title('I src')
-            islandplot = np.zeros((ngrid,ngrid))
-            for c in range(nchan):
-                islandplot+=islanddata[i,c,3]
-            islandplot[circle[0],circle[1]] = np.nan
-            axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
-            axs[1,3].set_title('V src')
-            hdr = hdrlist[i]
-            mintime = max(0,i-2)
-            maxtime = min(ints-1,i+2)
-            if args.vmax:
-                vmax = args.vmax
-            else:
-                vmax = 8000
-            for timenum, t in enumerate(range(mintime,maxtime+1)):
-                currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
+                VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
+                VLSSrname = VLSSr50jy['name'][VLSSrclose] 
+                VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
+                islandplot = np.zeros((ngrid,ngrid))
                 for c in range(nchan):
-                    currimage += data[t,c,0,:,:]
-                currimage/=nchan
-                axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
-                # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-            for timenum, t in enumerate(range(mintime,maxtime+1)):
-                currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
+                    islandplot+=islanddata[i,c,0]
+                islandplot[circle[0],circle[1]] = np.nan
+                axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
+                axs[1,2].set_title('I src')
+                islandplot = np.zeros((ngrid,ngrid))
                 for c in range(nchan):
-                    currimage += data[t,c,3,:,:]
+                    islandplot+=islanddata[i,c,3]
+                islandplot[circle[0],circle[1]] = np.nan
+                axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
+                axs[1,3].set_title('V src')
+                hdr = hdrlist[i]
+                mintime = max(0,i-2)
+                maxtime = min(ints-1,i+2)
+                if args.vmax:
+                    vmax = args.vmax
+                else:
+                    vmax = 8000
+                for timenum, t in enumerate(range(mintime,maxtime+1)):
+                    currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
+                    for c in range(nchan):
+                        currimage += data[t,c,0,:,:]
+                    currimage/=nchan
+                    axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+                    # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+                for timenum, t in enumerate(range(mintime,maxtime+1)):
+                    currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
+                    for c in range(nchan):
+                        currimage += data[t,c,3,:,:]
+                    currimage/=nchan
+                    axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap='coolwarm')
+                    # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+                currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
+                for c in range(nchan):
+                    currimage += imagedata[i,c,0,:,:]
                 currimage/=nchan
-                axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap='coolwarm')
-                # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-            currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
-            for c in range(nchan):
-                currimage += imagedata[i,c,0,:,:]
-            currimage/=nchan
-            currimage[circle[0],circle[1]] = np.nan
-            axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
-            currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
-            for c in range(nchan):
-                currimage += imagedata[i,c,3,:,:]
-            currimage/=nchan
-            axs[1,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
-            mjd = int(hdr['start_time'])
-            mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
-            # determine if header is in seconds or days
-            if round(hdr['int_len']) > 0:
-                tInt = hdr['int_len']
-            else:
-                tInt = hdr['int_len']*86400.0
-            dateObs = mjdmpm_to_datetime(mjd, mpm)
-            fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
-            plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i}.png")
-            plt.savefig(plotfile)
-            print("saving file as ",plotfile)
-            plt.close()
+                currimage[circle[0],circle[1]] = np.nan
+                axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
+                currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
+                for c in range(nchan):
+                    currimage += imagedata[i,c,3,:,:]
+                currimage/=nchan
+                axs[1,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
+                mjd = int(hdr['start_time'])
+                mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+                # determine if header is in seconds or days
+                if round(hdr['int_len']) > 0:
+                    tInt = hdr['int_len']
+                else:
+                    tInt = hdr['int_len']*86400.0
+                dateObs = mjdmpm_to_datetime(mjd, mpm)
+                fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
+                plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i+chunkt}.png")
+                plt.savefig(plotfile)
+                print("saving file as ",plotfile)
+                plt.close()
 
         
         print("-------------------")
