@@ -230,6 +230,8 @@ def main(args):
                                 < (5.0/60.0/60.0/24.0)):
                                 ijkeep.append((i,j))
                     ijkeep = np.array(ijkeep)
+                    if ijkeep.size==0:
+                        continue
 
                     islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
                     print("Checking for matches between stations")
