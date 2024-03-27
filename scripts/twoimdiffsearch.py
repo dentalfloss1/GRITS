@@ -553,7 +553,7 @@ def main(args):
                         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
                     # file 1 stokes I
                     currimage = np.zeros(file1imagedata[i,chantoplot,0,:,:].shape)
-                    for c in range(nchan):
+                    for c in range(file1imagedata.shape[1]):
                         currimage += file1imagedata[i,c,0,:,:]
                     currimage/=file1imagedata.shape[1]
                     currimage[circle[0],circle[1]] = np.nan
@@ -562,7 +562,7 @@ def main(args):
 
                     # file 1 stokes V
                     currimage = np.zeros(file1imagedata[i,chantoplot,0,:,:].shape)
-                    for c in range(nchan):
+                    for c in range(file1imagedata.shape[1]):
                         currimage += file1imagedata[i,c,3,:,:]
                     currimage/=file1imagedata.shape[1]
                     currimage[circle[0],circle[1]] = np.nan
@@ -570,7 +570,7 @@ def main(args):
                     axs[1,1].set_title("File 1 stokes V")
                     
                     islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
-                    for c in range(nchan):
+                    for c in range(file1imagedata.shape[1]):
                         islandplot+=npfile1mask[i,c,0]
                     islandplot[circle[0],circle[1]] = np.nan
                     axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
@@ -590,7 +590,7 @@ def main(args):
                     axs[1,4].set_axis_off()
 
                     islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
-                    for c in range(nchan):
+                    for c in range(file1imagedata.shape[1]):
                         islandplot+=npfile1mask[i,c,3]
                     islandplot[circle[0],circle[1]] = np.nan
                     axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
