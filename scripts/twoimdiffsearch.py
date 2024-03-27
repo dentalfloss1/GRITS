@@ -216,37 +216,21 @@ def main(args):
                     file2mask[...] = islanddata
                     npfile2mask = np.zeros(file2mask.shape,dtype='i8')
                     npfile2mask[...] = islanddata
-                    file2mask[file2mask==np.nan] = 0
-                    file2mask = file2mask.copy('cuda')
-                    file1mask = file1mask.copy('cuda')
+                 #    file2mask[file2mask==np.nan] = 0
+                 #    file2mask = file2mask.copy('cuda')
+                 #    file1mask = file1mask.copy('cuda')
                     print("constraining time and detections between stations")
                     file2hdrlist = hdrlist
-                    matchgrid = BFArray(np.zeros((len(file1hdrlist),len(file2hdrlist))),space='cuda',dtype='i8')
-                    file1time = BFArray(np.array([hdr1['start_time'] for hdr1 in file1hdrlist]),space='cuda',dtype='f64')
-                    file2time = BFArray(np.array([hdr2['start_time'] for hdr2 in hdrlist]),space='cuda',dtype='f64')
-                    BFMap("""auto timediff = 0.0;
-                             timediff = fabs(f1t(i) - f2t(j))*24.0*60.0*60.0;
-                             auto f1msum = 0;
-                             auto f2msum = 0;
-                             for (auto c = 0; c < %i; c++){
-                                 for (auto s = 0; s < %i; s++){
-                                     for (auto x=0; x< %i; x++){
-                                         for (auto y=0; y<%i; y++){
-                                             f1msum += f1m(i,c,s,x,y) ; 
-                                             f2msum += f2m(j,c,s,x,y) ; 
-                                             }
-                                         }
-                                     }
-                                 }
-                             if ( (timediff < 30.0) && (f1msum > 0) && (f2msum > 0) ) {
-                                 matchgrid(i,j) = 1;
-                                 }"""        % (nchan,4,ngrid,ngrid,),
-                        {'f1t':file1time,'f2t':file2time,'matchgrid':matchgrid,"f1m":file1mask,"f2m":file2mask},
-                        axis_names = ('i','j'), shape=(len(file1hdrlist),len(file2hdrlist)))
-                    matchgrid = matchgrid.copy("system")
-                    file1mask = file1mask.copy("system")
-                    file2mask = file2mask.copy("system")
-                    ijkeep = np.array([(i,j) for i in range(len(file1hdrlist)) for j in range(len(file2hdrlist)) if (matchgrid[i,j]==1)],dtype=int)
+                    file1hassrc = np.where(np.nansum(npfile1mask,axis=(1,2,3,4)) > 0)[0]
+                    file2hassrc = np.where(np.nansum(npfile1mask,axis=(1,2,3,4)) > 0)[0]
+                    ijkeep = []
+                    for i in tqdm(file1hassrc):
+                        for j in file2hassrc:
+                            if (np.abs(file1hdrlist[i]['start_time'] - file2hdrlist[j]['start_time']) 
+                                < (5.0/60.0/60.0/24.0)):
+                                ijkeep.append((i,j))
+                    ijkeep = np.array(ijkeep)
+
                     islanddata = BFArray(np.zeros(islanddata.shape),space="system", dtype="i8")
                     print("Checking for matches between stations")
                     if np.array_equal(npfile1mask,npfile2mask, equal_nan=True):
@@ -255,16 +239,16 @@ def main(args):
                     for i,j in tqdm(ijkeep):
                         # Images have different x and y sizes, get around this by
                         # converting to RA and Dec and do angular separation check
-                        _,_,x1all,y1all = np.where(npfile1mask[i,:,:,:,:])
+                        _,_,x1all,y1all = np.where(npfile1mask[i,:,:,:,:]>0)
                         try:
                             radec1 =  hdrtoworld(file1hdrlist[i],ngrid1,sRad1,x1all,y1all)
                             ra1 = np.array([rd[0] for rd in radec1])
                             dec1 = np.array([rd[1] for rd in radec1])
                         except IndexError:
-                            print(np.where(npfile1mask[i,:,:,:,:]))
+                            print(np.where(npfile1mask[i,:,:,:,:])>0)
                             print("empty coordinate list")
                             continue
-                        _,_,x2all,y2all = np.where(npfile2mask[j,:,:,:,:])
+                        _,_,x2all,y2all = np.where(npfile2mask[j,:,:,:,:] > 0 )
                         radec2 =  hdrtoworld(hdrlist[j],ngrid,sRad,x2all,y2all)
                         ra2 = np.array([rd[0] for rd in radec2])
                         dec2 = np.array([rd[1] for rd in radec2])
@@ -463,9 +447,8 @@ def main(args):
                     xc = np.arange(ngrid) + 0.5
                     yc = np.arange(ngrid) + 0.5
                     xc,yc = np.meshgrid(xc,yc)
-                    # circle = np.where(np.isclose((xc - ngrid/2)**2 + (yc-ngrid/2)**2,(2*sRad/3),rtol=0.2))
-                  #   if "pims" in filepair[1]:
-                  #       islanddata = islanddata.transpose(0,1,2,4,3)
+                    if "pims" in filepair[1]:
+                        islanddata = islanddata.transpose(0,1,2,4,3)
                     islandplot = np.zeros((ngrid,ngrid))
 
                     for c in range(nchan):
@@ -528,8 +511,8 @@ def main(args):
                         currimage/=nchan
                         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap='coolwarm')
                     # Now file 1 
-                  #   if "pims" in filepair[0]:
-                  #       npfile1mask = npfile1mask.transpose(0,1,2,4,3)
+                    if "pims" in filepair[0]:
+                        npfile1mask = npfile1mask.transpose(0,1,2,4,3)
                     matchingind = ijkeep[ijkeep[:,1]==j]
                     i = matchingind[0][0]
                     allfile1times = [hdr['start_time'] for hdr in file1hdrlist]
@@ -579,15 +562,15 @@ def main(args):
 
                     f1mchan,f1mstokes,f1mx,f1my = np.where(npfile1mask[i] > 0)
                     ytextloc = 0.9
-                    print(f1mchan,f1mstokes,f1mx,f1my)
-                    for pixind in range(len(f1mchan)):
-                        f1mc = f1mchan[pixind]
-                        f1ms = f1mstokes[pixind]
-                        f1mxval = f1mx[pixind]
-                        f1myval = f1my[pixind]
-                        radec = hdrtoworld(hdrlist[i],file1imagedata.shape[-1],sRad1,f1mxval,f1myval)
-                        axs[1,4].text(0,ytextloc,f"{radec}")
-                        ytextloc -= 0.15
+                   #  print(f1mchan,f1mstokes,f1mx,f1my)
+                   #  for pixind in range(len(f1mchan)):
+                   #      f1mc = f1mchan[pixind]
+                   #      f1ms = f1mstokes[pixind]
+                   #      f1mxval = f1mx[pixind]
+                   #      f1myval = f1my[pixind]
+                   #      radec = hdrtoworld(hdrlist[i],file1imagedata.shape[-1],sRad1,f1mxval,f1myval)
+                    axs[1,4].text(0,ytextloc,f"{np.sum(npfile1mask[j,:,:,:,:])} pixels masked")
+                   #      ytextloc -= 0.15
                     axs[1,4].set_axis_off()
 
                     islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
