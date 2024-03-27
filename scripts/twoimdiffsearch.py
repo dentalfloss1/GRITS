@@ -417,17 +417,21 @@ def main(args):
                     fig, axs = plt.subplots(5,5,figsize=(30,35))
                     ytextloc = 0.9
                     srclist = []
+                    label = -1
                     for label in range(0,np.amax(islanddata[j,:,:,:,:])+1):
                         for c in range(nchan):
                             for s in [0,3]:
-                                srclen = length[j,c,s,0,label-1,0]
-                                srcwid = width[j,c,s,label-1]
+                                if label==lastlabel:
+                                    continue
+                                detchans,detstokes,detx,dety = np.where(islanddata[j,:,:,:,:]==label)
+                                srclen = length[j,detchans,detstokes,0,label-1,0].max()
+                                srcwid = width[j,detchans,detstokes,label-1].max()
                                 srclocs = np.argwhere(islanddata[j,c,s,:,:]==label)
                                 if ((srclen > 0) and (srcwid >0)):
                                     avx, avy = np.average(srclocs+0.5,axis=0)
                                     radec = hdrtoworld(hdrlist[j],ngrid,sRad,avx,avy)
                                     srclist.append((radec[0][0],radec[0][1]))
-                                    axs[4,4].text(0,ytextloc,f"{c},{s},{label},({length[j,c,s,0,label-1,0]},{width[j,c,s,label-1]}), pos:{np.round(radec,2)}")
+                                    axs[4,4].text(0,ytextloc,f"{np.unique(detchans)},{np.unique(detstokes)},{label},({length[j,c,s,0,label-1,0]},{width[j,c,s,label-1]}), pos:{np.round(radec,2)}")
                                     ytextloc -= 0.15
                                     VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
                                     VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
@@ -441,6 +445,7 @@ def main(args):
                                     if cat3csep < float(config['Quality Control']['catsep']):
                                         axs[4,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
                                         ytextloc -= 0.15
+                                lastlabel = label
 
                     axs[4,4].set_axis_off()
 
