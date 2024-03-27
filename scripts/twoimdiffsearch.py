@@ -222,7 +222,7 @@ def main(args):
                     print("constraining time and detections between stations")
                     file2hdrlist = hdrlist
                     file1hassrc = np.where(np.nansum(npfile1mask,axis=(1,2,3,4)) > 0)[0]
-                    file2hassrc = np.where(np.nansum(npfile1mask,axis=(1,2,3,4)) > 0)[0]
+                    file2hassrc = np.where(np.nansum(npfile2mask,axis=(1,2,3,4)) > 0)[0]
                     ijkeep = []
                     for i in tqdm(file1hassrc):
                         for j in file2hassrc:
