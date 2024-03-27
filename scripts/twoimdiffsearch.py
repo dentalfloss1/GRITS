@@ -197,6 +197,7 @@ def main(args):
                 # We will use the mask restrict the file2 sources.
                 islanddata = islanddata.copy("system")
                 if fileno==0:
+                    circle1 = circle
                     file1mask = BFArray(shape=islanddata.shape,space="system",dtype="i8")
                     file1mask[...] = islanddata
                     file1mask[file1mask==np.nan] = 0
@@ -556,7 +557,7 @@ def main(args):
                     for c in range(file1imagedata.shape[1]):
                         currimage += file1imagedata[i,c,0,:,:]
                     currimage/=file1imagedata.shape[1]
-                    currimage[circle[0],circle[1]] = np.nan
+                    currimage[circle1[0],circle1[1]] = np.nan
                     axs[1,0].imshow(currimage,vmin=0,vmax=vmax1,origin='lower',extent=extent)
                     axs[1,0].set_title("File 1 stokes I")
 
@@ -565,14 +566,14 @@ def main(args):
                     for c in range(file1imagedata.shape[1]):
                         currimage += file1imagedata[i,c,3,:,:]
                     currimage/=file1imagedata.shape[1]
-                    currimage[circle[0],circle[1]] = np.nan
+                    currimage[circle1[0],circle1[1]] = np.nan
                     axs[1,1].imshow(currimage,vmin=-vmax1/50,vmax=vmax1/50,origin='lower',extent=extent,cmap="coolwarm")
                     axs[1,1].set_title("File 1 stokes V")
                     
                     islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
                     for c in range(file1imagedata.shape[1]):
                         islandplot+=npfile1mask[i,c,0]
-                    islandplot[circle[0],circle[1]] = np.nan
+                    islandplot[circle1[0],circle1[1]] = np.nan
                     axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
                     axs[1,2].set_title('I file 1 mask')
 
@@ -592,7 +593,7 @@ def main(args):
                     islandplot = np.zeros((npfile1mask.shape[-1],npfile1mask.shape[-1]))
                     for c in range(file1imagedata.shape[1]):
                         islandplot+=npfile1mask[i,c,3]
-                    islandplot[circle[0],circle[1]] = np.nan
+                    islandplot[circle1[0],circle1[1]] = np.nan
                     axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='viridis')
 
                     axs[1,3].set_title('V file 1 mask')
