@@ -20,4 +20,9 @@ rtol = 0.2
 ; Maximum separation from catalog for reporting
 catsep = 5
 ; Minimum source width
-minwid = 0"""
+minwid = 0
+[Batch Control]
+; Number of Orville files to process at time. PASI files do this numberX4.
+chunktime = 400
+; Overlap in time between chunks. Helps catch moving objects.
+overlaptime = 10"""

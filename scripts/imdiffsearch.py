@@ -60,20 +60,25 @@ def main(args):
         fulldata = data.copy()
         fullimage = imagedata.copy()
         final = 0
+        overlaptime = int(config['Batch Control']['chunktime'])
+        chunkt = 0
         if "oims" in filename:
-            chunkt = 0
-            chunksize = 200
+            chunksize = int(config['Batch Control']['chunktime'])
         else:
-            chunksize = 1000
-        while final<ints:
-            final = min(ints,chunkt + chunksize)
+            chunksize = int(config['Batch Control']['chunktime'])*4
+        fullsize = ints
+        chunkno = 1
+        numchunks = np.ceil(fullsize/chunksize)
+        while final<fullsize:
+            start = max(chunkt - overlaptime,0)
+            final = min(fullsize,chunkt + chunksize)
             hdrlist = fullhdrlist[chunkt:final]
             data = fulldata[chunkt:final]
             imagedata = fullimage[chunkt:final]
             chunkt = chunkt + chunksize
-            print(imagedata.shape)
-            print(data.shape)
             ints = len(data)
+            print(chunkno,"out of",numchunks,"chunks")
+            chunkno+=1
             for c in range(nchan):
                 XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
                 imagedata[:,c,0,:,:]/=((XX+YY)/2)
@@ -198,39 +203,6 @@ def main(args):
             print(np.sum(nsigmacondition), "passed nsigma condition")
             whereislands = list(np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
             
-           #  for i  in np.sort(np.unique(whereislands)):
-           #      for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
-           #          for c in range(nchan):
-           #              for s in [0]:
-           #                  srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
-           #                  if srclocs.size > 0:
-           #                      avx, avy = np.average(srclocs+0.5,axis=0)
-           #                      radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-           #                      VLSSrclose = angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1])
-           #                      print(np.amin(VLSSrclose))
-
-
-
-           #  print('--------------')        
-           #  print("trackno,srcid")
-           #  print(tracklist)
-           #  trackarray = np.array(tracklist,dtype=int)
-           #  trackprop = []
-           #  if trackarray.size >0:
-           #      for trackid in np.unique(trackarray[:,0]):
-           #          srcs = trackarray[:,1][trackarray[:,0]==trackid]
-           #          angvel = []
-           #          for i in range(len(srcs)-1):
-           #              id1 = srcs[i]
-           #              id2 = srcs[i+1]
-           #              src1 = srcarray[srcarray['srcid']==id1]
-           #              src2 = srcarray[srcarray['srcid']==id2]
-           #              datediff = (hdrlist[srcarray['imid'][srcarray['srcid']==id2][0]]["start_time"] - hdrlist[srcarray['imid'][srcarray['srcid']==id1][0]]["start_time"])*3600*24
-           #              angsep = np.abs(SkyCoord(src1['ra'],src2['dec'],unit='deg').separation(SkyCoord(src2['ra'],src2['dec'],unit='deg')).degree)
-           #              angvel.append(angsep/datediff)
-           #          print(angvel)
-           #          trackprop.append((trackid,np.average(angvel)))
-           #  print(trackprop)
 
             #### Set up extent ###
             pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
@@ -334,7 +306,7 @@ def main(args):
                     tInt = hdr['int_len']*86400.0
                 dateObs = mjdmpm_to_datetime(mjd, mpm)
                 fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
-                plotfile = filename.replace(".oims",f"-{i}.png").replace(".pims",f"-{i+chunkt}.png")
+                plotfile = filename.replace(".oims",f"-{i+chunkt}.png").replace(".pims",f"-{i+chunkt}.png")
                 plt.savefig(plotfile)
                 print("saving file as ",plotfile)
                 plt.close()
