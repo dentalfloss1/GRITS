@@ -236,7 +236,8 @@ def main(args):
                     if np.array_equal(npfile1mask,npfile2mask, equal_nan=True):
                         print("File masks are the same, something went wrong.")
                         exit()
-                    for i,j in tqdm(ijkeep):
+                    for i in tqdm(np.unique(ijkeep[:,0])):
+                        j = ijkeep[ijkeep[:,0]==i,1][0]
                         # Images have different x and y sizes, get around this by
                         # converting to RA and Dec and do angular separation check
                         _,_,x1all,y1all = np.where(npfile1mask[i,:,:,:,:]>0)
@@ -569,7 +570,7 @@ def main(args):
                    #      f1mxval = f1mx[pixind]
                    #      f1myval = f1my[pixind]
                    #      radec = hdrtoworld(hdrlist[i],file1imagedata.shape[-1],sRad1,f1mxval,f1myval)
-                    axs[1,4].text(0,ytextloc,f"{np.sum(npfile1mask[j,:,:,:,:])} pixels masked")
+                    axs[1,4].text(0,ytextloc,f"{np.sum(npfile1mask[i,:,:,:,:])} pixels masked")
                    #      ytextloc -= 0.15
                     axs[1,4].set_axis_off()
 
