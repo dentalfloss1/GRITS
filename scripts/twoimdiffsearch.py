@@ -417,7 +417,7 @@ def main(args):
                     fig, axs = plt.subplots(5,5,figsize=(30,35))
                     ytextloc = 0.9
                     srclist = []
-                    label = -1
+                    lastlabel = -1
                     for label in range(0,np.amax(islanddata[j,:,:,:,:])+1):
                         for c in range(nchan):
                             for s in [0,3]:
