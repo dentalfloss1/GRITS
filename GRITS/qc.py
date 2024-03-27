@@ -6,12 +6,7 @@ from GRITS.imagetools import hdrtoworld
 def restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=2):
     numsrcs = np.zeros(ints,dtype=int)
     for i in range(ints):
-        for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
-            for c in range(nchan):
-                for s in [0,3]:
-                    srcwid = width[i,c,s,label-1]
-                    if srcwid > 0:
-                        numsrcs[i] += 1
+        numsrcs[i] = len(np.unique(islanddata[i,:,:,:,:]))
     numsrccond = numsrcs <= maxsrcs
     return numsrccond
 
