@@ -424,6 +424,8 @@ def main(args):
                                 if label==lastlabel:
                                     continue
                                 detchans,detstokes,detx,dety = np.where(islanddata[j,:,:,:,:]==label)
+                                if detchans.size==0:
+                                    continue
                                 srclen = length[j,detchans,detstokes,0,label-1,0].max()
                                 srcwid = width[j,detchans,detstokes,label-1].max()
                                 srclocs = np.argwhere(islanddata[j,c,s,:,:]==label)
@@ -431,7 +433,7 @@ def main(args):
                                     avx, avy = np.average(srclocs+0.5,axis=0)
                                     radec = hdrtoworld(hdrlist[j],ngrid,sRad,avx,avy)
                                     srclist.append((radec[0][0],radec[0][1]))
-                                    axs[4,4].text(0,ytextloc,f"{np.unique(detchans)},{np.unique(detstokes)},{label},({length[j,c,s,0,label-1,0]},{width[j,c,s,label-1]}), pos:{np.round(radec,2)}")
+                                    axs[4,4].text(0,ytextloc,f"{len(np.unique(detchans))},{len(np.unique(detstokes))},{label},({length[j,c,s,0,label-1,0]},{width[j,c,s,label-1]}), pos:{np.round(radec,2)}")
                                     ytextloc -= 0.15
                                     VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
                                     VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
