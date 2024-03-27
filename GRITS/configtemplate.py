@@ -19,6 +19,8 @@ finalnsigma=5
 rtol = 0.2
 ; Maximum separation from catalog for reporting
 catsep = 5
+; Maximum separation between sources detected at the same time in different stations
+statsep = 5
 ; Minimum source width
 minwid = 0
 [Batch Control]

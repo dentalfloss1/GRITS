@@ -253,7 +253,7 @@ def main(args):
                         ra2 = np.array([rd[0] for rd in radec2])
                         dec2 = np.array([rd[1] for rd in radec2])
                         for r2,d2 in zip(ra2,dec2):
-                            if np.any(angsep(ra1,dec1,r2,d2) < float(config['Quality Control']['catsep'])):
+                            if np.any(angsep(ra1,dec1,r2,d2) < float(config['Quality Control']['statsep'])):
                                 x2, y2 = hdrtopixmask(hdrlist[j],ngrid,sRad,r2,d2)[0] 
                                 islanddata[j,:,:,int(round(x2,0)),int(round(y2,0))] = 1 
 
