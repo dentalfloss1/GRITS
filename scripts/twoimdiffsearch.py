@@ -34,7 +34,7 @@ from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
 from GRITS.imagetools import angsep, maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
-from GRITS.qc import restrictnumsrc,restrictangvel
+from GRITS.qc import restrictnumsrc
 from GRITS.readimage import readoims,readpims
 from GRITS.catalogs import cat3c,VLSSr50jy
 from tqdm import tqdm
@@ -361,8 +361,8 @@ def main(args):
                 drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
                 whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
 
-                angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
-                print(ints - np.sum(angvelcond),"slow moving sources rejected")
+              #   angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+              #   print(ints - np.sum(angvelcond),"slow moving sources rejected")
                 nsigmacondition = np.zeros(ints,dtype=bool)
                 islandloc = np.where(islandcondition) 
                 rmsdataarray = np.array(rmsdata)
@@ -371,9 +371,33 @@ def main(args):
                     brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
                     nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
 
-                print(np.sum(nsigmacondition), "passed nsigma condition")
-                whereislands = list(np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
-            
+           #      print(np.sum(islandcondition.any(axis=(1,2,3,4))), "times with islands")
+           #      print(np.sum(zeroimagedata), "passed zeroimagedata condition")
+           #      print(np.sum(angvelcond), "passed ang. vel condition")
+           #      print(np.sum(numsrccond), "passed numsrc condition")
+           #      print(np.sum(stdcondition), "passed std condition")
+           #      print(np.sum(rmscond), "passed rms condition")
+           #      print(np.sum(absmeancond), "passed absmean condition")
+           #      print(np.sum(widcond), "passed source width condition")
+           #      print(np.sum(drcondition), "passed Dynamic range condition")
+           #      print(np.sum(nsigmacondition), "passed nsigma condition")
+           #      c1 = islandcondition.any(axis=(1,2,3,4))
+           #      c2 = zeroimagedata
+           #      c3 = angvelcond
+           #      c4 = numsrccond
+           #      c5 = stdcondition
+           #      c6 = rmscond
+           #      c7 = absmeancond
+           #      c8 = widcond
+           #      c9 = drcondition
+           #      c10 = nsigmacondition
+           #      print(np.sum(zeroimagedata &  numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition), "Passed all")
+           #      for i in range(len(islandcondition.any(axis=(1,2,3,4)))):
+           #          print(c1[i],c2[i],c3[i],c4[i],c5[i],c6[i],c7[i],c8[i],c9[i],c10[i])
+           #          input('presskey')
+                    
+                whereislands = list(np.where(zeroimagedata &  numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
+                print(whereislands, "whereislands") 
                 pCntr = ngrid/2 + 1 + 0.5 * ((ngrid+1)%2)
                 x = np.arange(1, data.shape[-2]+1, dtype=np.float32) - pCntr
                 y = np.arange(1, data.shape[-1]+1, dtype=np.float32) - pCntr
