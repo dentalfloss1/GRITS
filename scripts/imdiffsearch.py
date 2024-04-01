@@ -31,7 +31,7 @@ from GRITS.configtemplate import configfile
 from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
-from GRITS.imagetools import  maskhorizon, pbcorr, hdrtopixmask,  maskislands
+from GRITS.imagetools import  maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.plotresults import plotresults
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
@@ -40,6 +40,12 @@ from tqdm import tqdm
 
 
 def main(args):
+    try:
+        os.remove("sources.csv")
+    except OSError:
+        pass
+    uniquesrcid=0
+    srclist = []
     for filename in args.filename:
         print("--------",filename,"------")
         # DATA and HEADER
@@ -74,7 +80,6 @@ def main(args):
             hdrlist = fullhdrlist[chunkt:final]
             data = fulldata[chunkt:final]
             imagedata = fullimage[chunkt:final]
-            chunkt = chunkt + chunksize
             ints = len(data)
             print(chunkno,"out of",numchunks,"chunks")
             chunkno+=1
@@ -106,7 +111,18 @@ def main(args):
             # Get S/N and RMS from calibrated data
             sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
 
+            meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid) 
             islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
+
+            stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])
+            rmscond  = np.array(rmsdata) > float(config['Quality Control']['maxrms'])
+            absmeancond = np.abs(np.array(meanofdiff)) > float(config['Quality Control']['maxabsmean'])
+            pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
+            islanddata = islanddata.copy("system")
+            islanddata[pregroupconditions,...] = 0
+            islanddata = islanddata.copy("cuda")
+
+
 
             t1 = datetime.datetime.now()
             # LABEL GROUPS 
@@ -148,6 +164,18 @@ def main(args):
             t2 = datetime.datetime.now()
             print("Source Grouping Steps:",t2-t1)
             islanddata = islanddata.copy('system')
+            
+            islandcondition = islanddata >0
+            nsigmacondition = np.zeros(ints,dtype=bool)
+            islandloc = np.where(islandcondition) 
+            rmsdataarray = np.array(rmsdata)
+            for i in np.unique(islandloc[0]):
+                islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
+                brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
+                nsigmacondition[i] = brightpix < float(config['Quality Control']['finalnsigma'])
+            nsigmawhere = np.where(nsigmacondition)
+            islanddata[nsigmawhere,...] = 0
+
             maxind = np.amax(islanddata)
             length = BFArray(np.zeros((ints,nchan,4,4,maxind,rotgrid)),space='cuda',dtype='f32')
             width = BFArray(np.zeros((ints,nchan,4,maxind)),space='cuda',dtype='f32')
@@ -164,53 +192,49 @@ def main(args):
             length = length.copy('system')
             width = width.copy('system')
 
-            data = np.where(data==np.nan,floatmax,data)
-            meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid) 
+
+            
             data = np.where(data==floatmax,np.nan,data)
 
             maxwids = np.max(width,axis=(1,2,3))
             # impose restrictions on conditions 
-            zeroimagedata = (imagedata.sum(axis=(-1,-2))==0)
-            invalidimages = np.where(zeroimagedata)
-            for i in invalidimages[0]:
-                for j in invalidimages[1]:
-                    for k in invalidimages[2]:
-                        if i!=0:
-                            zeroimagedata[i-1,j,k] = True
-                        if (i!=(ints-1)):
-                            zeroimagedata[i+1,j,k] = True
-            zeroimagedata = ~np.any(zeroimagedata,axis=(1,2))
             numsrccond = restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
-            islandcondition = islanddata >0
-            stdcondition = np.array(stdofdiff) < float(config['Quality Control']['maxstd'])
-            rmscond  = np.array(rmsdata) < float(config['Quality Control']['maxrms'])
-            absmeancond = np.abs(np.array(meanofdiff)) < float(config['Quality Control']['maxabsmean'])
             widcond = maxwids > float(config['Quality Control']['minwid'])
             drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
-            whereislands = np.where(zeroimagedata & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition)
+            whereislands = np.where( numsrccond & islandcondition.any(axis=(1,2,3,4))  & widcond & drcondition)
 
             angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
-            nsigmacondition = np.zeros(ints,dtype=bool)
-            islandloc = np.where(islandcondition) 
-            rmsdataarray = np.array(rmsdata)
-            for i in np.unique(islandloc[0]):
-                islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
-                brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
-                nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
 
-            print(np.sum(nsigmacondition), "passed nsigma condition")
-            whereislands = list(np.where(zeroimagedata & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) & stdcondition & rmscond & absmeancond & widcond & drcondition & nsigmacondition)[0])
-            islandfloat = islanddata.astype(float)
+            print(ints - np.sum(nsigmacondition), "passed nsigma condition")
+            whereislands = list(np.where(angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  widcond & drcondition )[0])
+            islandfloat = np.zeros(islanddata.shape,dtype=float)
+            islandfloat[...] = islanddata
             islandfloat[:,:,:,circle[0],circle[1]] = np.nan
             imagedata[:,:,:,circle[0],circle[1]] = np.nan
             for i in np.unique(whereislands):
-                plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,length,width,catsep=float(config['Quality Control']['catsep']),vmax=args.vmax,chunkt=chunkt)
-            
+                if not args.noplot:
+                    plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,length,width,catsep=float(config['Quality Control']['catsep']),vmax=args.vmax,chunkt=chunkt)
+                for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+                    for c in range(nchan):
+                        for s in [0,3]:
+                            srclen = length[i,c,s,0,label-1,0]
+                            srcwid = width[i,c,s,label-1]
+                            srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+                            if ((srclen > 0) and (srcwid >float(config['Quality Control']['minwid']))):
+                                avx, avy = np.average(srclocs+0.5,axis=0)
+                                radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time']))
+                                uniquesrcid += 1
+            chunkt = chunkt + chunksize
 
 
         
         print("-------------------")
+    with open("sources.csv","w") as f:
+        f.write("id,ra,dec,mjd\n")
+        for s in srclist:
+            f.write(f"{s[0]},{s[1]},{s[2]},{s[3]}\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -233,6 +257,7 @@ if __name__ == "__main__":
                         help='force overwriting of FITS files')
     parser.add_argument('-i', '--index', type=int,
                         help='Only output this index')
+    parser.add_argument('--noplot', action="store_true")
     parser.add_argument('-p', '--pbcorr', action='store_true',
                         help='Perform primary beam correction on Stokes I')
     parser.add_argument("--vmax", type=float, default=8000, help="controls contrast of plots")

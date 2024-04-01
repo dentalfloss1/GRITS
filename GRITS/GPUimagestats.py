@@ -242,6 +242,7 @@ def getdiffstats(data,sRad,ints,nchan,ngrid):
     # Set up center region for mean and std calculations of diff ims
     # We want a box in the center that does not go beyond the horizon. Also 
     # We need to account for the extra one pixel perimeter in the computations.
+    data = np.where(data==np.nan,floatmax,data)
     boxhalflen = np.sin(np.pi/4)*sRad - 1
     diffdata = BFArray(np.zeros(data.shape),dtype='f32',space='system')
     diffdata[...] = data

@@ -28,7 +28,7 @@ def maskhorizon(data,hdrlist,ngrid,sRad):
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
     gtboundary = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((2*sRad/3)**2) )
-    cboundary =  np.where( np.isclose(((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) , ((2*sRad/3)**2),rtol=0.02 ))
+    cboundary =  np.where( np.isclose(((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) , ((2*sRad/3)**2),rtol=0.01 ))
     return gtboundary, cboundary
 def calcbeamprops(az,alt,header,freq):
 
