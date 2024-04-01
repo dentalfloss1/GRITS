@@ -13,6 +13,7 @@ mpl.rc('font', **font)
 import matplotlib.pyplot as plt
 from matplotlib.ticker import NullFormatter
 
+from lsl.common.mcs import mjdmpm_to_datetime
 from lsl.misc import parser as aph
 from lsl import astro
 
@@ -213,6 +214,7 @@ def main(args):
             islandfloat[:,:,:,circle[0],circle[1]] = np.nan
             imagedata[:,:,:,circle[0],circle[1]] = np.nan
             for i in np.unique(whereislands):
+                hdr = hdrlist[i]
                 if not args.noplot:
                     plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,length,width,catsep=float(config['Quality Control']['catsep']),vmax=args.vmax,chunkt=chunkt)
                 for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
@@ -224,7 +226,15 @@ def main(args):
                             if ((srclen > 0) and (srcwid >float(config['Quality Control']['minwid']))):
                                 avx, avy = np.average(srclocs+0.5,axis=0)
                                 radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time']))
+                                mjd = int(hdr['start_time'])
+                                mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+                                # determine if header is in seconds or days
+                                if round(hdr['int_len']) > 0:
+                                    tInt = hdr['int_len']
+                                else:
+                                    tInt = hdr['int_len']*86400.0
+                                dateObs = mjdmpm_to_datetime(mjd, mpm)
+                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat()))
                                 uniquesrcid += 1
             chunkt = chunkt + chunksize
 
