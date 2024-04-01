@@ -101,7 +101,7 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
-    plotfile = filename.replace(".oims",f"-{i+chunkt}.png").replace(".pims",f"-{i+chunkt}.png")
+    plotfile = filename.replace(".oims",f"-{i+chunkt}.png").replace(".pims",f"-{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)
     print("saving file as ",plotfile)
     plt.close()
