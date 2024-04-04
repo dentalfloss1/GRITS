@@ -28,11 +28,12 @@ from bifrost import ndarray as BFArray
 from bifrost import map as BFMap 
 
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
+from GRITS.catalogs import cat3c, VLSSr50jy
 from GRITS.configtemplate import configfile
 from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups,computelength
-from GRITS.imagetools import  maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
+from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.plotresults import plotresults
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
@@ -234,7 +235,16 @@ def main(args):
                                 else:
                                     tInt = hdr['int_len']*86400.0
                                 dateObs = mjdmpm_to_datetime(mjd, mpm)
-                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat()))
+                                if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                                    vlss = True
+                                else:
+                                    vlss = False
+                                if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                                    c3 = True
+                                else:
+                                    c3 = False
+
+                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss))
                                 uniquesrcid += 1
             chunkt = chunkt + chunksize
 
@@ -242,9 +252,9 @@ def main(args):
         
         print("-------------------")
     with open("sources.csv","w") as f:
-        f.write("id,ra,dec,mjd\n")
+        f.write("id,ra,dec,mjd,isodate,3c,VLSSr50\n")
         for s in srclist:
-            f.write(f"{s[0]},{s[1]},{s[2]},{s[3]}\n")
+            f.write(f"{s[0]},{s[1]},{s[2]},{s[3]},{s[4]},{s[5]},{s[6]}\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
