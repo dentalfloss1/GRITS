@@ -39,6 +39,7 @@ if __name__=="__main__":
         print("config.ini does not exist. Creating one and stopping.")
         with open("config.ini","w") as f:
             f.write(configfile)
+        exit()
     else:
         config.read("config.ini")
 
