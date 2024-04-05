@@ -41,14 +41,10 @@ from tqdm import tqdm
 
 
 
-def main(args):
-    try:
-        os.remove("sources.csv")
-    except OSError:
-        pass
+def main(args,filelist,config):
     uniquesrcid=0
     srclist = []
-    for filename in args.filename:
+    for filename in filelist:
         print("--------",filename,"------")
         # DATA and HEADER
         if ".oims" in filename:
@@ -165,19 +161,7 @@ def main(args):
 
             t2 = datetime.datetime.now()
             print("Source Grouping Steps:",t2-t1)
-            islanddata = islanddata.copy('system')
-            
-            islandcondition = islanddata >0
-            nsigmacondition = np.zeros(ints,dtype=bool)
-            islandloc = np.where(islandcondition) 
-            rmsdataarray = np.array(rmsdata)
-            for i in np.unique(islandloc[0]):
-                islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
-                brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
-                nsigmacondition[i] = brightpix < float(config['Quality Control']['finalnsigma'])
-            nsigmawhere = np.where(nsigmacondition)
-            islanddata[nsigmawhere,...] = 0
-
+            islanddata = islanddata.copy("system")
             maxind = np.amax(islanddata)
             length = BFArray(np.zeros((ints,nchan,4,4,maxind,rotgrid)),space='cuda',dtype='f32')
             width = BFArray(np.zeros((ints,nchan,4,maxind)),space='cuda',dtype='f32')
@@ -201,15 +185,23 @@ def main(args):
             maxwids = np.max(width,axis=(1,2,3))
             # impose restrictions on conditions 
             numsrccond = restrictnumsrc(islanddata,width,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
+            islandcondition = islanddata >0
             widcond = maxwids > float(config['Quality Control']['minwid'])
             drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
             whereislands = np.where( numsrccond & islandcondition.any(axis=(1,2,3,4))  & widcond & drcondition)
 
             angvelcond = restrictangvel(whereislands, islanddata, hdrlist, length, width, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+            nsigmacondition = np.zeros(ints,dtype=bool)
+            islandloc = np.where(islandcondition) 
+            rmsdataarray = np.array(rmsdata)
+            for i in np.unique(islandloc[0]):
+                islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
+                brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
+                nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
 
             print(ints - np.sum(nsigmacondition), "passed nsigma condition")
-            whereislands = list(np.where(angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  widcond & drcondition )[0])
+            whereislands = list(np.where(nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  widcond & drcondition )[0])
             islandfloat = np.zeros(islanddata.shape,dtype=float)
             islandfloat[...] = islanddata
             islandfloat[:,:,:,circle[0],circle[1]] = np.nan
@@ -244,17 +236,15 @@ def main(args):
                                 else:
                                     c3 = False
 
-                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss))
+                                plotfile = filename.replace(".oims",f"-{i+chunkt}.png").replace(".pims",f"-{i+chunkt}.png").replace(':','-')
+                                srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,plotfile))
                                 uniquesrcid += 1
             chunkt = chunkt + chunksize
 
 
         
         print("-------------------")
-    with open("sources.csv","w") as f:
-        f.write("id,ra,dec,mjd,isodate,3c,VLSSr50\n")
-        for s in srclist:
-            f.write(f"{s[0]},{s[1]},{s[2]},{s[3]},{s[4]},{s[5]},{s[6]}\n")
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('plotfile',"<U256")])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -291,4 +281,4 @@ if __name__ == "__main__":
             f.write(configfile)
     else:
         config.read("config.ini")
-        main(args)
+        main(args,args.filename,config)
