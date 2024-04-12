@@ -71,11 +71,10 @@ def restrictangvel(whereislands, islanddata, hdrlist, length, width,nchan,ngrid,
     tracks = np.array([(t[0],t[1],t[5]) for t in tracklist if ~np.isinf(t[5])], dtype=[('track','i8'),('imid','i8'),('angvel','f8')])
     condlist = []
     avangvel = []
-    print(len(np.unique(tracks['track'])), "tracks found")
-    for trackno in np.unique(tracks['track']):
-        t= tracks[tracks['track']==trackno]
-        print("found track")
-        print(t)
+   #  for trackno in np.unique(tracks['track']):
+   #      t= tracks[tracks['track']==trackno]
+   #      print("found track")
+   #      print(t)
 
     for im in range(len(islanddata)):
         if im in np.unique(tracks['imid']):

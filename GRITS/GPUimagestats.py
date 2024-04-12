@@ -127,7 +127,6 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 allcorr.append((c,getcrab(freq(c))/tau))
         allcorr = np.array(allcorr,dtype=[('channel','i8'),('corrfac','f8')])
         calchans = np.unique(allcorr['channel'])
-        print("calibrated channels",calchans)
         removechan = []
         startchan = nchan
         for c in range(nchan):

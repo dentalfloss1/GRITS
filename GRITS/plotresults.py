@@ -53,9 +53,6 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
 
     axs[1,4].set_axis_off()
 
-    VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
-    VLSSrname = VLSSr50jy['name'][VLSSrclose] 
-    VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
     islandplot = np.zeros((ngrid,ngrid))
     for c in range(nchan):
         islandplot+=islands[i,c,0]

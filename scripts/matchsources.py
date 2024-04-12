@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 from configparser import ConfigParser
 import numpy as np
+import datetime
 import os 
 import argparse
 import imdiffsearch
 from GRITS import plotresults
 from GRITS.configtemplate import configfile
+from GRITS.readimage import matchfilepairs
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
@@ -18,6 +20,7 @@ def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
 
 
 if __name__=="__main__":
+    t1 = datetime.datetime.now()
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--station1', type=str, nargs='+',
@@ -25,7 +28,6 @@ if __name__=="__main__":
     parser.add_argument('--station2', type=str, nargs='+',
                         help="images from the station we check anti-concidence with",
                         required=True)
-    parser.add_argument('--noplot', action="store_false")
     parser.add_argument("--vmax1", type=float, default=8000, help="controls contrast of station 1 plots")
     parser.add_argument("--vmax2", type=float, default=8000, help="controls contrast of station 2 plots")
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -44,19 +46,33 @@ if __name__=="__main__":
         config.read("config.ini")
 
     # run main execution loop
-    dat1 = imdiffsearch.main(args,args.station1,config)
-    dat2 = imdiffsearch.main(args,args.station2,config)
-    keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
-    keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
-    for s1 in keepdat1:
-        seps = angsep(s1['ra'],s1['dec'],keepdat2['ra'],keepdat2['dec']) < args.angdelta
-        simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
-        if np.sum(seps & simul) > 0:
-            matching2 = keepdat2[seps & simul]
-            for s2 in matching2:
-                print(s1,s2)
-
-
+    matchedfiles = matchfilepairs(args.station1,args.station2) 
+    print(matchedfiles)
+    lastfilename1 = ""
+    lastfilename2 = ""
+    results = []
+    for filename1,filename2 in matchedfiles:
+        if lastfilename1!=filename1:
+            dat1,_ = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+        if lastfilename2!=filename2:
+            dat2,_ = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+        lastfilename1 = filename1
+        lastfilename2 = filename2
+        keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
+        keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
+        for s1 in keepdat1:
+            seps = angsep(s1['ra'],s1['dec'],keepdat2['ra'],keepdat2['dec']) < args.angdelta
+            simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
+            if np.sum(seps & simul) > 0:
+                matching2 = keepdat2[seps & simul]
+                for s2 in matching2:
+                    print(s1,s2)
+                    results.append((s1,s2))
+    t2 = datetime.datetime.now()
+    print(t2-t1, "elapsed")
+    print("--------results-------")
+    for r in results:
+        print(r)
                 
 
 

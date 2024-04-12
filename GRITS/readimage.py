@@ -3,6 +3,42 @@ from contextlib import closing
 import numpy as np 
 from lsl_toolkits.PasiImage import PasiImageDB
 
+def matchfilepairs(station1,station2):
+    """Given filelists from two stations, read file times
+    and pair up"""
+    f1times = []
+    for f1 in station1:
+        if "oims" in f1:
+            hasoims = True
+            file_start,file_end = readoims(f1,hdronly=True)
+        else:
+            file_start,file_end = readpims(f1,hdronly=True)
+        if file_start != 0.0:
+            f1times.append((f1,file_start, file_end))
+        else:
+            print(f1, "has invalid data")
+    f2times = []
+    for f2 in station2:
+        if "oims" in f2:
+            hasoims = True
+            file_start,file_end = readoims(f2,hdronly=True)
+        else:
+            file_start,file_end = readpims(f2,hdronly=True)
+        if file_start != 0.0:
+            f2times.append((f2,file_start,file_end))
+        else:
+            print(f2, "has invalid data")
+    matchingfilepairs = []
+    for f1,f1s,f1e in f1times:
+        for f2,f2s,f2e in f2times:
+            # Check that file 2 does not end before file 1 starts
+            f2end = f2e - f1s 
+            # Check that file 2 does not start after file 1 ends
+            f2start = f1e - f2s 
+            if (f2end > 0) and (f2start > 0):
+                matchingfilepairs.append((f1,f2))
+    return matchingfilepairs
+
 def readoims(filename,hdronly=False):
     with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
         # Get parameters from the input file
