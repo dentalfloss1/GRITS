@@ -88,6 +88,7 @@ def groupdiagrows(irdata, grid):
 
 def computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rotgrid,maxind):
     # COMPUTE vert length of non-rotated data
+    print("COMPUTE vert length of non-rotated data")
     BFMap("""
         for (auto i=0; i<%i; i++){
             if (isldata(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,0,ind,j)+=1.0;
@@ -95,6 +96,7 @@ def computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rot
             {'isldata':islanddata, 'length': length, 'index':index},
             axis_names = ('time','chan','stokes','j','ind'), shape=(ints,nchan,4,ngrid,maxind))
     # COMPUTE horiz length of non-rotated data
+    print("COMPUTE horiz length of non-rotated data")
     BFMap("""
         for (auto j=0; j<%i; j++){
             if (isldata(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,1,ind,j)+=1.0;
@@ -102,6 +104,7 @@ def computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rot
             {'isldata':islanddata, 'length': length, 'index':index},
             axis_names = ('time','chan','stokes','i','ind'), shape=(ints,nchan,4,ngrid,maxind))
     # COMPUTE vert length of rotated data
+    print("COMPUTE vert length of rotated data")
     BFMap("""
         for (auto i=0; i<%i; i++){
             if (rm(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,2,ind,j)+=1.0;
@@ -112,6 +115,7 @@ def computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rot
             {'rm':rotateddata, 'length': length,'index':index},
             axis_names = ('time','chan','stokes','j','ind'), shape=(ints,nchan,4,rotgrid,maxind))
     # COMPUTE horiz length of rotated data
+    print("COMPUTE horiz length of rotated data")
     BFMap("""
         for (auto j=0; j<%i; j++){
             if (rm(time,chan,stokes,i,j)==index(ind)) length(time,chan,stokes,3,ind,j)+=1.0;
@@ -122,6 +126,7 @@ def computelength(islanddata,rotateddata,length,width,index,ints,nchan,ngrid,rot
             {'rm':rotateddata, 'length': length, 'index':index},
             axis_names = ('time','chan','stokes','i','ind'), shape=(ints,nchan,4,rotgrid,maxind))
     # Take max length as length and the orthogonal length as width
+    print("Take max length as length and the orthogonal length as width")
     BFMap("""
          auto maxlen = 0.0;
          auto maxlenk = 0;
