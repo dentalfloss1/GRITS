@@ -17,64 +17,64 @@ def SetExtent(sRad, data):
     y2 = y - 1 / sRad
     extent = (x2.max(), x2.min(), y.min(), y.max())
     return extent
-# def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepchan,vmax=8000):
-#     if "oims" in filename:
-#         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
-#     elif "pims" in filename:
-#         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
-#     else:
-#         print("Unknown filetype")
-#         exit()
-#     if keepchan:
-#         imagedata = imagedata[:,keepchan,:,:,:]
-#         data = data[:,keepchan,:,:,:]
-#     for c in range(nchan):
-#         if keepchan:
-#             chan = keepchan[c]
-#         else:
-#             chan = c 
-#         corrflux = corrfluxlist[c]
-#         imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
-#         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
-#     avx, avy = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
-#     extent = SetExtent(sRad,data)
-#     fig, axs = plt.subplots(3,5,figsize=(30,15))
-#     nchan = data.shape[1]
-#     currimage = np.zeros(data[index,0,0,:,:].shape)
-#     for c in range(nchan):
-#         currimage += imagedata[index,c,0,:,:]
-#     currimage/=nchan
-#     # Stokes I image
-#     axs[0,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
-#     currimage = np.zeros(imagedata[index,0,0,:,:].shape)
-#     for c in range(nchan):
-#         currimage += imagedata[index,c,3,:,:]
-#     currimage/=nchan
-#     # Stokes V image
-#     axs[0,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
-#     mintime = max(0,index-2)
-#     maxtime = min(ints-1,index+2)
-#     # Series of Stokes I diff image
-#     for timenum, t in enumerate(range(mintime,maxtime+1)):
-#         currimage = np.zeros(data[t,0,0,:,:].shape)
-#         for c in range(nchan):
-#             currimage += data[t,c,0,:,:]
-#         currimage/=nchan
-#         axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
-#         axs[1,timenum].axvline(avx)
-#         axs[1,timenum].axhline(avy)
-#     # Series of Stokes V image
-#     for timenum, t in enumerate(range(mintime,maxtime+1)):
-#         currimage = np.zeros(data[t,0,3,:,:].shape)
-#         for c in range(nchan):
-#             currimage += imagedata[t,c,3,:,:]
-#         currimage/=nchan
-#         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
-#         axs[2,timenum].axvline(avx)
-#         axs[2,timenum].axhline(avy)
-#     plt.savefig(plotfile)
-#     plt.close()
-#      
+def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepchan,vmax=8000):
+    if "oims" in filename:
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
+    elif "pims" in filename:
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
+    else:
+        print("Unknown filetype")
+        exit()
+    if keepchan:
+        imagedata = imagedata[:,keepchan,:,:,:]
+        data = data[:,keepchan,:,:,:]
+    for c in range(nchan):
+        if keepchan:
+            chan = keepchan[c]
+        else:
+            chan = c 
+        corrflux = corrfluxlist[c]
+        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
+        data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
+    avx, avy = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
+    extent = SetExtent(sRad,data)
+    fig, axs = plt.subplots(3,5,figsize=(30,15))
+    nchan = data.shape[1]
+    currimage = np.zeros(data[index,0,0,:,:].shape)
+    for c in range(nchan):
+        currimage += imagedata[index,c,0,:,:]
+    currimage/=nchan
+    # Stokes I image
+    axs[0,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
+    currimage = np.zeros(imagedata[index,0,0,:,:].shape)
+    for c in range(nchan):
+        currimage += imagedata[index,c,3,:,:]
+    currimage/=nchan
+    # Stokes V image
+    axs[0,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
+    mintime = max(0,index-2)
+    maxtime = min(ints-1,index+2)
+    # Series of Stokes I diff image
+    for timenum, t in enumerate(range(mintime,maxtime+1)):
+        currimage = np.zeros(data[t,0,0,:,:].shape)
+        for c in range(nchan):
+            currimage += data[t,c,0,:,:]
+        currimage/=nchan
+        axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+        axs[1,timenum].axvline(avx)
+        axs[1,timenum].axhline(avy)
+    # Series of Stokes V image
+    for timenum, t in enumerate(range(mintime,maxtime+1)):
+        currimage = np.zeros(data[t,0,3,:,:].shape)
+        for c in range(nchan):
+            currimage += imagedata[t,c,3,:,:]
+        currimage/=nchan
+        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+        axs[2,timenum].axvline(avx)
+        axs[2,timenum].axhline(avy)
+    plt.savefig(plotfile)
+    plt.close()
+     
 
 
     

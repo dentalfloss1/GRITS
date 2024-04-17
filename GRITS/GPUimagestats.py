@@ -240,8 +240,8 @@ def getmultistat(sRad, imagedata, ints, nchan, ngrid):
                     minabsmean = np.abs(meanarr)
                     minmean = np.amin(minabsmean)
                     mincond = minabsmean==minmean
-                    meanarray[i,c,s] = meanarr[mincond]
-                    stdarray[i,c,s] = stdarr[mincond]
+                    meanarray[i,c,s] = meanarr[mincond][0]
+                    stdarray[i,c,s] = stdarr[mincond][0]
     return sndata, rmsdata, stdarray, meanarray
 def getdiffstats(data,sRad,ints,nchan,ngrid):
     # Set up center region for mean and std calculations of diff ims

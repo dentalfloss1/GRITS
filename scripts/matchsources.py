@@ -7,7 +7,7 @@ import os
 import argparse
 import imdiffsearch
 from GRITS.configtemplate import configfile
-# from GRITS.plotresults import plotsource
+from GRITS.plotresults import plotsource
 from GRITS.readimage import matchfilepairs
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
@@ -78,18 +78,18 @@ if __name__=="__main__":
     print(t2-t1, "elapsed")
     print("--------results-------")
     for uniqueid, (s1,minrms1,corrfluxlist1,keepchan1,s2,minrms2,corrfluxlist2,keepchan2) in enumerate(results):
-     #    index1 = s1['index']
-     #    filename1 = f"src{uniqueid}-{s1['filename']}"
-     #    ra1 = s1['ra']
-     #    dec1 = s1['dec']
-     #    plotfile1 = f"src{uniqueid}-"+filename1.replace(".oims",f"-{index}.png").replace(".pims",f"-{index}.png").replace(':','-').split('/')[-1]
-     #    plotsource(index1,plotfile1,filename1,ra1,dec1,minrms1,corrfluxlist1,keepchan1,vmax=args.vmax1)
-     #    index2 = s2['index']
-     #    filename2 = f"src{uniqueid}-{s2['filename']}"
-     #    ra2 = s2['ra']
-     #    dec2 = s2['dec']
-     #    plotfile2 = f"src{uniqueid}-"+filename1.replace(".oims",f"-{index}.png").replace(".pims",f"-{index}.png").replace(':','-').split('/')[-1]
-     #    plotsource(index2,plotfile2,filename2,ra2,dec2,minrms2,corrfluxlist2,keepchan2,vmax=args.vmax2)
+        index1 = s1['index']
+        filename1 = s1['filename']
+        ra1 = s1['ra']
+        dec1 = s1['dec']
+        plotfile1 = f"src{uniqueid}-"+filename1.replace(".oims",f"-{index1}.png").replace(".pims",f"-{index1}.png").replace(':','-').split('/')[-1]
+        plotsource(index1,plotfile1,filename1,ra1,dec1,minrms1,corrfluxlist1,keepchan1,vmax=args.vmax1)
+        index2 = s2['index']
+        filename2 = s2['filename']
+        ra2 = s2['ra']
+        dec2 = s2['dec']
+        plotfile2 = f"src{uniqueid}-"+filename1.replace(".oims",f"-{index2}.png").replace(".pims",f"-{index2}.png").replace(':','-').split('/')[-1]
+        plotsource(index2,plotfile2,filename2,ra2,dec2,minrms2,corrfluxlist2,keepchan2,vmax=args.vmax2)
 
         print(r)
         

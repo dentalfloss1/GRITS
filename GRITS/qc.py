@@ -43,8 +43,8 @@ def restrictangvel(whereislands, islanddata, hdrlist, nchan,ngrid,sRad,minangvel
             datelist.append(hdrlist[srcarray['imid'][srcarray['srcid']==id][0]]["start_time"])
             sclist.append(SkyCoord(src['ra'],src['dec'],unit='deg'))
         datediff = (np.amax(datelist) - np.amin(datelist))*3600*24
-        posangle1 = sclist[0].position_angle(sclist[1]).degree
-        posangle2 = sclist[1].position_angle(sclist[2]).degree
+        posangle1 = sclist[0].position_angle(sclist[1]).degree[0]
+        posangle2 = sclist[1].position_angle(sclist[2]).degree[0]
         datecond = (datediff < 120)
         poscond = isclose(posangle1,posangle2,rel_tol=rtol) 
         if poscond and datecond:
