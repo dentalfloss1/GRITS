@@ -40,8 +40,8 @@ from GRITS.readimage import readoims,readpims
 from tqdm import tqdm
 
 
-import warnings
-warnings.simplefilter("error")
+# import warnings
+# warnings.simplefilter("error")
 
 def main(filename,config,vmax=8000,noplot=False,quiet=False):
     uniquesrcid=0

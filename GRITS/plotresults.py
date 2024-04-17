@@ -36,7 +36,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
         corrflux = corrfluxlist[c]
         imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
-    avx, avy = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
+    avx, avy = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)[0]
     extent = SetExtent(sRad,data)
     fig, axs = plt.subplots(3,5,figsize=(30,15))
     nchan = data.shape[1]
