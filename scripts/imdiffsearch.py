@@ -121,14 +121,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
         islanddata = islanddata.copy("system")
         islanddata[pregroupconditions,...] = 0
-        numpyislands = np.zeros(islanddata.shape)
-        numpyislands[...] = islanddata
 
         islanddata = islanddata.copy("cuda")
 
-        numberedislands = np.where(numpyislands > 0, np.cumsum(numpyislands),0)
-        print(numberedislands[0,0,0])
-        exit()
 
 
 
