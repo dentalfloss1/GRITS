@@ -21,7 +21,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
     if "oims" in filename:
         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
     elif "pims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename) 
     else:
         print("Unknown filetype")
         exit()
