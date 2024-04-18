@@ -94,6 +94,8 @@ def pbcorr(header,imSize,chan,pScale,station):
     elif station==b'LWA1':
         lwa1 = EarthLocation.of_site('lwa1')
         aa = AltAz(location=lwa1, obstime=time)
+    else:
+        print(station,"unrecognized")
     myaltaz = sc.transform_to(aa)
     alt = myaltaz.alt.deg
     az = myaltaz.az.deg
