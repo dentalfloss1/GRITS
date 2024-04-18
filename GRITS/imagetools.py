@@ -4,6 +4,8 @@ import numpy as np
 
 from lsl.common.paths import DATA as dataPath
 from lsl.common.mcs import mjdmpm_to_datetime
+from lsl.common.stations import lwasv as lsllwasv
+from lsl.common.stations import lwana as lsllwana
 
 from bifrost import ndarray as BFArray
 from bifrost import map as BFMap 
@@ -89,11 +91,16 @@ def pbcorr(header,imSize,chan,pScale,station):
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     time = Time(dateObs.strftime("%Y-%m-%dT%H:%M:%S"),format="isot")
     if station==b'LWASV':
-        lwasv = EarthLocation.from_geodetic(-106.885664,34.348562, height=1475) 
+        x,y,z = lsllwasv.geocentric_location
+        lwasv = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
         aa = AltAz(location=lwasv, obstime=time)
     elif station==b'LWA1':
         lwa1 = EarthLocation.of_site('lwa1')
         aa = AltAz(location=lwa1, obstime=time)
+    elif station==b'LWANA':
+        x,y,z = lsllwana.geocentric_location
+        lwana = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+        aa = AltAz(location=lwana, obstime=time)
     else:
         print(station,"unrecognized")
     myaltaz = sc.transform_to(aa)
