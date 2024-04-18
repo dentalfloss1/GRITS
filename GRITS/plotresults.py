@@ -63,17 +63,17 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
             currimage += data[t,c,0,:,:]
         currimage/=nchan
         axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
-        axs[1,timenum].axvline(avx)
-        axs[1,timenum].axhline(avy)
+        axs[1,timenum].axhline(avx,color='black',alpha=0.25)
+        axs[1,timenum].axvline(avy,color='black',alpha=0.25)
     # Series of Stokes V image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = np.zeros(data[t,0,3,:,:].shape)
         for c in range(nchan):
             currimage += imagedata[t,c,3,:,:]
         currimage/=nchan
-        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
-        axs[2,timenum].axvline(avx)
-        axs[2,timenum].axhline(avy)
+        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
+        axs[2,timenum].axhline(avx,color='black',alpha=0.25)
+        axs[2,timenum].axvline(avy,color='black',alpha=0.25)
     plt.savefig(plotfile)
     plt.close()
      
@@ -146,12 +146,12 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
     islandplot = np.zeros((ngrid,ngrid))
     for c in range(nchan):
         islandplot+=islands[i,c,0]
-    axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
+    axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[1,2].set_title('I src')
     islandplot = np.zeros((ngrid,ngrid))
     for c in range(nchan):
         islandplot+=islands[i,c,3]
-    axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
+    axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[1,3].set_title('V src')
     currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
     for c in range(nchan):

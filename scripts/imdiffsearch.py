@@ -26,6 +26,8 @@ from astropy.coordinates import SkyCoord
 
 from bifrost import ndarray as BFArray
 from bifrost import map as BFMap 
+from bifrost.device import set_devices_no_spin_cpu as BFNoSpinZone
+BFNoSpinZone()
 
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.catalogs import cat3c, VLSSr50jy
