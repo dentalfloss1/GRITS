@@ -36,7 +36,9 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
         corrflux = corrfluxlist[c]
         imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
-    avx, avy = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)[0]
+    srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
+    print(srcloc)
+    avx,avy = srcloc[0]
     extent = SetExtent(sRad,data)
     fig, axs = plt.subplots(3,5,figsize=(30,15))
     nchan = data.shape[1]
@@ -60,7 +62,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
         for c in range(nchan):
             currimage += data[t,c,0,:,:]
         currimage/=nchan
-        axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+        axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
         axs[1,timenum].axvline(avx)
         axs[1,timenum].axhline(avy)
     # Series of Stokes V image
@@ -69,7 +71,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
         for c in range(nchan):
             currimage += imagedata[t,c,3,:,:]
         currimage/=nchan
-        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
+        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
         axs[2,timenum].axvline(avx)
         axs[2,timenum].axhline(avy)
     plt.savefig(plotfile)
@@ -90,6 +92,22 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
     fig, axs = plt.subplots(3,5,figsize=(30,15))
     ytextloc = 0.9
     lastlabel = -1
+    mintime = max(0,i-2)
+    maxtime = min(ints-1,i+2)
+    for timenum, t in enumerate(range(mintime,maxtime+1)):
+        currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
+        for c in range(nchan):
+            currimage += data[t,c,0,:,:]
+        currimage/=nchan
+        axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
+        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+    for timenum, t in enumerate(range(mintime,maxtime+1)):
+        currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
+        for c in range(nchan):
+            currimage += imagedata[t,c,3,:,:]
+        currimage/=nchan
+        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
+        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     for label in range(0,int(np.nanmax(islands[i,:,:,:,:]))+1):
         for c in range(nchan):
             for s in [0,3]:
@@ -100,7 +118,13 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
                 if label==lastlabel:
                     continue
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy)
-                axs[1,4].text(0,ytextloc,f"{c},{s},{label}, pos:{np.round(radec,2)}")
+                axs[1,4].text(0,ytextloc,f"{c},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
+                for anum in [0,2]:
+                    for imind in range(5):
+                    
+                        axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
+                        circle = plt.Circle((avx,avy),5,fill=False)
+                        axs[anum,imind].add_artist(circle)
                 
                 ytextloc -= 0.15
                 VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
@@ -129,22 +153,6 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
         islandplot+=islands[i,c,3]
     axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',extent=extent,cmap='coolwarm')
     axs[1,3].set_title('V src')
-    mintime = max(0,i-2)
-    maxtime = min(ints-1,i+2)
-    for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
-        for c in range(nchan):
-            currimage += data[t,c,0,:,:]
-        currimage/=nchan
-        axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent)
-        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
-        for c in range(nchan):
-            currimage += imagedata[t,c,3,:,:]
-        currimage/=nchan
-        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap='coolwarm')
-        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
     for c in range(nchan):
         currimage += imagedata[i,c,0,:,:]

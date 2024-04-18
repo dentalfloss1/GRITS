@@ -55,9 +55,9 @@ if __name__=="__main__":
     results = []
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,_,minrms1,corrfluxlist1,keepchan1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+            dat1,_,minrms1,corrfluxlist1,keepchan1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=False)
         if lastfilename2!=filename2:
-            dat2,_,minrms2,corrfluxlist2,keepchan2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+            dat2,_,minrms2,corrfluxlist2,keepchan2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=False)
         lastfilename1 = filename1
         lastfilename2 = filename2
         if args.keepcatmatch:
@@ -73,25 +73,27 @@ if __name__=="__main__":
                 matching2 = keepdat2[seps & simul]
                 for s2 in matching2:
                     print(s1,s2)
-                    results.append((s1,minrms1,corrfluxlist1,keepchan1,s2,minrms2,corrfluxlist2,keepchan2))
+                    results.append((np.copy(s1),minrms1,corrfluxlist1,keepchan1,np.copy(s2),minrms2,corrfluxlist2,keepchan2))
     t2 = datetime.datetime.now()
     print(t2-t1, "elapsed")
     print("--------results-------")
-    for uniqueid, (s1,minrms1,corrfluxlist1,keepchan1,s2,minrms2,corrfluxlist2,keepchan2) in enumerate(results):
+    for uniqueid,r in enumerate(results):
+        (s1,minrms1,corrfluxlist1,keepchan1,s2,minrms2,corrfluxlist2,keepchan2) = r
         index1 = s1['index']
-        filename1 = s1['filename']
+        filename1 = str(s1['filename'])
         ra1 = s1['ra']
         dec1 = s1['dec']
-        plotfile1 = f"src{uniqueid}-"+filename1.replace(".oims",f"-{index1}.png").replace(".pims",f"-{index1}.png").replace(':','-').split('/')[-1]
+        plotfile1 = f"src{uniqueid}-station1-"+filename1.replace(".oims",f"-{index1}.png").replace(".pims",f"-{index1}.png").replace(':','-').split('/')[-1]
         plotsource(index1,plotfile1,filename1,ra1,dec1,minrms1,corrfluxlist1,keepchan1,vmax=args.vmax1)
         index2 = s2['index']
-        filename2 = s2['filename']
+        filename2 = str(s2['filename'])
         ra2 = s2['ra']
         dec2 = s2['dec']
-        plotfile2 = f"src{uniqueid}-"+filename1.replace(".oims",f"-{index2}.png").replace(".pims",f"-{index2}.png").replace(':','-').split('/')[-1]
+        plotfile2 = f"src{uniqueid}-station2-"+filename2.replace(".oims",f"-{index2}.png").replace(".pims",f"-{index2}.png").replace(':','-').split('/')[-1]
         plotsource(index2,plotfile2,filename2,ra2,dec2,minrms2,corrfluxlist2,keepchan2,vmax=args.vmax2)
-
         print(r)
+        print((s1['mjd'] - s2['mjd'])*24*60*60)
+
         
                 
 

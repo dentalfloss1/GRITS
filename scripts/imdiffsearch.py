@@ -230,7 +230,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         else:
                             c3 = False
 
-                        srclist.append((uniquesrcid, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt,filename))
+                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt,filename))
                         lastlabel = label
                         uniquesrcid += 1
         chunkt = chunkt + chunksize
