@@ -203,7 +203,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             if not noplot:
                 plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=chunkt)
             lastlabel=-1
-            for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+            for label in range(1,np.amax(islanddata[i,:,:,:,:])+1):
                 for c in range(nchan):
                     for s in [0,3]:
                         srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)

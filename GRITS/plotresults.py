@@ -108,7 +108,7 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
         currimage/=nchan
         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for label in range(0,int(np.nanmax(islands[i,:,:,:,:]))+1):
+    for label in range(1,int(np.nanmax(islands[i,:,:,:,:]))+1):
         for c in range(nchan):
             for s in [0,3]:
                 srclocs = np.argwhere(islands[i,c,s,:,:]==label)
