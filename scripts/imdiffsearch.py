@@ -5,6 +5,9 @@ import sys
 import datetime
 import argparse
 from configparser import ConfigParser 
+from contextlib import closing
+import warnings
+warnings.simplefilter("error",category=RuntimeWarning)
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -36,14 +39,14 @@ from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups
 from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
+from GRITS import OrvilleImageDB
 from GRITS.plotresults import plotresults
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
 from tqdm import tqdm
 
+from lsl_toolkits.PasiImage import PasiImageDB
 
-# import warnings
-# warnings.simplefilter("error")
 
 def main(filename,config,vmax=8000,noplot=False,quiet=False):
     uniquesrcid=0
@@ -51,38 +54,33 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     if not quiet:
         print("--------",filename,"------")
     # DATA and HEADER
+    
     if ".oims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename)
+        chunksize = int(config['Batch Control']['chunktime'])
+        with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
+            fullsize = db.nint
         filetype="oims"
     elif ".pims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename)
+        chunksize = int(config['Batch Control']['chunktime'])*4
+        with closing(PasiImageDB(filename, 'r')) as db:
+            fullsize = len(db)
         filetype="pims"
     else:
         print("unrecognized filename")
         exit()
-    if file_start==0.0:
-        print(filename, "has invalid data")
-        exit()
-    fullhdrlist = hdrlist
-    fulldata = data.copy()
-    fullimage = imagedata.copy()
     final = 0
-    overlaptime = int(config['Batch Control']['chunktime'])
+    overlaptime = int(config['Batch Control']['overlaptime'])
     chunkt = 0
-    if "oims" in filename:
-        chunksize = int(config['Batch Control']['chunktime'])
-    else:
-        chunksize = int(config['Batch Control']['chunktime'])*4
-    fullsize = ints
     chunkno = 1
     numchunks = np.ceil(fullsize/chunksize)
     while final<fullsize:
         start = max(chunkt - overlaptime,0)
-        final = min(fullsize,chunkt + chunksize)
-        hdrlist = fullhdrlist[chunkt:final]
-        data = fulldata[chunkt:final]
-        imagedata = fullimage[chunkt:final]
-        ints = len(data)
+        final = min(fullsize-1,chunkt + chunksize)
+        if ".oims" in filename:
+            print("Read oims")
+            ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startind=start,stopind=final)
+        elif ".pims" in filename:
+            ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename,startind=start,stopind=final)
         if not quiet:
             print(chunkno,"out of",numchunks,"chunks")
         chunkno+=1
