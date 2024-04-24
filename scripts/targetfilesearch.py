@@ -19,9 +19,11 @@ import argparse
 
 if __name__=="__main__":
     
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("datafile", type=str, help="CSV data file of format: MJD,RA (deg), Dec (deg). It is assumed that the file has no header.")
+    parser.add_argument("--hrmargin",type=int, default=1,help="List files that are +/- hrmargin")
     args = parser.parse_args()
+    hrmargin = args.hrmargin
     host = os.environ["SSHHOST"]
     user = os.environ["SSHUSER"]
     ssh = paramiko.SSHClient()
@@ -54,52 +56,62 @@ if __name__=="__main__":
         if station=='lwa1':
             for mymjd in [obsday-1,obsday,obsday+1]:
                 if mymjd!=obsday:
-                    if ~((obshr - 2) < 0) or ~((obshr + 2) > 23):
+                    if ~((obshr - hrmargin) < 0) or ~((obshr + hrmargin) > 23):
                         continue
                 try:
                     for p in [s.filename for s in sftp.listdir_attr(f'/FileStore/PASI/{mymjd}/')]:
-                        for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
+                        for myhr in (str(ohr) for ohr in range(obshr-hrmargin,obshr+hrmargin+1)):
                             if fnmatch.fnmatch(p, f"{mymjd}*{myhr.zfill(2)}_*MHz*pims"):
                                 filepath = f'/FileStore/PASI/{mymjd}/{p}'
-                                fullfilelist.append((date,ra,dec,station,filepath))
+                                info = sftp.stat(filepath)
+                                fullfilelist.append((date,ra,dec,station,filepath,info.st_size))
                 except FileNotFoundError:
                     pass
 
         if station=='lwasv':
             for mymjd in [obsday-1,obsday,obsday+1]:
                 if mymjd!=obsday:
-                    if ~((obshr - 2) < 0) or ~((obshr + 2) > 23):
+                    if ~((obshr - hrmargin) < 0) or ~((obshr + hrmargin) > 23):
                         continue
                 try:
                     for p in [s.filename for s in sftp.listdir_attr(f'/FileStore/PASI-SV/{mymjd}/')]:
-                        for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
+                        for myhr in (str(ohr) for ohr in range(obshr-hrmargin,obshr+hrmargin+1)):
                             if fnmatch.fnmatch(p, f"{mymjd}:{myhr.zfill(2)}_*MHz*pims"):
                                 filepath = f'/FileStore/PASI-SV/{mymjd}/{p}'
-                                fullfilelist.append((date,ra,dec,station,filepath))
+                                info = sftp.stat(filepath)
+                                fullfilelist.append((date,ra,dec,station,filepath,info.st_size))
                 except FileNotFoundError:
                     pass
                 try:
                     for o in [s.filename for s in sftp.listdir_attr(f'/FileStore/Orville/{mymjd}/')]:
-                        for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
+                        for myhr in (str(ohr) for ohr in range(obshr-hrmargin,obshr+hrmargin+1)):
                             if fnmatch.fnmatch(o, f"{mymjd}_{myhr.zfill(2)}0000_*oims"):
                                 filepath = f'/FileStore/Orville/{mymjd}/{o}'
-                                fullfilelist.append((date,ra,dec,station,filepath))
+                                info = sftp.stat(filepath)
+                                fullfilelist.append((date,ra,dec,station,filepath,info.st_size))
                 except FileNotFoundError:
                     pass
         if station=='lwana':
             for mymjd in [obsday-1,obsday,obsday+1]:
                 if mymjd!=obsday:
-                    if ~((obshr - 2) < 0) or ~((obshr + 2) > 23):
+                    if ~((obshr - hrmargin) < 0) or ~((obshr + hrmargin) > 23):
                         continue
                 try:
                     for o in [s.filename for s in sftp.listdir_attr(f'/FileStore/Orville-NA/{mymjd}/')]:
-                        for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
+                        for myhr in (str(ohr) for ohr in range(obshr-hrmargin,obshr+hrmargin+1)):
                             if fnmatch.fnmatch(o, f"{mymjd}_{myhr.zfill(2)}0000_*oims"):
                                 filepath = f'/FileStore/Orville-NA/{mymjd}/{o}'
-                                fullfilelist.append((date,ra,dec,station,filepath))
+                                info = sftp.stat(filepath)
+                                fullfilelist.append((date,ra,dec,station,filepath,info.st_size))
                 except FileNotFoundError:
                     pass
     for f in fullfilelist:
         print(f) 
-
+    
+    pulldat = np.unique(np.array(fullfilelist, dtype=[('date','f8'),('ra','f8'),('dec','f8'),('station','<U10'),('filepath','<U256'),('size','i8')]))
+    for p in pulldat:
+        print(p)
+    for p in pulldat:
+        print(p['filepath'])
+    print(np.sum(pulldat['size']/1e9))
 
