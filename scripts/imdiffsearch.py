@@ -73,6 +73,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     chunkt = 0
     chunkno = 1
     numchunks = np.ceil(fullsize/chunksize)
+    startindex = 0
     while final<(fullsize-1):
         start = max(chunkt - overlaptime,0)
         final = min(fullsize-1,chunkt + chunksize)
@@ -204,7 +205,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         for i in np.unique(whereislands):
             hdr = hdrlist[i]
             if not noplot:
-                plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=chunkt)
+                plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
             lastlabel=-1
             for label in range(1,np.amax(islanddata[i,:,:,:,:])+1):
                 for c in range(nchan):
@@ -233,10 +234,11 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         else:
                             c3 = False
 
-                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt-overlaptime,filename))
+                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename))
                         lastlabel = label
                         uniquesrcid += 1
-        chunkt = chunkt + chunksize
+        chunkt = chunkt + chunksize 
+        startindex = chunkt - overlaptime
 
 
     if not quiet: 

@@ -40,7 +40,6 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
         imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
     srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
-    print(srcloc)
     avx,avy = srcloc[0]
     extent = SetExtent(sRad,data)
     fig, axs = plt.subplots(3,5,figsize=(30,15))
@@ -61,8 +60,6 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
     maxtime = min(ints-1,index+2)
     # Series of Stokes I diff image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
-        print(t)
-        print(hdrlist[t])
         currimage = np.zeros(data[t,0,0,:,:].shape)
         for c in range(nchan):
             currimage += data[t,c,0,:,:]
