@@ -73,7 +73,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     chunkt = 0
     chunkno = 1
     numchunks = np.ceil(fullsize/chunksize)
-    while final<fullsize:
+    while final<(fullsize-1):
         start = max(chunkt - overlaptime,0)
         final = min(fullsize-1,chunkt + chunksize)
         if ".oims" in filename:
@@ -106,6 +106,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist, keepchan = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
+        nchan = data.shape[1]
+        if nchan==0:
+            return None,None,None,None,None
         
         
 
@@ -230,7 +233,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         else:
                             c3 = False
 
-                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt,filename))
+                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt+overlaptime,filename))
                         lastlabel = label
                         uniquesrcid += 1
         chunkt = chunkt + chunksize

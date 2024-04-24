@@ -56,8 +56,11 @@ if __name__=="__main__":
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
             dat1,_,minrms1,corrfluxlist1,keepchan1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=False)
+            
         if lastfilename2!=filename2:
             dat2,_,minrms2,corrfluxlist2,keepchan2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=False)
+        if (dat1 is None) or (dat2 is None):
+            continue
         lastfilename1 = filename1
         lastfilename2 = filename2
         if args.keepcatmatch:

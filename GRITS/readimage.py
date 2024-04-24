@@ -93,6 +93,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
             startind = 0
             stopind = ints - 1
         hdrlist = []
+        print(ints,nchan,ngrid)
         data = np.zeros((ints,nchan,4,ngrid,ngrid))
         if not hdronly:
             for i in range(startind,startind+ints):

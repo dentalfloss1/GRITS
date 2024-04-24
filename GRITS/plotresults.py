@@ -18,6 +18,8 @@ def SetExtent(sRad, data):
     extent = (x2.max(), x2.min(), y.min(), y.max())
     return extent
 def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepchan,vmax=8000):
+    print(index,filename)
+
     if "oims" in filename:
         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
     elif "pims" in filename:
@@ -28,6 +30,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
     if keepchan:
         imagedata = imagedata[:,keepchan,:,:,:]
         data = data[:,keepchan,:,:,:]
+    nchan = data.shape[1]
     for c in range(nchan):
         if keepchan:
             chan = keepchan[c]
@@ -58,6 +61,8 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
     maxtime = min(ints-1,index+2)
     # Series of Stokes I diff image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
+        print(t)
+        print(hdrlist[t])
         currimage = np.zeros(data[t,0,0,:,:].shape)
         for c in range(nchan):
             currimage += data[t,c,0,:,:]
@@ -65,6 +70,8 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
         axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
         axs[1,timenum].axhline(avx,color='black',alpha=0.25)
         axs[1,timenum].axvline(avy,color='black',alpha=0.25)
+        circle = plt.Circle((ngrid/2,ngrid/2),2*sRad/3,fill=False)
+        axs[1,timenum].add_artist(circle)
     # Series of Stokes V image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = np.zeros(data[t,0,3,:,:].shape)
