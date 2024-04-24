@@ -60,7 +60,8 @@ if __name__=="__main__":
                     for p in [s.filename for s in sftp.listdir_attr(f'/FileStore/PASI/{mymjd}/')]:
                         for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
                             if fnmatch.fnmatch(p, f"{mymjd}*{myhr.zfill(2)}_*MHz*pims"):
-                                fullfilelist.append((date,ra,dec,station,p))
+                                filepath = f'/FileStore/PASI/{mymjd}/{p}'
+                                fullfilelist.append((date,ra,dec,station,filepath))
                 except FileNotFoundError:
                     pass
 
@@ -73,14 +74,16 @@ if __name__=="__main__":
                     for p in [s.filename for s in sftp.listdir_attr(f'/FileStore/PASI-SV/{mymjd}/')]:
                         for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
                             if fnmatch.fnmatch(p, f"{mymjd}:{myhr.zfill(2)}_*MHz*pims"):
-                                fullfilelist.append((date,ra,dec,station,p))
+                                filepath = f'/FileStore/PASI-SV/{mymjd}/{p}'
+                                fullfilelist.append((date,ra,dec,station,filepath))
                 except FileNotFoundError:
                     pass
                 try:
                     for o in [s.filename for s in sftp.listdir_attr(f'/FileStore/Orville/{mymjd}/')]:
                         for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
                             if fnmatch.fnmatch(o, f"{mymjd}_{myhr.zfill(2)}0000_*oims"):
-                                fullfilelist.append((date,ra,dec,station,o))
+                                filepath = f'/FileStore/Orville/{mymjd}/{o}'
+                                fullfilelist.append((date,ra,dec,station,filepath))
                 except FileNotFoundError:
                     pass
         if station=='lwana':
@@ -91,8 +94,9 @@ if __name__=="__main__":
                 try:
                     for o in [s.filename for s in sftp.listdir_attr(f'/FileStore/Orville-NA/{mymjd}/')]:
                         for myhr in (str(ohr) for ohr in range(obshr-2,obshr+3)):
-                            if fnmatch.fnmatch(p, f"{mymjd}_{myhr.zfill(2)}0000_*oims"):
-                                fullfilelist.append((date,ra,dec,station,o))
+                            if fnmatch.fnmatch(o, f"{mymjd}_{myhr.zfill(2)}0000_*oims"):
+                                filepath = f'/FileStore/Orville-NA/{mymjd}/{o}'
+                                fullfilelist.append((date,ra,dec,station,filepath))
                 except FileNotFoundError:
                     pass
     for f in fullfilelist:
