@@ -24,12 +24,12 @@ def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
     return 180*sep/np.pi
 
-def maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.667)):
+def maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.667):
     # return a mask for the part of the image beyond 60 degrees from the center
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
-    gtboundary = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((pbpercentsRad)**2) )
+    gtboundary = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((pbpercent*sRad)**2) )
     cboundary =  np.where( np.isclose(((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) , ((pbpercent*sRad)**2),rtol=0.01 ))
     return gtboundary, cboundary
 def calcbeamprops(az,alt,header,freq):
