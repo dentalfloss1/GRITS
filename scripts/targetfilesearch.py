@@ -21,7 +21,6 @@ import argparse
 def getfiles(basepath, dates, hrmargin=1):
     stationfilelist= []
     for mymjd, myhr in dates:
-        print(mymjd,myhr)
         try:
             for p in [s.filename for s in sftp.listdir_attr(f'{basepath}{mymjd}/')]:
                 myhr = str(myhr)
@@ -90,7 +89,12 @@ if __name__=="__main__":
                     if (myhr < 24) and (myhr >= 0):
                         dates.append((mymjd, myhr ))
         print(dates)
-        basepath= ['/FileStore/PASI/','/FileStore/PASI-SV/','/FileStore/Orville/','/FileStore/Orville-NA/']
+        if station=='lwa1':
+            basepath= ['/FileStore/PASI/']
+        elif station=='lwasv':
+            basepath= ['/FileStore/PASI-SV/','/FileStore/Orville/']
+        elif station=='lwana':
+            basepath= ['/FileStore/Orville-NA/']
         for b in basepath:
             results = getfiles(b, dates, hrmargin=args.hrmargin)
             if results:
