@@ -96,8 +96,8 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
         print(ints,nchan,ngrid)
         data = np.zeros((ints,nchan,4,ngrid,ngrid))
         if not hdronly:
-            for i in range(startind,startind+ints):
-                db.seek(i)
+            for i in range(ints):
+                db.seek(i+startind)
                 hdr,alldata,spec = db.readImage()
                 hdr['start_time'] = hdr['startTime']
                 hdr['start_freq'] = hdr['freq'] - hdr['bandwidth']/2
