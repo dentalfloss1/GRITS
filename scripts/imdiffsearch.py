@@ -6,8 +6,8 @@ import datetime
 import argparse
 from configparser import ConfigParser 
 from contextlib import closing
-import warnings
-warnings.simplefilter("error",category=RuntimeWarning)
+# import warnings
+# warnings.simplefilter("error",category=RuntimeWarning)
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -99,7 +99,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         sunpos, juppos = getsunjup(file_start, file_end, ints)
 
         # Get a mask for the parts of the image beyond 60 degrees from the center
-        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad)
+        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=config['Quality Control']['pbpercent'])
         data[:,:,:,invalid[0], invalid[1]] = np.nan
        
 

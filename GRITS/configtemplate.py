@@ -23,6 +23,8 @@ catsep = 5
 statsep = 5
 ; Minimum source width
 minwid = 0
+; Fraction of PB to include
+pbpercent = 0.667
 [Batch Control]
 ; Number of Orville files to process at time. PASI files do this numberX4.
 chunktime = 400
