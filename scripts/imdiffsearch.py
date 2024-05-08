@@ -3,11 +3,14 @@
 import os
 import sys
 import datetime
+start_epoch = datetime.datetime(1858, 11, 17, 00, 00, 00, 00)
 import argparse
+import sys
 from configparser import ConfigParser 
 from contextlib import closing
-# import warnings
-# warnings.simplefilter("error",category=RuntimeWarning)
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore",category=RuntimeWarning)
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -51,6 +54,7 @@ from lsl_toolkits.PasiImage import PasiImageDB
 def main(filename,config,vmax=8000,noplot=False,quiet=False):
     uniquesrcid=0
     srclist = []
+    obslist = []
     if not quiet:
         print("--------",filename,"------")
     # DATA and HEADER
@@ -82,6 +86,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startind=start,stopind=final)
         elif ".pims" in filename:
             ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename,startind=start,stopind=final)
+
+            
+            
         if not quiet:
             print(chunkno,"out of",numchunks,"chunks")
         chunkno+=1
@@ -89,6 +96,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
             imagedata[:,c,0,:,:]/=((XX+YY)/2)
             data[:,c,0,:,:]/=((XX+YY)/2)
+
             
 
         # Get sun and jupiter position for every time in the file. 
@@ -237,6 +245,17 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename))
                         lastlabel = label
                         uniquesrcid += 1
+        for t in range(ints):
+            dtstart = (startepoch + datetime.timedelta(days=file_start)+
+                       datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            dtend = (startepoch + datetime.timedelta(days=file_start)+
+                       datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            sens = rmsdata[i] 
+            ra = hdrlist[i]['center_ra']
+            dec = hdrlist[i]['center_dec']
+            gaps="False"
+            fov=sRad*float(config['Quality Control']['pbpercent'])
+            obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 

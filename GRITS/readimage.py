@@ -9,26 +9,34 @@ def matchfilepairs(station1,station2):
     and pair up"""
     f1times = []
     for f1 in station1:
-        if "oims" in f1:
-            hasoims = True
-            file_start,file_end = readoims(f1,hdronly=True)
-        else:
-            file_start,file_end = readpims(f1,hdronly=True)
-        if file_start != 0.0:
-            f1times.append((f1,file_start, file_end))
-        else:
-            print(f1, "has invalid data")
+        try:
+            if "oims" in f1:
+                hasoims = True
+                file_start,file_end = readoims(f1,hdronly=True)
+            else:
+                file_start,file_end = readpims(f1,hdronly=True)
+            if file_start != 0.0:
+                f1times.append((f1,file_start, file_end))
+            else:
+                print(f1, "has invalid data")
+        except Exception as e:
+            print(e)
+            print("Errors on file read, skip this one")
     f2times = []
     for f2 in station2:
-        if "oims" in f2:
-            hasoims = True
-            file_start,file_end = readoims(f2,hdronly=True)
-        else:
-            file_start,file_end = readpims(f2,hdronly=True)
-        if file_start != 0.0:
-            f2times.append((f2,file_start,file_end))
-        else:
-            print(f2, "has invalid data")
+        try:
+            if "oims" in f2:
+                hasoims = True
+                file_start,file_end = readoims(f2,hdronly=True)
+            else:
+                file_start,file_end = readpims(f2,hdronly=True)
+            if file_start != 0.0:
+                f2times.append((f2,file_start,file_end))
+            else:
+                print(f2, "has invalid data")
+        except Exception as e:
+            print(e)
+            print("Errors on file read, skip this one")
     matchingfilepairs = []
     for f1,f1s,f1e in f1times:
         for f2,f2s,f2e in f2times:
@@ -93,7 +101,6 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
             startind = 0
             stopind = ints - 1
         hdrlist = []
-        print(ints,nchan,ngrid)
         data = np.zeros((ints,nchan,4,ngrid,ngrid))
         if not hdronly:
             for i in range(startind,startind+ints):
