@@ -35,6 +35,9 @@ from bifrost import map as BFMap
 from bifrost.device import set_devices_no_spin_cpu as BFNoSpinZone
 BFNoSpinZone()
 
+from bifrost import telemetry
+telemetry.disable()
+
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.catalogs import cat3c, VLSSr50jy
 from GRITS.configtemplate import configfile
@@ -245,17 +248,17 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename))
                         lastlabel = label
                         uniquesrcid += 1
-        for t in range(ints):
-            dtstart = (startepoch + datetime.timedelta(days=file_start)+
-                       datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            dtend = (startepoch + datetime.timedelta(days=file_start)+
-                       datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            sens = rmsdata[i] 
-            ra = hdrlist[i]['center_ra']
-            dec = hdrlist[i]['center_dec']
-            gaps="False"
-            fov=sRad*float(config['Quality Control']['pbpercent'])
-            obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+       #  for t in range(ints):
+       #      dtstart = (startepoch + datetime.timedelta(days=file_start)+
+       #                 datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+       #      dtend = (startepoch + datetime.timedelta(days=file_start)+
+       #                 datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+       #      sens = rmsdata[i] 
+       #      ra = hdrlist[i]['center_ra']
+       #      dec = hdrlist[i]['center_dec']
+       #      gaps="False"
+       #      fov=sRad*float(config['Quality Control']['pbpercent'])
+       #      obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
