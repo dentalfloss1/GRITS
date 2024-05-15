@@ -10,7 +10,7 @@ from configparser import ConfigParser
 from contextlib import closing
 if not sys.warnoptions:
     import warnings
-    warnings.simplefilter("ignore",category=RuntimeWarning)
+    warnings.simplefilter("error",category=RuntimeWarning)
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -35,8 +35,6 @@ from bifrost import map as BFMap
 from bifrost.device import set_devices_no_spin_cpu as BFNoSpinZone
 BFNoSpinZone()
 
-from bifrost import telemetry
-telemetry.disable()
 
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.catalogs import cat3c, VLSSr50jy
@@ -81,6 +79,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     chunkno = 1
     numchunks = np.ceil(fullsize/chunksize)
     startindex = 0
+    if fullsize==0:
+        raise Exception("file is empty")
+
     while final<(fullsize-1):
         start = max(chunkt - overlaptime,0)
         final = min(fullsize-1,chunkt + chunksize)
@@ -120,7 +121,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         imagedata, data, corrfluxlist, keepchan = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         nchan = data.shape[1]
         if nchan==0:
-            return None,None,None,None,None
+            raise Exception("Could not perform flux calibration")
         
         
 
@@ -248,24 +249,24 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename))
                         lastlabel = label
                         uniquesrcid += 1
-       #  for t in range(ints):
-       #      dtstart = (startepoch + datetime.timedelta(days=file_start)+
-       #                 datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-       #      dtend = (startepoch + datetime.timedelta(days=file_start)+
-       #                 datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-       #      sens = rmsdata[i] 
-       #      ra = hdrlist[i]['center_ra']
-       #      dec = hdrlist[i]['center_dec']
-       #      gaps="False"
-       #      fov=sRad*float(config['Quality Control']['pbpercent'])
-       #      obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+      #   for t in range(ints):
+      #       dtstart = (start_epoch + datetime.timedelta(days=file_start)+
+      #                  datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+      #       dtend = (start_epoch + datetime.timedelta(days=file_start)+
+      #                  datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+      #       sens = rmsdata[i] 
+      #       ra = hdrlist[i]['center_ra']
+      #       dec = hdrlist[i]['center_dec']
+      #       gaps="False"
+      #       fov=sRad*float(config['Quality Control']['pbpercent'])
+      #       obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
-
+   #  print(obslist)
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), imagedata.size, minrms, corrfluxlist, keepchan
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, keepchan, imagedata, data, hdrlist
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -303,13 +304,10 @@ if __name__ == "__main__":
             f.write(configfile)
     else:
         config.read("config.ini")
-        t0 = datetime.datetime.now()
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
-            t1 = datetime.datetime.now()
-            srcarray,nelements,_,_,_ = main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
-            print(srcarray)
-            t2 = datetime.datetime.now()
-            print('{:e}'.format(nelements/(t2-t1).total_seconds()), "nelements per second")
-        t3 = datetime.datetime.now()
-        print(t3-t0,"total")
+            try:
+                main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
+            except Exception as e:
+                print(type(e),e)
+                print("Issue with ",filename,"skipping.")

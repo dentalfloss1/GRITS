@@ -33,7 +33,7 @@ if __name__=="__main__":
     parser.add_argument("--vmax2", type=float, default=8000, help="controls contrast of station 2 plots")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
-    parser.add_argument("--timedelta",default=20,type=float, help="Time in seconds between source appearing in the two source lists")
+    parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
     parser.add_argument("--angdelta",default=5,type=float, help="Maximum angular separation between a source in the two lists in degrees")
     parser.add_argument("--keepcatmatch",action="store_true", help="Keep sources with catalog matches")
     args = parser.parse_args()
@@ -55,10 +55,10 @@ if __name__=="__main__":
     results = []
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,_,minrms1,corrfluxlist1,keepchan1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+            dat1,minrms1,corrfluxlist1,keepchan1,imagedata1,diffdata1,hdrlist1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
             
         if lastfilename2!=filename2:
-            dat2,_,minrms2,corrfluxlist2,keepchan2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+            dat2,minrms2,corrfluxlist2,keepchan2,imagedata2,diffdata2,hdrlist2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
         if (dat1 is None) or (dat2 is None):
             continue
         lastfilename1 = filename1

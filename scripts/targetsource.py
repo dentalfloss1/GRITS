@@ -50,7 +50,7 @@ if __name__=="__main__":
     searchdata = np.loadtxt(args.targets, delimiter=',', dtype=[('date','f8'),('ra','f8'),('dec','f8')])
     for filename in args.files:
         try:
-            dat,_,minrms,corrfluxlist,keepchan = imdiffsearch.main(filename,config,vmax=args.vmax,noplot=True)
+            dat,minrms,corrfluxlist,keepchan,imagedata,diffdata,hdrlist = imdiffsearch.main(filename,config,vmax=args.vmax,noplot=True)
         except Exception as e:
             print(e)
             print("Issues with ",filename,"Skipping")
