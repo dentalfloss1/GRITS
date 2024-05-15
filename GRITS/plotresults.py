@@ -17,7 +17,7 @@ def SetExtent(sRad, data):
     y2 = y - 1 / sRad
     extent = (x2.max(), x2.min(), y.min(), y.max())
     return extent
-def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepchan,vmax=8000):
+def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=8000):
     print(index,filename)
 
     if "oims" in filename:
@@ -27,15 +27,8 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
     else:
         print("Unknown filetype")
         exit()
-    if keepchan:
-        imagedata = imagedata[:,keepchan,:,:,:]
-        data = data[:,keepchan,:,:,:]
     nchan = data.shape[1]
     for c in range(nchan):
-        if keepchan:
-            chan = keepchan[c]
-        else:
-            chan = c 
         corrflux = corrfluxlist[c]
         imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
@@ -65,8 +58,8 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
             currimage += data[t,c,0,:,:]
         currimage/=nchan
         axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
-        axs[1,timenum].axhline(avx,color='black',alpha=0.25)
-        axs[1,timenum].axvline(avy,color='black',alpha=0.25)
+        axs[1,timenum].axvline(avx,color='black',alpha=0.25)
+        axs[1,timenum].axhline(avy,color='black',alpha=0.25)
         circle = plt.Circle((ngrid/2,ngrid/2),2*sRad/3,fill=False)
         axs[1,timenum].add_artist(circle)
     # Series of Stokes V image
@@ -76,8 +69,8 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,keepcha
             currimage += imagedata[t,c,3,:,:]
         currimage/=nchan
         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
-        axs[2,timenum].axhline(avx,color='black',alpha=0.25)
-        axs[2,timenum].axvline(avy,color='black',alpha=0.25)
+        axs[2,timenum].axvline(avx,color='black',alpha=0.25)
+        axs[2,timenum].axhline(avy,color='black',alpha=0.25)
     plt.savefig(plotfile)
     plt.close()
      

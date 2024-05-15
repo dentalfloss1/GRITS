@@ -232,7 +232,7 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             
             ## Write it to disk
             hdulist.append(hdu)
-        hdulist.writeto(outfile, overwrite=True)
+    hdulist.writeto(outfile, overwrite=True)
 
 def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
     hdulist = astrofits.HDUList()
@@ -305,7 +305,7 @@ def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             
             ## Write it to disk
             hdulist.append(hdu)
-        hdulist.writeto(outfile, overwrite=True)
+    hdulist.writeto(outfile, overwrite=True)
 
 
 def exportcrtf(ra,dec,outfile):

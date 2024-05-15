@@ -136,34 +136,26 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                     print("No good channels")
                     exit()
                 removechan.append(c)
-        keepchan = []
         if removechan:
-            for c in range(nchan):
-                if c not in removechan:
-                    keepchan.append(c)
-            nchan = len(keepchan)
-            keepchan = tuple(keepchan)
-            imagedata = imagedata[:,keepchan,:,:,:]
-            data = data[:,keepchan,:,:,:]
+            removechan = tuple(removechan)
+            imagedata[:,removechan,:,:,:]=0
+            data[:,removechan,:,:,:]=0
+        
         if nchan == 0 :
             print("No channels calibrated. Skipping file.")
             return False, False
         #### flux correct, 
         corrfluxlist = []
         for c in range(nchan):
-            if keepchan:
-                chan = keepchan[c]
-            else:
-                chan = c
             try:
-                corrflux = np.nanmean(allcorr['corrfac'][(allcorr['channel']==chan)])
+                corrflux = np.nanmean(allcorr['corrfac'][(allcorr['channel']==c)])
             except RuntimeWarning:
                 print("Invalid corrflux for channel ",c)
                 corrflux = 0
             corrfluxlist.append(corrflux)
             imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
             data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
-        return imagedata, data, corrfluxlist, keepchan
+        return imagedata, data, corrfluxlist 
 
 def getmultistat(sRad, imagedata, ints, nchan, ngrid):
     # Get rms, mean, and std from clibrated data

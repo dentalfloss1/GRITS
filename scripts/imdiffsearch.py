@@ -64,11 +64,15 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         chunksize = int(config['Batch Control']['chunktime'])
         with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
             fullsize = db.nint
+            ngrid = db.header.ngrid
+            nchan = db.header.nchan
         filetype="oims"
     elif ".pims" in filename:
         chunksize = int(config['Batch Control']['chunktime'])*4
         with closing(PasiImageDB(filename, 'r')) as db:
             fullsize = len(db)
+            ngrid = db.header['xSize']
+            nchan = 1 
         filetype="pims"
     else:
         print("unrecognized filename")
@@ -78,6 +82,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     chunkt = 0
     chunkno = 1
     numchunks = np.ceil(fullsize/chunksize)
+    allimagedata = np.zeros((fullsize,nchan,4,ngrid,ngrid))
+    fullhdrlist = []
     startindex = 0
     if fullsize==0:
         raise Exception("file is empty")
@@ -91,7 +97,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         elif ".pims" in filename:
             ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename,startind=start,stopind=final)
 
-            
+        fullhdrlist.extend(hdrlist) 
             
         if not quiet:
             print(chunkno,"out of",numchunks,"chunks")
@@ -118,10 +124,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
 
         # Flux calibrate data and mask off A-Team
-        imagedata, data, corrfluxlist, keepchan = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
-        nchan = data.shape[1]
-        if nchan==0:
-            raise Exception("Could not perform flux calibration")
+        imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         
         
 
@@ -260,13 +263,14 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
       #       gaps="False"
       #       fov=sRad*float(config['Quality Control']['pbpercent'])
       #       obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+        allimagedata[start:final+1] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
    #  print(obslist)
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, keepchan, imagedata, hdrlist, station
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, allimagedata, fullhdrlist, station
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
