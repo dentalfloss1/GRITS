@@ -266,7 +266,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
    #  print(obslist)
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, keepchan, imagedata, data, hdrlist
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, keepchan, imagedata, data, hdrlist, station
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

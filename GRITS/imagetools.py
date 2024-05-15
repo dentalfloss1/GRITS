@@ -14,6 +14,7 @@ from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.time import Time
+from astropy.io import fits as astrofits
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
@@ -154,4 +155,146 @@ def maskislands(data, stdarray, meanarray, ints, nchan, ngrid,nsigma=3):
         axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
     return islanddata
 
-    
+def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
+    hdulist = astrofits.HDUList()
+    minind = max(0,args.index-2)
+    maxind = min(ints-1,args.index+2)
+    numims = maxind - minind + 1
+    imagedata = imagedata[minind:maxind+1]
+    diffdata = diffdata[minind:maxind+1]
+    hdrlist = hdrlist[minind:maxind+1]
+    for myint in range(len(data)):
+        hdr = hdrlist[myint]
+        imdata = imagedata[myint,:,:,:,:]
+        diffdata = diffdata[myint,:,:,:,:]
+        imSize = ngrid    
+        psize = hdr['pixel_size']
+        pScale = psize
+        sRad   = 360.0/pScale/np.pi / 2
+        x = np.arange(data.shape[-2]) - 0.5
+        y = np.arange(data.shape[-1]) - 0.5
+        x,y = np.meshgrid(x,y)
+        mjd = int(hdr['start_time'])
+        mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+        # determine if header is in seconds or days
+        if round(hdr['int_len']) > 0:
+            tInt = hdr['int_len']
+        else:
+            tInt = hdr['int_len']*86400.0
+        dateObs = mjdmpm_to_datetime(mjd, mpm)
+        dateEnd = dateObs + timedelta(seconds=int(tInt), microseconds=int((tInt-int(tInt))*1000000))
+        for curdata in [imdata,diffdata]:
+            ## Create the FITS HDU and fill in the header information
+            hdu = astrofits.ImageHDU(data=curdata)
+            hdu.header['TELESCOP'] = station.decode()
+            hdu.header['EXPTIME'] = tInt
+            ### Coordinates - sky
+            hdu.header['NAXIS'] = 4
+            hdu.header['CTYPE1'] = 'RA---SIN'
+            hdu.header['CRPIX1'] = imSize/2 + 1 + 0.5 * ((imSize+1)%2)
+            hdu.header['CDELT1'] = -360.0/(2*sRad)/np.pi
+            hdu.header['CRVAL1'] = hdr['center_ra']
+            hdu.header['CUNIT1'] = 'deg'
+            hdu.header['CTYPE2'] = 'DEC--SIN'
+            hdu.header['CRPIX2'] = imSize/2 + 1 + 0.5 * ((imSize+1)%2)
+            hdu.header['CDELT2'] = 360.0/(2*sRad)/np.pi
+            hdu.header['CRVAL2'] = hdr['center_dec']
+            hdu.header['CUNIT2'] = 'deg'
+            ### Coordinates - Stokes parameters
+            hdu.header['CTYPE3'] = 'STOKES'
+            hdu.header['CRPIX3'] = 1
+            hdu.header['CDELT3'] = 1
+            hdu.header['CRVAL3'] = 1
+            hdu.header['CTYPE4'] = 'FREQ'
+            hdu.header['CRPIX4'] = 1
+            hdu.header['CDELT4'] = hdr['bandwidth']
+            hdu.header['CRVAL4'] = hdr['start_freq']
+            hdu.header['LONPOLE'] = 180.0
+            hdu.header['LATPOLE'] = 90.0
+            hdu.header['DATE-OBS'] = dateObs.strftime("%Y-%m-%dT%H:%M:%S")
+            hdu.header['END_UTC'] = dateEnd.strftime("%Y-%m-%dT%H:%M:%S")
+            hdu.header['EXPTIME'] = tInt
+            ### LWA1 approximate beam size
+            midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
+            beamSize = 2.2*74e6/midfreq
+            hdu.header['BMAJ'] = beamSize/psize
+            hdu.header['BMIN'] = beamSize/psize
+            hdu.header['BPA'] = 0.0
+            ### Frequency
+            hdu.header['RESTFREQ'] = midfreq
+            hdu.header['RESTFRQ'] = midfreq
+            hdu.header['RESTBW'] = hdr['bandwidth']
+            
+            ## Write it to disk
+            hdulist.append(hdu)
+        hdulist.writeto(outfile, overwrite=True)
+
+def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
+    hdulist = astrofits.HDUList()
+    minind = max(0,args.index-2)
+    maxind = min(ints-1,args.index+2)
+    numims = maxind - minind + 1
+    imagedata = imagedata[minind:maxind+1]
+    diffdata = diffdata[minind:maxind+1]
+    hdrlist = hdrlist[minind:maxind+1]
+    for myint in range(len(data)):
+        hdr = hdrlist[myint]
+        imdata = imagedata[myint,:,:,:,:]
+        diffdata = diffdata[myint,:,:,:,:]
+        imSize = ngrid    
+        psize = hdr['xpixelSize']
+        pScale = psize
+        sRad   = 360.0/pScale/np.pi / 2
+        x = np.arange(data.shape[-2]) - 0.5
+        y = np.arange(data.shape[-1]) - 0.5
+        x,y = np.meshgrid(x,y)
+        mjd = int(hdr['startTime'])
+        mpm = int((hdr['startTime'] - mjd)*86400.0*1000.0)
+        # determine if header is in seconds or days
+        if round(hdr['int_len']) > 0:
+            tInt = hdr['intLen']
+        else:
+            tInt = hdr['intLen']*86400.0
+        dateObs = mjdmpm_to_datetime(mjd, mpm)
+        dateEnd = dateObs + timedelta(seconds=int(tInt), microseconds=int((tInt-int(tInt))*1000000))
+        for curdata in [imdata,diffdata]:
+            ## Create the FITS HDU and fill in the header information
+            hdu = astrofits.ImageHDU(data=curdata)
+            hdu.header['TELESCOP'] = station.decode()
+            hdu.header['EXPTIME'] = tInt
+            ### Coordinates - sky
+            hdu.header['NAXIS'] = 3
+            hdu.header['CTYPE1'] = 'RA---SIN'
+            hdu.header['CRPIX1'] = imSize/2 + 1 + 0.5 * ((imSize+1)%2)
+            hdu.header['CDELT1'] = -360.0/(2*sRad)/np.pi
+            hdu.header['CRVAL1'] = hdr['zenithRA']
+            hdu.header['CUNIT1'] = 'deg'
+            hdu.header['CTYPE2'] = 'DEC--SIN'
+            hdu.header['CRPIX2'] = imSize/2 + 1 + 0.5 * ((imSize+1)%2)
+            hdu.header['CDELT2'] = 360.0/(2*sRad)/np.pi
+            hdu.header['CRVAL2'] = hdr['zenithDec']
+            hdu.header['CUNIT2'] = 'deg'
+            ### Coordinates - Stokes parameters
+            hdu.header['CTYPE3'] = 'STOKES'
+            hdu.header['CRPIX3'] = 1
+            hdu.header['CDELT3'] = 1
+            hdu.header['CRVAL3'] = 1
+            hdu.header['LONPOLE'] = 180.0
+            hdu.header['LATPOLE'] = 90.0
+            hdu.header['DATE-OBS'] = dateObs.strftime("%Y-%m-%dT%H:%M:%S")
+            hdu.header['END_UTC'] = dateEnd.strftime("%Y-%m-%dT%H:%M:%S")
+            hdu.header['EXPTIME'] = tInt
+            ### LWA1 approximate beam size
+            midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
+            beamSize = 2.2*74e6/midfreq
+            hdu.header['BMAJ'] = beamSize/psize
+            hdu.header['BMIN'] = beamSize/psize
+            hdu.header['BPA'] = 0.0
+            ### Frequency
+            hdu.header['RESTFREQ'] = hdr['freq']
+            hdu.header['RESTFRQ'] = hdr['freq']
+            hdu.header['RESTBW'] = hdr['bandwidth']
+            
+            ## Write it to disk
+            hdulist.append(hdu)
+        hdulist.writeto(outfile, overwrite=True)
