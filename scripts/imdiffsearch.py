@@ -213,7 +213,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
         islandfloat[:,:,:,circle[0],circle[1]] = np.nan
-        imagedata[:,:,:,circle[0],circle[1]] = np.nan
+       #  imagedata[:,:,:,circle[0],circle[1]] = np.nan
         for i in np.unique(whereislands):
             hdr = hdrlist[i]
             if not noplot:
@@ -266,7 +266,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
    #  print(obslist)
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, keepchan, imagedata, data, hdrlist, station
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, keepchan, imagedata, hdrlist, station
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

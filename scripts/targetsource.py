@@ -47,10 +47,13 @@ if __name__=="__main__":
 
     # run main execution loop
     results = []
+    uniqueid=0
     searchdata = np.loadtxt(args.targets, delimiter=',', dtype=[('date','f8'),('ra','f8'),('dec','f8')])
     for filename in args.files:
         try:
-            dat,minrms,corrfluxlist,keepchan,imagedata,diffdata,hdrlist,station = imdiffsearch.main(filename,config,vmax=args.vmax,noplot=True)
+            dat,minrms,corrfluxlist,keepchan,imagedata,hdrlist,station = imdiffsearch.main(filename,config,vmax=args.vmax,noplot=True)
+            diffdata = np.copy(imagedata)
+            diffdata[:-1] = diffdata[1:] - diffdata[:-1]
         except Exception as e:
             print(e)
             print("Issues with ",filename,"Skipping")
@@ -68,27 +71,24 @@ if __name__=="__main__":
             if (seps & simul).any(): 
                 matching = searchdata[(seps & simul)]
                 for m in matching:
+                    uniqueid+=1
                     print(s)
-                    results.append((np.copy(s),minrms,corrfluxlist,keepchan,m['date']))
+                    index = s['index']
+                    filename = str(s['filename'])
+                    ra = s['ra']
+                    dec = s['dec']
+                    plotfile = f"src{uniqueid}-"+filename.replace(".oims",f"-{index}.png").replace(".pims",f"-{index}.png").replace(':','-').split('/')[-1]
+                    try:
+                        plotsource(index,plotfile,filename,ra,dec,minrms,corrfluxlist,keepchan,vmax=args.vmax)
+                    except Exception as e:
+                        print(e)
+                        print("could not plot",plotfile)
+                    if "pims" in filename:
+                        pimsfitsout(imagedata, diffdata, index, hdrlist, station, plotfile.replace(".png",".fits"))
+                    if "oims" in filename:
+                        oimsfitsout(imagedata, diffdata, index, hdrlist, station, plotfile.replace(".png",".fits"))
+                    exportcrtf(ra,dec,f"src{uniqueid}-region.crtf")
     t2 = datetime.datetime.now()
     print(t2-t1, "elapsed")
-    print("--------results-------")
-    for uniqueid,r in enumerate(results):
-        (s,minrms,corrfluxlist,keepchan,tdate) = r
-        index = s['index']
-        filename = str(s['filename'])
-        ra = s['ra']
-        dec = s['dec']
-        plotfile = f"src{uniqueid}-"+filename.replace(".oims",f"-{index}.png").replace(".pims",f"-{index}.png").replace(':','-').split('/')[-1]
-        try:
-            plotsource(index,plotfile,filename,ra,dec,minrms,corrfluxlist,keepchan,vmax=args.vmax)
-        except Exception as e:
-            print(e)
-            print("could not plot",plotfile)
-        print(r)
-        print((s['mjd'] - tdate)*24)
-
-        
-                
 
 

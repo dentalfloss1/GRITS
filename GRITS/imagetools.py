@@ -1,6 +1,7 @@
 import os 
 
 import numpy as np 
+from datetime import timedelta 
 
 from lsl.common.paths import DATA as dataPath
 from lsl.common.mcs import mjdmpm_to_datetime
@@ -157,22 +158,24 @@ def maskislands(data, stdarray, meanarray, ints, nchan, ngrid,nsigma=3):
 
 def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
     hdulist = astrofits.HDUList()
-    minind = max(0,args.index-2)
-    maxind = min(ints-1,args.index+2)
+    ints = len(imagedata)
+    ngrid = imagedata.shape[-1]
+    minind = max(0,index-2)
+    maxind = min(ints-1,index+2)
     numims = maxind - minind + 1
     imagedata = imagedata[minind:maxind+1]
     diffdata = diffdata[minind:maxind+1]
     hdrlist = hdrlist[minind:maxind+1]
-    for myint in range(len(data)):
+    for myint in range(len(imagedata)):
         hdr = hdrlist[myint]
         imdata = imagedata[myint,:,:,:,:]
-        diffdata = diffdata[myint,:,:,:,:]
+        ddata = diffdata[myint,:,:,:,:]
         imSize = ngrid    
         psize = hdr['pixel_size']
         pScale = psize
         sRad   = 360.0/pScale/np.pi / 2
-        x = np.arange(data.shape[-2]) - 0.5
-        y = np.arange(data.shape[-1]) - 0.5
+        x = np.arange(imagedata.shape[-2]) - 0.5
+        y = np.arange(imagedata.shape[-1]) - 0.5
         x,y = np.meshgrid(x,y)
         mjd = int(hdr['start_time'])
         mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
@@ -183,7 +186,8 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             tInt = hdr['int_len']*86400.0
         dateObs = mjdmpm_to_datetime(mjd, mpm)
         dateEnd = dateObs + timedelta(seconds=int(tInt), microseconds=int((tInt-int(tInt))*1000000))
-        for curdata in [imdata,diffdata]:
+        chan=0
+        for curdata in [imdata,ddata]:
             ## Create the FITS HDU and fill in the header information
             hdu = astrofits.ImageHDU(data=curdata)
             hdu.header['TELESCOP'] = station.decode()
@@ -217,9 +221,10 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             ### LWA1 approximate beam size
             midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
             beamSize = 2.2*74e6/midfreq
-            hdu.header['BMAJ'] = beamSize/psize
-            hdu.header['BMIN'] = beamSize/psize
-            hdu.header['BPA'] = 0.0
+        #     hdu.header['BMAJ'] = beamSize/psize
+        #     hdu.header['BMIN'] = beamSize/psize
+        #     hdu.header['BPA'] = 0.0
+            hdu.header['COMMENT'] = "beamsize = 2.2*74e6/freq"
             ### Frequency
             hdu.header['RESTFREQ'] = midfreq
             hdu.header['RESTFRQ'] = midfreq
@@ -231,22 +236,24 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
 
 def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
     hdulist = astrofits.HDUList()
-    minind = max(0,args.index-2)
-    maxind = min(ints-1,args.index+2)
+    ints = len(imagedata)
+    ngrid = imagedata.shape[-1]
+    minind = max(0,index-2)
+    maxind = min(ints-1,index+2)
     numims = maxind - minind + 1
     imagedata = imagedata[minind:maxind+1]
     diffdata = diffdata[minind:maxind+1]
     hdrlist = hdrlist[minind:maxind+1]
-    for myint in range(len(data)):
+    for myint in range(len(imagedata)):
         hdr = hdrlist[myint]
         imdata = imagedata[myint,:,:,:,:]
-        diffdata = diffdata[myint,:,:,:,:]
+        ddata = diffdata[myint,:,:,:,:]
         imSize = ngrid    
-        psize = hdr['xpixelSize']
+        psize = hdr['xPixelSize']
         pScale = psize
         sRad   = 360.0/pScale/np.pi / 2
-        x = np.arange(data.shape[-2]) - 0.5
-        y = np.arange(data.shape[-1]) - 0.5
+        x = np.arange(imagedata.shape[-2]) - 0.5
+        y = np.arange(imagedata.shape[-1]) - 0.5
         x,y = np.meshgrid(x,y)
         mjd = int(hdr['startTime'])
         mpm = int((hdr['startTime'] - mjd)*86400.0*1000.0)
@@ -257,7 +264,8 @@ def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             tInt = hdr['intLen']*86400.0
         dateObs = mjdmpm_to_datetime(mjd, mpm)
         dateEnd = dateObs + timedelta(seconds=int(tInt), microseconds=int((tInt-int(tInt))*1000000))
-        for curdata in [imdata,diffdata]:
+        chan=0
+        for curdata in [imdata,ddata]:
             ## Create the FITS HDU and fill in the header information
             hdu = astrofits.ImageHDU(data=curdata)
             hdu.header['TELESCOP'] = station.decode()
@@ -298,3 +306,10 @@ def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             ## Write it to disk
             hdulist.append(hdu)
         hdulist.writeto(outfile, overwrite=True)
+
+
+def exportcrtf(ra,dec,outfile):
+    contents=f"""#CRTFv0 CASA Region Text Format version 0
+circle [[{ra}deg, {dec}deg], 15775.2806arcsec] coord=ICRS, corr=[I, Q, U, V], linewidth=2, linestyle=-, symsize=1, symthick=1, color=2ee6d6, font=Helvetica, fontsize=10, fontstyle=bold, usetex=false"""
+    with open(outfile,'w') as f:
+        f.write(contents)

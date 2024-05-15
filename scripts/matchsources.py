@@ -9,6 +9,7 @@ import imdiffsearch
 from GRITS.configtemplate import configfile
 from GRITS.plotresults import plotsource
 from GRITS.readimage import matchfilepairs
+from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
@@ -53,11 +54,16 @@ if __name__=="__main__":
     lastfilename1 = ""
     lastfilename2 = ""
     results = []
+    uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,minrms1,corrfluxlist1,keepchan1,imagedata1,diffdata1,hdrlist1,station1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+            dat1,minrms1,corrfluxlist1,keepchan1,imagedata1,hdrlist1,station1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+            diffdata1 = np.copy(imagedata1)
+            diffdata1[:-1]  = diffdata1[1:] - diffdata1[:-1]
         if lastfilename2!=filename2:
-            dat2,minrms2,corrfluxlist2,keepchan2,imagedata2,diffdata2,hdrlist2,station2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+            dat2,minrms2,corrfluxlist2,keepchan2,imagedata2,hdrlist2,station2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+            diffdata2 = np.copy(imagedata2)
+            diffdata2[:-1]  = diffdata2[1:] - diffdata2[:-1]
         if (dat1 is None) or (dat2 is None):
             continue
         lastfilename1 = filename1
@@ -93,8 +99,12 @@ if __name__=="__main__":
                         pimsfitsout(imagedata2, diffdata2, index2, hdrlist2, station2, plotfile2.replace(".png",".fits"))
                     if "oims" in filename1:
                         oimsfitsout(imagedata1, diffdata1, index1, hdrlist1, station1, plotfile1.replace(".png",".fits"))
-                    if "pims" in filename2:
+                    if "oims" in filename2:
                         oimsfitsout(imagedata2, diffdata2, index2, hdrlist2, station2, plotfile2.replace(".png",".fits"))
+                    exportcrtf(ra1,dec1,f"src{uniqueid}-region-station1.crtf")
+                    exportcrtf(ra2,dec2,f"src{uniqueid}-region-station2.crtf")
+                    uniqueid+=1
+
                         
 
 
