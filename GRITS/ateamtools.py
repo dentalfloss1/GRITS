@@ -23,7 +23,7 @@ def getsunjup(file_start, file_end, ints):
     return sunpos, juppos
 
 
-
+# ALL frequencies in MHz
 def getcasa(freq):
  # from Baars et al 1977
     a = 5.625 #+/-0.021

@@ -1,4 +1,9 @@
+#!/usr/bin/env python
+ 
 from GRITS.OrvilleImageDB import OrvilleImageDB
+from GRITS.constants import CYG_A, CAS_A, TAU_A, VIRGO_A
+from GRITS.ateamtools import getcyga, getcasa, getcrab, getvira
+from GRITS.imagetools import hdrtopixmask
 from contextlib import closing
 import ephem
 from collections import deque
@@ -8,7 +13,7 @@ from lsl.common.stations import lwasv
 from lsl.astro import MJD_OFFSET, DJD_OFFSET
 
 rng = np.random.default_rng()
-freq = [40350000., 43650000., 46950000., 50250000., 53550000., 56850000.]
+freq = [38700000., 42000000., 45300000., 48600000., 51900000., 55200000.]
 ASP_CONFIG = deque([{'asp_filter': -1,
                      'asp_atten_1': -1,
                      'asp_atten_2': -1,
@@ -28,6 +33,25 @@ pca = np.arccos(pca)
 
 phase_center_az = pca
 phase_center_alt = pce
+
+def makeGaussian(size, fwhm = 3, center=None):
+    """ Make a square gaussian kernel.
+
+    size is the length of a side of the square
+    fwhm is full-width-half-maximum, which
+    can be thought of as an effective radius.
+    """
+
+    x = np.arange(0, size, 1, float)
+    y = x[:,np.newaxis]
+
+    if center is None:
+        x0 = y0 = size // 2
+    else:
+        x0 = center[0]
+        y0 = center[1]
+
+    return np.exp(-4*np.log(2) * ((x-x0)**2 + (y-y0)**2) / fwhm**2)
 
 def setinfo(offset=0):
     lwasv.date = mjd + (MJD_OFFSET - DJD_OFFSET) + (offset*5/60.0/60.0/24.0)
@@ -50,11 +74,23 @@ def setinfo(offset=0):
     return info
 
 filename = "Simsource.oims"
+
 with closing(OrvilleImageDB(filename, mode='a', station=lwasv.name)) as db:
     for off in range(0,6*5,5):
+        info = setinfo(offset=off)
         data = np.zeros((4,6,144,144))
         data[0] =  rng.normal(loc=200,scale=10,size=(6,144,144))
         for s in range(1,4):
             data[s] = rng.normal(loc=0,scale=100,size=(6,144,144))
         data = data.transpose(1,0,2,3)
-        db.add_image(setinfo(offset=off), data)
+        gausscube = np.zeros((144,144))
+        for src,name,getflux in zip([CYG_A, CAS_A, TAU_A, VIRGO_A],["cyg a","cas a","tau a","virgo a"],[getcyga, getcasa, getcrab, getvira]):
+            coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1])[0]
+            if not np.isnan(coords).any():
+                for c,f in enumerate(freq):
+                    fwhm = 2.2*74e6/(f+3300000.0/2)/info['pixel_size']
+                    thisgauss = makeGaussian(data.shape[-1],fwhm=fwhm, center=(coords[0],coords[1]))*getflux(f/1e6)
+                    gausscube += thisgauss
+        for c in range(len(freq)):
+            data[c,0,:,:] = np.where(gausscube > 100, gausscube, data[c,0,:,:])
+        db.add_image(info, data)
