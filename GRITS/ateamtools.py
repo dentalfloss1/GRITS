@@ -23,7 +23,6 @@ def getsunjup(file_start, file_end, ints):
     return sunpos, juppos
 
 
-
 def getcyga(freq):
  # from Baars et al 1977
     a = 4.695 #+/-0.018
