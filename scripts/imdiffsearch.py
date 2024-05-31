@@ -119,19 +119,43 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # Get a mask for the parts of the image beyond 60 degrees from the center
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=float(config['Quality Control']['pbpercent']))
         data[:,:,:,invalid[0], invalid[1]] = np.nan
-       
-
-        minrms = getminrms(sRad, imagedata, ints, nchan, ngrid)
+        minrms = []
+        prerms = []
+        for c in range(data.shape[1]):
+            subdata = imagedata[:,c,0][imagedata[:,c,0] < 3*np.median(imagedata[:,c,0])]
+            prerms.append(np.sqrt(np.mean(subdata**2)))
+            minrms.append(0)
 
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         
-        
+        print(prerms)
+        print(corrfluxlist)
 
         # Get S/N and RMS from calibrated data
-        sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
+        rmsdata = [] 
+        sndata = []
+        for i in range(data.shape[0]):
+            subdata = imagedata[i,:,0][imagedata[i,:,0] <  5*np.median(imagedata[i,:,0])]
+            rmsval = np.sqrt(np.nanmean(subdata**2))
+            rmsdata.append(rmsval)
+            sndata.append(np.nanmax(imagedata[i,:,0])/rmsval)
 
-        meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid) 
+        stdarray = np.zeros((data.shape[0],data.shape[1],data.shape[2]))
+        meanarray = np.zeros((data.shape[0],data.shape[1],data.shape[2]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                subdata = imagedata[i,j,0][imagedata[i,j,0] <  5*np.median(imagedata[i,j,0])]
+                stdarray[i,j,:] = np.nanstd(subdata)
+                meanarray[i,j,:] = np.nanmean(subdata)
+        print(rmsdata) 
+       # meanarray = imagedata[imagedata<0.5*np.median(imagedata)].mean()
+        meanofdiff = []
+        stdofdiff = []
+        for i in range(data.shape[0]):
+            subdata = data[i,:,0]
+            meanofdiff.append(np.nanmean(subdata))
+            stdofdiff.append(np.nanstd(subdata))
         islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
         stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])
@@ -197,8 +221,11 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         
         # impose restrictions on conditions 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
+        print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
+        print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
         drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
+        print(np.sum(drcondition),"Images with correct dynamic range")
         whereislands = np.where( numsrccond & islandcondition.any(axis=(1,2,3,4))  &  drcondition)
 
         angvelcond = restrictangvel(whereislands, islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
@@ -207,11 +234,12 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         rmsdataarray = np.array(rmsdata)
         for i in np.unique(islandloc[0]):
             islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
-            brightpix = np.amax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
+            brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
         if not quiet:
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
-            print(ints - np.sum(nsigmacondition), "passed nsigma condition")
+            print(np.sum(nsigmacondition), "passed nsigma condition")
+        print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))),np.sum(drcondition))
         whereislands = list(np.where(nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  drcondition )[0])
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata

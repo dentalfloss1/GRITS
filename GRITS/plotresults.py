@@ -111,7 +111,7 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
                 srclocs = np.argwhere(islands[i,c,s,:,:]==label)
                 if srclocs.size==0:
                     continue
-                avx, avy = np.average(srclocs+0.5,axis=0)
+                avy, avx = np.average(srclocs+0.5,axis=0)
                 if label==lastlabel:
                     continue
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy)

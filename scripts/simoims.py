@@ -3,12 +3,11 @@
 from GRITS.OrvilleImageDB import OrvilleImageDB
 from GRITS.constants import CYG_A, CAS_A, TAU_A, VIRGO_A
 from GRITS.ateamtools import getcyga, getcasa, getcrab, getvira
-from GRITS.imagetools import hdrtopixmask
+from GRITS.imagetools import hdrtopixmask,pbcorr,hdrtoworld
 from contextlib import closing
 import ephem
 from collections import deque
 import numpy as np
-
 from lsl.common.stations import lwasv 
 from lsl.astro import MJD_OFFSET, DJD_OFFSET
 
@@ -72,25 +71,60 @@ def setinfo(offset=0):
                     'stokes_params': ('I,Q,U,V')}
     info.update(ASP_CONFIG[0])
     return info
+if __name__=="__main__":
+    filename = "stablesky.oims"
+    gaussiannoise =  rng.normal(loc=200,scale=10,size=(6,6,144,144))
+    symgaussiannoise =  rng.normal(loc=0,scale=10,size=(6,6,144,144))
+    with closing(OrvilleImageDB(filename, mode='w', station=lwasv.name)) as sdb:
+        for ind,off in enumerate(range(0,6*5,5)):
+            info = setinfo(offset=off)
+            data = np.zeros((4,6,144,144))
+            data[0] =  gaussiannoise[ind]
+            for s in range(1,4):
+                data[s] =  symgaussiannoise[ind]
+            data = data.transpose(1,0,2,3)
+            gausscube = np.zeros((6,144,144))
+            for src,name,getflux in zip([CYG_A, CAS_A, TAU_A, VIRGO_A],["cyg a","cas a","tau a","virgo a"],[getcyga, getcasa, getcrab, getvira]):
+                coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1])[0]
+                if not np.isnan(coords).any():
+                    for c,f in enumerate(freq):
+                        fwhm = 2.2*74e6/(f+3300000.0/2)/info['pixel_size']
+                        thisgauss = makeGaussian(data.shape[-1],fwhm=fwhm, center=(coords[0],coords[1]))*getflux(f/1e6)
+                        gausscube[c] += thisgauss
+            for c in range(len(freq)):
+                data[c,0,:,:] = np.where(gausscube[c] > 100, gausscube[c], data[c,0,:,:])
+                XX, YY = pbcorr(info,data.shape[-1],c,info['pixel_size'],b'LWASV')
+                data[c,0,:,:]*=(XX+YY)/2
 
-filename = "Simsource.oims"
-
-with closing(OrvilleImageDB(filename, mode='a', station=lwasv.name)) as db:
-    for off in range(0,6*5,5):
-        info = setinfo(offset=off)
-        data = np.zeros((4,6,144,144))
-        data[0] =  rng.normal(loc=200,scale=10,size=(6,144,144))
-        for s in range(1,4):
-            data[s] = rng.normal(loc=0,scale=100,size=(6,144,144))
-        data = data.transpose(1,0,2,3)
-        gausscube = np.zeros((144,144))
-        for src,name,getflux in zip([CYG_A, CAS_A, TAU_A, VIRGO_A],["cyg a","cas a","tau a","virgo a"],[getcyga, getcasa, getcrab, getvira]):
-            coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1])[0]
-            if not np.isnan(coords).any():
+            sdb.add_image(info, data*1e-3)
+            
+    filename = "oneofftransient.oims"
+    with closing(OrvilleImageDB(filename, mode='w', station=lwasv.name)) as tdb:
+        for ind,off in enumerate(range(0,6*5,5)):
+            info = setinfo(offset=off)
+            data = np.zeros((4,6,144,144))
+            data[0] =  gaussiannoise[ind]
+            for s in range(1,4):
+                data[s] =  symgaussiannoise[ind]
+            data = data.transpose(1,0,2,3)
+            gausscube = np.zeros((6,144,144))
+            for src,name,getflux in zip([CYG_A, CAS_A, TAU_A, VIRGO_A],["cyg a","cas a","tau a","virgo a"],[getcyga, getcasa, getcrab, getvira]):
+                coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1])[0]
+                if not np.isnan(coords).any():
+                    for c,f in enumerate(freq):
+                        fwhm = 2.2*74e6/(f+3300000.0/2)/info['pixel_size']
+                        thisgauss = makeGaussian(data.shape[-1],fwhm=fwhm, center=(coords[0],coords[1]))*getflux(f/1e6)
+                        gausscube[c] += thisgauss
+            if ind==3:
                 for c,f in enumerate(freq):
                     fwhm = 2.2*74e6/(f+3300000.0/2)/info['pixel_size']
-                    thisgauss = makeGaussian(data.shape[-1],fwhm=fwhm, center=(coords[0],coords[1]))*getflux(f/1e6)
-                    gausscube += thisgauss
-        for c in range(len(freq)):
-            data[c,0,:,:] = np.where(gausscube > 100, gausscube, data[c,0,:,:])
-        db.add_image(info, data)
+                    thisgauss = makeGaussian(data.shape[-1],fwhm=fwhm, center=(75,65))*2000
+                    gausscube[c] += thisgauss
+            for c in range(len(freq)):
+                data[c,0,:,:] = np.where(gausscube[c] > 100, gausscube[c], data[c,0,:,:])
+            for c in range(len(freq)):
+                XX, YY = pbcorr(info,data.shape[-1],c,info['pixel_size'],b'LWASV')
+                data[c,0,:,:]= data[c,0,:,:]*(XX+YY)/2
+            tdb.add_image(info, data*1e-3)
+        
+            
