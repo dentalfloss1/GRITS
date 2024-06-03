@@ -119,7 +119,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         # Get a mask for the parts of the image beyond 60 degrees from the center
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=float(config['Quality Control']['pbpercent']))
-        # data[:,:,:,invalid[0], invalid[1]] = np.nan
+        data[:,:,:,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
         print(minrms)
@@ -127,11 +127,21 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         print(corrfluxlist)
+        removechan = []
+        rmsdata =[]
+        for i,c in enumerate(corrfluxlist):
+            if c==0:
+                removechan.append(c)
+            else:
+                rmsdata.append(minrms[i]*c)
+        allchannels = np.arange(data.shape[1])
+        data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
+        imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
+        nchan = imagedata.shape[1]
         
 
         # Get S/N and RMS from calibrated data
         sndata, _, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
-        rmsdata = [r*s for r,s in zip(minrms,corrfluxlist)]
         print(rmsdata)
         
         print(imagedata[0,0,0,:,:].max())
@@ -228,7 +238,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         for i in np.unique(whereislands):
             hdr = hdrlist[i]
             if not noplot:
-                plotresults(i,filename,meanofdiff[i],stdofdiff[i],rmsdata[i],sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
+                plotresults(i,filename,meanofdiff[i],stdofdiff[i],maxrms,sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
             lastlabel=-1
             for label in range(1,np.amax(islanddata[i,:,:,:,:])+1):
                 for c in range(nchan):
@@ -271,7 +281,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
       #       gaps="False"
       #       fov=sRad*float(config['Quality Control']['pbpercent'])
       #       obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
-        allimagedata[start:final+1] = imagedata
+        allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
