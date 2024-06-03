@@ -3,6 +3,7 @@
 import os
 import sys
 import datetime
+import traceback
 start_epoch = datetime.datetime(1858, 11, 17, 00, 00, 00, 00)
 import argparse
 import sys
@@ -118,21 +119,27 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         # Get a mask for the parts of the image beyond 60 degrees from the center
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=float(config['Quality Control']['pbpercent']))
-        data[:,:,:,invalid[0], invalid[1]] = np.nan
+        # data[:,:,:,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
-
+        print(minrms)
+        print(imagedata[0,0,0,:,:].max())
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
+        print(corrfluxlist)
         
 
         # Get S/N and RMS from calibrated data
-        sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
+        sndata, _, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
+        rmsdata = [r*s for r,s in zip(minrms,corrfluxlist)]
+        print(rmsdata)
+        
+        print(imagedata[0,0,0,:,:].max())
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
-        islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
+        islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
         stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])
-        rmscond  = np.array(rmsdata) > float(config['Quality Control']['maxrms'])
+        rmscond  = np.amax(rmsdata) > float(config['Quality Control']['maxrms'])
         absmeancond = np.abs(np.array(meanofdiff)) > float(config['Quality Control']['maxabsmean'])
         pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
         islanddata = islanddata.copy("system")
@@ -204,10 +211,10 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         angvelcond = restrictangvel(whereislands, islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         nsigmacondition = np.zeros(ints,dtype=bool)
         islandloc = np.where(islandcondition) 
-        rmsdataarray = np.array(rmsdata)
+        maxrms = np.amax(rmsdata)
         for i in np.unique(islandloc[0]):
             islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
-            brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/rmsdataarray[i]
+            brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/maxrms
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
         if not quiet:
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
@@ -314,5 +321,5 @@ if __name__ == "__main__":
             try:
                 main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
             except Exception as e:
-                print(type(e),e)
+                print(traceback.format_exc())
                 print("Issue with ",filename,"skipping.")
