@@ -27,12 +27,16 @@ def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     return 180*sep/np.pi
 
 def maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.667):
+        
     # return a mask for the part of the image beyond 60 degrees from the center
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
     gtboundary = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((pbpercent*sRad)**2) )
     cboundary =  np.where( np.isclose(((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) , ((pbpercent*sRad)**2),rtol=0.01 ))
+    if hdrlist[0]['start_freq'] < 20e6:
+        print("nomask")
+        gtboundary = np.where(x!=x)
     return gtboundary, cboundary
 def calcbeamprops(az,alt,header,freq):
 
@@ -145,7 +149,9 @@ def maskislands(data, stdarray, meanarray, ints, nchan, ngrid,nsigma=3):
     for i in range(ints):
         for j in range(nchan):
             for k in [0,3]:
-                islandcond = np.nan_to_num(np.abs(data[i,j,k])) < (meanarray[i,j,0] + stdarray[i,j,0]*nsigma)
+                islandcond = (np.abs(data[i,j,k])) < (meanarray[i,j,0] + stdarray[i,j,0]*nsigma)
+                if (islandcond==0).all():
+                    islandcond = True
                 islandmasks[i,j,k] = islandmasks[i,j,k] | ~islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')

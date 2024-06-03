@@ -119,43 +119,16 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # Get a mask for the parts of the image beyond 60 degrees from the center
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=float(config['Quality Control']['pbpercent']))
         data[:,:,:,invalid[0], invalid[1]] = np.nan
-        minrms = []
-        prerms = []
-        for c in range(data.shape[1]):
-            subdata = imagedata[:,c,0][imagedata[:,c,0] < 3*np.median(imagedata[:,c,0])]
-            prerms.append(np.sqrt(np.mean(subdata**2)))
-            minrms.append(0)
+        
+        minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
 
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         
-        print(prerms)
-        print(corrfluxlist)
 
         # Get S/N and RMS from calibrated data
-        rmsdata = [] 
-        sndata = []
-        for i in range(data.shape[0]):
-            subdata = imagedata[i,:,0][imagedata[i,:,0] <  5*np.median(imagedata[i,:,0])]
-            rmsval = np.sqrt(np.nanmean(subdata**2))
-            rmsdata.append(rmsval)
-            sndata.append(np.nanmax(imagedata[i,:,0])/rmsval)
-
-        stdarray = np.zeros((data.shape[0],data.shape[1],data.shape[2]))
-        meanarray = np.zeros((data.shape[0],data.shape[1],data.shape[2]))
-        for i in range(data.shape[0]):
-            for j in range(data.shape[1]):
-                subdata = imagedata[i,j,0][imagedata[i,j,0] <  5*np.median(imagedata[i,j,0])]
-                stdarray[i,j,:] = np.nanstd(subdata)
-                meanarray[i,j,:] = np.nanmean(subdata)
-        print(rmsdata) 
-       # meanarray = imagedata[imagedata<0.5*np.median(imagedata)].mean()
-        meanofdiff = []
-        stdofdiff = []
-        for i in range(data.shape[0]):
-            subdata = data[i,:,0]
-            meanofdiff.append(np.nanmean(subdata))
-            stdofdiff.append(np.nanstd(subdata))
+        sndata, rmsdata, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
+        meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, stdarray, meanarray, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
         stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])

@@ -118,7 +118,6 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
                 axs[1,4].text(0,ytextloc,f"{c},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
                 for anum in [0,2]:
                     for imind in range(5):
-                    
                         axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
                         circle = plt.Circle((avx,avy),5,fill=False)
                         axs[anum,imind].add_artist(circle)
