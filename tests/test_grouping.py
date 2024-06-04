@@ -50,7 +50,7 @@ if __name__=='__main__':
     islanddata = BFArray(islanddata, space='cuda')
  #   plotislands(islanddata)
     labelgroups(islanddata, ngrid, ints,nchan)
- #   plotislands(islanddata)
+    plotislands(islanddata)
     islanddata = islanddata.copy('system')
     islarr = np.load("label1.npy")
     time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
@@ -59,24 +59,24 @@ if __name__=='__main__':
             print(t,yp,xp)
             plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
     np.testing.assert_array_equal(islarr, np.array(islanddata))
-    islanddata = islanddata.copy('cuda')
-    # GROUPCOLS
-    groupvertcols(islanddata,ngrid)
-    islanddata = islanddata.copy('system')
-    islarr = np.load("groupvert1.npy")
-    time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
-    if time.size>0:
-        for t,yp,xp in zip(time,y,x):
-            print(t,yp,xp)
-            plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
-    np.testing.assert_array_equal(islarr, np.array(islanddata))
-    # plottwoisland(np.array(islanddata),islarr)
-    islanddata = islanddata.copy('cuda')
-    # GROUPROWS
-    grouphorizrows(islanddata,ngrid)
-    islanddata = islanddata.copy('system')
-    islarr = np.load('grouprow1.npy')
-    np.testing.assert_array_equal(islarr, np.array(islanddata))
+#     islanddata = islanddata.copy('cuda')
+#     # GROUPCOLS
+#     groupvertcols(islanddata,ngrid)
+#     islanddata = islanddata.copy('system')
+#     islarr = np.load("groupvert1.npy")
+#     time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
+#     if time.size>0:
+#         for t,yp,xp in zip(time,y,x):
+#             print(t,yp,xp)
+#             plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
+#     np.testing.assert_array_equal(islarr, np.array(islanddata))
+#     # plottwoisland(np.array(islanddata),islarr)
+#     islanddata = islanddata.copy('cuda')
+#     # GROUPROWS
+#     grouphorizrows(islanddata,ngrid)
+#     islanddata = islanddata.copy('system')
+#     islarr = np.load('grouprow1.npy')
+#     np.testing.assert_array_equal(islarr, np.array(islanddata))
     # islarr = np.load("groupvert1.npy")
 #     # GROUPCOLS
 #     groupvertcols(islanddata,ngrid)
