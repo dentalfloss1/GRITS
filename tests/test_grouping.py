@@ -58,34 +58,70 @@ if __name__=='__main__':
             print(t,yp,xp)
             plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
     np.testing.assert_array_equal(islarr, np.array(islanddata))
-#     islanddata = islanddata.copy('cuda')
+    islanddata = islanddata.copy('cuda')
+    # GROUPCOLS
+    groupvertcols(islanddata,ngrid)
+    islanddata = islanddata.copy('system')
+    islarr = np.load("groupvert1.npy")
+    time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
+    if time.size>0:
+        for t,yp,xp in zip(time,y,x):
+            print(t,yp,xp)
+            plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
+    np.testing.assert_array_equal(islarr, np.array(islanddata))
+    islanddata = islanddata.copy('cuda')
+    # GROUPROWS
+    grouphorizrows(islanddata,ngrid)
+    islanddata = islanddata.copy('system')
+#    np.save("grouprow1.npy",np.array(islanddata))
+    islarr = np.load('grouprow1.npy')
+    np.testing.assert_array_equal(islarr, np.array(islanddata))
+    # GROUPCOLS
+    islanddata = islanddata.copy('cuda')
+    groupvertcols(islanddata,ngrid)
+    islanddata = islanddata.copy('system')
+    islarr = np.load("groupvert2.npy")
+    np.testing.assert_array_equal(islarr, np.array(islanddata))
+    islanddata = islanddata.copy('cuda')
+    # ROTATE Island data
+    rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
+    BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+        {'isldata':islanddata,'rm':rotateddata},
+        axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+    rotgrid = 2*ngrid-1
+# 
+    # GROUP DIAG COLS
+    groupdiagcols(rotateddata,rotgrid)
+    rotateddata = rotateddata.copy('system')
+    rotarr = np.load("groupdiagcol1.npy")
+    np.testing.assert_array_equal(rotarr, np.array(rotateddata))
+    rotateddata = rotateddata.copy('cuda')
+    plotislands(rotateddata)
+    # GROUP DIAG ROWS
+    groupdiagrows(rotateddata,rotgrid)
+    plotislands(rotateddata)
+   #  rotateddata = rotateddata.copy('system')
+   #  rotarr = np.load("groupdiagrow1.npy")
+   #  np.testing.assert_array_equal(rotarr,np.array(rotateddata))
+   #  rotateddata = rotateddata.copy('cuda')
+#     # GROUP DIAG COLS
+#     groupdiagcols(rotateddata,rotgrid)
+#     # UPDATE UNROTATED Island data
+#     BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
+#         {'isldata':islanddata,'rm':rotateddata},
+#         axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
 #     # GROUPCOLS
 #     groupvertcols(islanddata,ngrid)
-#     islanddata = islanddata.copy('system')
-#     islarr = np.load("groupvert1.npy")
-#     time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
-#     if time.size>0:
-#         for t,yp,xp in zip(time,y,x):
-#             print(t,yp,xp)
-#             plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
-#     np.testing.assert_array_equal(islarr, np.array(islanddata))
-#     # plottwoisland(np.array(islanddata),islarr)
-#     islanddata = islanddata.copy('cuda')
 #     # GROUPROWS
 #     grouphorizrows(islanddata,ngrid)
-#     islanddata = islanddata.copy('system')
-#     islarr = np.load('grouprow1.npy')
-#     np.testing.assert_array_equal(islarr, np.array(islanddata))
-    # islarr = np.load("groupvert1.npy")
 #     # GROUPCOLS
 #     groupvertcols(islanddata,ngrid)
 #     # ROTATE Island data
-#     rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
-#     BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+#     rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
+#     BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
 #         {'isldata':islanddata,'rm':rotateddata},
 #         axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
 #     rotgrid = 2*ngrid-1
-# 
 #     # GROUP DIAG COLS
 #     groupdiagcols(rotateddata,rotgrid)
 #     # GROUP DIAG ROWS
@@ -93,32 +129,8 @@ if __name__=='__main__':
 #     # GROUP DIAG COLS
 #     groupdiagcols(rotateddata,rotgrid)
 #     # UPDATE UNROTATED Island data
-#     BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-2,%i-i+j-1);""" % (ngrid,),
+#     BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
 #         {'isldata':islanddata,'rm':rotateddata},
 #         axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-#     # GROUPCOLS
-#     groupvertcols(islanddata,ngrid)
-#     # GROUPROWS
-#     grouphorizrows(islanddata,ngrid)
-#     # GROUPCOLS
-#     groupvertcols(islanddata,ngrid)
-#     # ROTATE Island data
-#     rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
-#     BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
-#         {'isldata':islanddata,'rm':rotateddata},
-#         axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-#     rotgrid = 2*ngrid-1
-# 
-#     # GROUP DIAG COLS
-#     groupdiagcols(rotateddata,rotgrid)
-#     # GROUP DIAG ROWS
-#     groupdiagrows(rotateddata,rotgrid)
-#     # GROUP DIAG COLS
-#     groupdiagcols(rotateddata,rotgrid)
-#     # UPDATE UNROTATED Island data
-#     BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-2,%i-i+j-1);""" % (ngrid,),
-#         {'isldata':islanddata,'rm':rotateddata},
-#         axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-#     islanddata = islanddata.copy('system')
     
 
