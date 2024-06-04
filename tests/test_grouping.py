@@ -54,11 +54,16 @@ if __name__=='__main__':
     islanddata = islanddata.copy('system')
     islarr = np.load("label1.npy")
     np.testing.assert_array_equal(islarr, np.array(islanddata))
+    islanddata = islanddata.copy('cuda')
+    # GROUPCOLS
+    groupvertcols(islanddata,ngrid)
+    islanddata = islanddata.copy('system')
+    islarr = np.load("groupvert1.npy")
+    np.testing.assert_array_equal(islarr, np.array(islanddata))
+    plottwoisland(np.array(islanddata),islarr):
     
 
 
-#     # GROUPCOLS
-#     groupvertcols(islanddata,ngrid)
 #     # GROUPROWS
 #     grouphorizrows(islanddata,ngrid)
 #     # GROUPCOLS
