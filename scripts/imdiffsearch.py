@@ -210,15 +210,18 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         
         # impose restrictions on conditions 
+        print(int(config['Quality Control']['maxsrcs']))
+
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
+        print(np.unique(islanddata[75]))
         print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
         print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
         drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
         print(np.sum(drcondition),"Images with correct dynamic range")
-        whereislands = np.where( numsrccond & islandcondition.any(axis=(1,2,3,4))  &  drcondition)
+        firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  &  drcondition
 
-        angvelcond = restrictangvel(whereislands, islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+        angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         nsigmacondition = np.zeros(ints,dtype=bool)
         islandloc = np.where(islandcondition) 
         maxrms = np.amax(rmsdata)
@@ -230,10 +233,10 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
             print(np.sum(nsigmacondition), "passed nsigma condition")
         print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))),np.sum(drcondition))
-        whereislands = list(np.where(nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  drcondition )[0])
+        whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  drcondition )[0])
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
-        islandfloat[:,:,:,circle[0],circle[1]] = np.nan
+       # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
        #  imagedata[:,:,:,circle[0],circle[1]] = np.nan
         for i in np.unique(whereislands):
             hdr = hdrlist[i]
