@@ -50,7 +50,6 @@ if __name__=='__main__':
     islanddata = BFArray(islanddata, space='cuda')
  #   plotislands(islanddata)
     labelgroups(islanddata, ngrid, ints,nchan)
-    plotislands(islanddata)
     islanddata = islanddata.copy('system')
     islarr = np.load("label1.npy")
     time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
