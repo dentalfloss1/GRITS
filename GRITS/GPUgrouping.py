@@ -2,18 +2,15 @@ from bifrost import map as BFMap
 def labelgroups(islanddata,ngrid,ints,nchan):
     # LABELGROUPS
     BFMap("""
-    auto counter = 0;
-    for (auto i = 1; i < %i; i++) {
-    	for (auto j = 1; j < %i; j++) {
+    auto counter = 1;
+    for (auto i = 0; i < %i; i++) {
+    	for (auto j = 0; j < %i; j++) {
     		if (0 != isldata(time,chan,stokes,i,j)) {
-    			counter++;
-    			isldata(time,chan,stokes,i,j) += counter - 1;
-    			if (0 != isldata(time,chan,stokes,i,j - 1)){
-                                isldata(time,chan,stokes,i,j) = isldata(time,chan,stokes,i,j - 1);
+    			isldata(time,chan,stokes,i,j) += counter;
+                        counter++;
                                 }
     		}
     	}
-    }
         """ % (ngrid,ngrid,), 
         {'isldata':islanddata}, 
         axis_names=('time','chan','stokes'), shape=(ints,nchan,4))
