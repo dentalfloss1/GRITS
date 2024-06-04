@@ -1,4 +1,4 @@
-import unittest
+import unittest 
 import numpy as np 
 from bifrost import map as BFMAP
 from bifrost import ndarray as BFArray
@@ -20,7 +20,7 @@ def genimagecube():
         starty = 12
         startx = 12
         islanddata[:,0,0,starty+i,startx+i]  = 1
-    oddshape=[(3,21),(4,20),(4,19),(5,18),(6,17)]
+    oddshape=[(3,18),(3,21),(4,20),(4,19),(5,18),(6,17)]
     for xp, yp in oddshape:
         islanddata[:,0,0,yp,xp] = 1
     return islanddata 
@@ -37,9 +37,9 @@ def plotislands(islanddata):
 def plottwoisland(isl1,isl2):
     fig,axs = plt.subplots(1,2)
     for ax,isl in zip(axs,[isl1,isl2]):
-        ax.imshow(isl[0,0,0], cmap='coolwarm', vmin=0,vmax=1, origin='upper')
-        for label in np.unique(isl[0,0,0]):
-            ypix,xpix = np.where(isl[0,0,0]==label)
+        ax.imshow(isl, cmap='coolwarm', vmin=0,vmax=1, origin='upper')
+        for label in np.unique(isl):
+            ypix,xpix = np.where(isl==label)
             for xp,yp in zip(xpix,ypix):
                 ax.annotate(str(label), (xp-0.5,yp+0.5))
     plt.show()
@@ -53,19 +53,31 @@ if __name__=='__main__':
  #   plotislands(islanddata)
     islanddata = islanddata.copy('system')
     islarr = np.load("label1.npy")
+    time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
+    if time.size>0:
+        for t,yp,xp in zip(time,y,x):
+            print(t,yp,xp)
+            plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
     np.testing.assert_array_equal(islarr, np.array(islanddata))
     islanddata = islanddata.copy('cuda')
     # GROUPCOLS
     groupvertcols(islanddata,ngrid)
     islanddata = islanddata.copy('system')
     islarr = np.load("groupvert1.npy")
+    time,chan,stokes,y,x = np.where(islarr!=np.array(islanddata))
+    if time.size>0:
+        for t,yp,xp in zip(time,y,x):
+            print(t,yp,xp)
+            plottwoisland(np.array(islanddata[time,chan,stokes][0]),islarr[time,chan,stokes][0])
     np.testing.assert_array_equal(islarr, np.array(islanddata))
-    plottwoisland(np.array(islanddata),islarr):
-    
-
-
-#     # GROUPROWS
-#     grouphorizrows(islanddata,ngrid)
+    # plottwoisland(np.array(islanddata),islarr)
+    islanddata = islanddata.copy('cuda')
+    # GROUPROWS
+    grouphorizrows(islanddata,ngrid)
+    islanddata = islanddata.copy('system')
+    islarr = np.load('grouprow1.npy')
+    np.testing.assert_array_equal(islarr, np.array(islanddata))
+    # islarr = np.load("groupvert1.npy")
 #     # GROUPCOLS
 #     groupvertcols(islanddata,ngrid)
 #     # ROTATE Island data
