@@ -265,7 +265,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
        #  imagedata[:,:,:,circle[0],circle[1]] = np.nan
-        for i in tqdm(np.unique(whereislands)):
+        for i in np.unique(whereislands):
             hdr = hdrlist[i]
             if not noplot:
                 plotresults(i,filename,meanofdiff[i],stdofdiff[i],maxrms,sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
