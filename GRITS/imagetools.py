@@ -150,7 +150,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
-    islanddata = BFArray(islandmasks, space='system', dtype='i8')
+    islanddata = BFArray(islandmasks, space='cuda', dtype='i64')
     islanddata = islanddata.copy('cuda')
     # MULTI Channel detections only
     BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},

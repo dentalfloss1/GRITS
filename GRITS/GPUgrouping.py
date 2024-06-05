@@ -6,7 +6,7 @@ auto counter=0;
 for (auto i=0; i<%s; i++){
     for (auto j=0; j<%s; j++){
         if (isldata(time,chan,stokes,i,j) > 0) {
-            counter++;
+            counter = counter + 1;
             isldata(time,chan,stokes,i,j) = counter;
             }
         }
