@@ -54,26 +54,26 @@ class TestFFT(unittest.TestCase):
      #   plotislands(islanddata)
         labelgroups(islanddata, ngrid, ints,nchan)
         islanddata = islanddata.copy('system')
-        islarr = np.load("label1.npy")
+        islarr = np.load("data/label1.npy")
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         islanddata = islanddata.copy('cuda')
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         islanddata = islanddata.copy('system')
-        islarr = np.load("groupvert1.npy")
+        islarr = np.load("data/groupvert1.npy")
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         islanddata = islanddata.copy('cuda')
         # GROUPROWS
         grouphorizrows(islanddata,ngrid)
         islanddata = islanddata.copy('system')
     #    np.save("grouprow1.npy",np.array(islanddata))
-        islarr = np.load('grouprow1.npy')
+        islarr = np.load('data/grouprow1.npy')
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         # GROUPCOLS
         islanddata = islanddata.copy('cuda')
         groupvertcols(islanddata,ngrid)
         islanddata = islanddata.copy('system')
-        islarr = np.load("groupvert2.npy")
+        islarr = np.load("data/groupvert2.npy")
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         islanddata = islanddata.copy('cuda')
         # ROTATE Island data
@@ -86,19 +86,19 @@ class TestFFT(unittest.TestCase):
         # GROUP DIAG COLS
         groupdiagcols(rotateddata,rotgrid)
         rotateddata = rotateddata.copy('system')
-        rotarr = np.load("groupdiagcol1.npy")
+        rotarr = np.load("data/groupdiagcol1.npy")
         np.testing.assert_array_equal(rotarr, np.array(rotateddata))
         rotateddata = rotateddata.copy('cuda')
         # GROUP DIAG ROWS
         groupdiagrows(rotateddata,rotgrid)
         rotateddata = rotateddata.copy('system')
-        rotarr = np.load("groupdiagrow1.npy")
+        rotarr = np.load("data/groupdiagrow1.npy")
         np.testing.assert_array_equal(rotarr,np.array(rotateddata))
         rotateddata = rotateddata.copy('cuda')
         # GROUP DIAG COLS
         groupdiagcols(rotateddata,rotgrid)
         rotateddata = rotateddata.copy('system')
-        rotarr = np.load("groupdiagcol2.npy")
+        rotarr = np.load("data/groupdiagcol2.npy")
         np.testing.assert_array_equal(rotarr,np.array(rotateddata))
         rotateddata = rotateddata.copy('cuda')
         # UPDATE UNROTATED Island data
@@ -109,19 +109,19 @@ class TestFFT(unittest.TestCase):
         islanddata = islanddata.copy('cuda')
         groupvertcols(islanddata,ngrid)
         islanddata = islanddata.copy('system')
-        islarr = np.load("groupvert3.npy")
+        islarr = np.load("data/groupvert3.npy")
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         islanddata = islanddata.copy('cuda')
         # GROUPROWS
         grouphorizrows(islanddata,ngrid)
         islanddata = islanddata.copy('system')
-        islarr = np.load('grouprow2.npy')
+        islarr = np.load('data/grouprow2.npy')
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         # GROUPCOLS
         islanddata = islanddata.copy('cuda')
         groupvertcols(islanddata,ngrid)
         islanddata = islanddata.copy('system')
-        islarr = np.load("groupvert4.npy")
+        islarr = np.load("data/groupvert4.npy")
         np.testing.assert_array_equal(islarr, np.array(islanddata))
         islanddata = islanddata.copy('cuda')
     
@@ -134,19 +134,19 @@ class TestFFT(unittest.TestCase):
         # GROUP DIAG COLS
         groupdiagcols(rotateddata,rotgrid)
         rotateddata = rotateddata.copy('system')
-        rotarr = np.load("groupdiagcol3.npy")
+        rotarr = np.load("data/groupdiagcol3.npy")
         np.testing.assert_array_equal(rotarr, np.array(rotateddata))
         rotateddata = rotateddata.copy('cuda')
         # GROUP DIAG ROWS
         groupdiagrows(rotateddata,rotgrid)
         rotateddata = rotateddata.copy('system')
-        rotarr = np.load("groupdiagrow2.npy")
+        rotarr = np.load("data/groupdiagrow2.npy")
         np.testing.assert_array_equal(rotarr,np.array(rotateddata))
         rotateddata = rotateddata.copy('cuda')
         # GROUP DIAG COLS
         groupdiagcols(rotateddata,rotgrid)
         rotateddata = rotateddata.copy('system')
-        rotarr = np.load("groupdiagcol4.npy")
+        rotarr = np.load("data/groupdiagcol4.npy")
         np.testing.assert_array_equal(rotarr,np.array(rotateddata))
         rotateddata = rotateddata.copy('cuda')
         # UPDATE UNROTATED Island data
@@ -154,7 +154,7 @@ class TestFFT(unittest.TestCase):
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
         islanddata = islanddata.copy("system")
-        islarr = np.load("finalislands.npy")
+        islarr = np.load("data/finalislands.npy")
         np.testing.assert_array_equal(islarr,np.array(islanddata))
         
     
