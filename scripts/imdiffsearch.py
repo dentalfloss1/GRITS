@@ -163,7 +163,6 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
         islanddata = islanddata.copy("system")
         islanddata[pregroupconditions,...] = 0
-        isldat = np.array(islanddata)
 
         islanddata = islanddata.copy("cuda")
     
@@ -175,7 +174,6 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # LABEL GROUPS 
         labelgroups(islanddata,ngrid,ints,nchan)
         plotislands(islanddata)
-        exit()
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         plotislands(islanddata)

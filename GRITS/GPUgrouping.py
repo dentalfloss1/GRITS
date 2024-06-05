@@ -1,9 +1,19 @@
 from bifrost import map as BFMap 
 def labelgroups(islanddata,ngrid,ints,nchan):
     # LABELGROUPS
-    BFMap("""if (isldata(time,chan,stokes,i,j) > 0) isldata(time,chan,stokes,i,j) = i*%i + j;""" % (ngrid,), 
+    BFMap("""
+auto counter=0;
+for (auto i=0; i<%s; i++){
+    for (auto j=0; j<%s; j++){
+        if (isldata(time,chan,stokes,i,j) > 0) {
+            counter++;
+            isldata(time,chan,stokes,i,j) = counter;
+            }
+        }
+    }
+            """ % (ngrid,ngrid),
         {'isldata':islanddata}, 
-        axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid,))
+        axis_names=('time','chan','stokes'), shape=(ints,nchan,4))
         
 def groupvertcols(idata,grid):
     BFMap("""
