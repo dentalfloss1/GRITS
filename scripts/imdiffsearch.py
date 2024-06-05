@@ -52,6 +52,17 @@ from tqdm import tqdm
 
 from lsl_toolkits.PasiImage import PasiImageDB
 
+def plotislands(islanddata):
+    islanddata = islanddata.copy('system')
+    fig = plt.figure()
+    subdat = islanddata[2,0,0,55:75,65:85]
+    plt.imshow(subdat, cmap='coolwarm', vmin=0,vmax=1, origin='upper')
+    for label in np.unique(subdat):
+        ypix,xpix = np.where(subdat==label)
+        for xp,yp in zip(xpix,ypix):
+            plt.annotate(str(label), (xp-0.5,yp+0.5))
+    plt.show()
+    plt.close()
 
 def main(filename,config,vmax=8000,noplot=False,quiet=False):
     uniquesrcid=0
@@ -122,11 +133,10 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
-        print(minrms)
-        print(imagedata[0,0,0,:,:].max())
+        print("minrms:",minrms)
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
-        print(corrfluxlist)
+        print("corrflux:",corrfluxlist)
         removechan = []
         rmsdata =[]
         for i,c in enumerate(corrfluxlist):
@@ -142,9 +152,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         # Get S/N and RMS from calibrated data
         sndata, _, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
-        print(rmsdata)
+        print("rmsdata:",rmsdata)
         
-        print(imagedata[0,0,0,:,:].max())
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
@@ -154,21 +163,28 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
         islanddata = islanddata.copy("system")
         islanddata[pregroupconditions,...] = 0
+        isldat = np.array(islanddata)
 
         islanddata = islanddata.copy("cuda")
-
+    
+        plotislands(islanddata)
 
 
 
         t1 = datetime.datetime.now()
         # LABEL GROUPS 
         labelgroups(islanddata,ngrid,ints,nchan)
+        plotislands(islanddata)
+        exit()
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
+        plotislands(islanddata)
         # GROUPROWS
         grouphorizrows(islanddata,ngrid)
+        plotislands(islanddata)
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
+        plotislands(islanddata)
         # ROTATE Island data
         rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
@@ -223,10 +239,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         
         # impose restrictions on conditions 
-        print(int(config['Quality Control']['maxsrcs']))
 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
-        print(np.unique(islanddata[75]))
         print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
         print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
