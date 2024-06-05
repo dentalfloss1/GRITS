@@ -245,8 +245,10 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
         print(np.sum(drcondition),"Images with correct dynamic range")
         firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  &  drcondition
-
-        angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+        if not args.skipairplanes:
+            angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+        else:
+            angvelcond = np.ones(firstcut.shape,dtype=bool)
         nsigmacondition = np.zeros(ints,dtype=bool)
         islandloc = np.where(islandcondition) 
         maxrms = np.amax(rmsdata)
@@ -344,6 +346,7 @@ if __name__ == "__main__":
                         help='Perform primary beam correction on Stokes I')
     parser.add_argument('-q','--quiet', action='store_true')
     parser.add_argument("--vmax", type=float, default=8000, help="controls contrast of plots")
+    parser.add_argument("--skipairplanes",action="store_true")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     args = parser.parse_args()
