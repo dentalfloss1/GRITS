@@ -170,8 +170,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='i8')
-        BFMap("""rm(time,chan,stokes,i+j-2,%i-i+j-1) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
+        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
+        BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
         rotgrid = 2*ngrid-1
@@ -183,7 +183,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # GROUP DIAG COLS
         groupdiagcols(rotateddata,rotgrid)
         # UPDATE UNROTATED Island data
-        BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,i+j-2,%i-i+j-1);""" % (ngrid,),
+        BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
         # GROUPCOLS
