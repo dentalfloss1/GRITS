@@ -166,23 +166,23 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         islanddata = islanddata.copy("cuda")
     
-        plotislands(islanddata)
+        # plotislands(islanddata)
 
 
 
         t1 = datetime.datetime.now()
         # LABEL GROUPS 
         labelgroups(islanddata,ngrid,ints,nchan)
-        plotislands(islanddata)
+        # plotislands(islanddata)
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
-        plotislands(islanddata)
+        # plotislands(islanddata)
         # GROUPROWS
         grouphorizrows(islanddata,ngrid)
-        plotislands(islanddata)
+        # plotislands(islanddata)
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
-        plotislands(islanddata)
+        # plotislands(islanddata)
         # ROTATE Island data
         rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
@@ -263,7 +263,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
        #  imagedata[:,:,:,circle[0],circle[1]] = np.nan
-        for i in np.unique(whereislands):
+        for i in tqdm(np.unique(whereislands)):
             hdr = hdrlist[i]
             if not noplot:
                 plotresults(i,filename,meanofdiff[i],stdofdiff[i],maxrms,sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
