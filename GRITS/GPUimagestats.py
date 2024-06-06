@@ -14,30 +14,33 @@ from GRITS.imagetools import hdrtopixmask,hdrtoworld
 def getminrms(sRad, imagedata, ints, nchan, ngrid):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
     imdata = BFArray(imagedata,dtype='f32',space='cuda')
+    fltmax = np.finfo('f4').max
     gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
              auto y = (float) j - center + 0.5 ;
              auto intermediate = 0.0 ;
+             auto nx=10;
+             auto ny=10;
              if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
-                 for (auto offi=-2; offi<3; offi++) { 
-                     for (auto offj=-2; offj<3; offj++){
+                 for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
+                     for (auto offj=-(ny/2); offj<=(ny/2); offj++){
                          intermediate+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
                      }
                  }
 
-                 rmsdat(time,chan,i,j) = sqrt(intermediate/25.0) ;
+                 rmsdat(time,chan,i,j) = sqrt(intermediate/((float) nx*ny)) ;
              }
              else {
-                 rmsdat(time,chan,i,j) = 9999;
-                 }""" % (boxhalflen,float(ngrid),),
+                 rmsdat(time,chan,i,j) = %f;
+                 }""" % (boxhalflen,float(ngrid),fltmax,),
                  {"dat":imdata, "rmsdat":gpurmsdata},
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
     gpurmsdata = gpurmsdata.copy('system')
 
     minrms = np.zeros((nchan))
-    avindices = np.where((gpurmsdata!=0) & (gpurmsdata!=9999))
+    avindices = np.where((gpurmsdata!=0) & (gpurmsdata!=fltmax))
     for c in range(nchan):
         if c not in avindices[1]:
             continue
