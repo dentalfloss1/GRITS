@@ -154,7 +154,12 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         nchan = imagedata.shape[1]
         
         if not quiet:
-            print("rmsdata:",rmsdata)
+            medrms = np.median(rmsdata)
+            maxrms = np.amax(rmsdata)
+            minrms = np.amin(rmsdata)
+            print("rmsdata")
+            print("min","max","median")
+            print(minrms,maxrms,medrms)
         
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
@@ -251,13 +256,13 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
             brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/maxrms
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
+        whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
         if not quiet:
             print(np.sum(numsrccond),"Images with a valid number of sources")
             print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
             print(np.sum(nsigmacondition), "passed nsigma condition")
             print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
-        whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
@@ -298,17 +303,16 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         lastlabel = label
                         uniquesrcid += 1
         for t in range(ints):
-            for c in range(nchan):
-                dtstart = (start_epoch + datetime.timedelta(days=file_start)+
-                           datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-                dtend = (start_epoch + datetime.timedelta(days=file_start)+
-                           datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-                sens = rmsdata[i,c]
-                ra = hdrlist[i]['center_ra']
-                dec = hdrlist[i]['center_dec']
-                gaps="False"
-                fov=sRad*float(config['Quality Control']['pbpercent'])
-                obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+            dtstart = (start_epoch + datetime.timedelta(days=file_start)+
+                       datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            dtend = (start_epoch + datetime.timedelta(days=file_start)+
+                       datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            sens = rmsdata[i,:].max()
+            ra = hdrlist[i]['center_ra']
+            dec = hdrlist[i]['center_dec']
+            gaps="False"
+            fov=sRad*float(config['Quality Control']['pbpercent'])
+            obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
