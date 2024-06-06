@@ -94,7 +94,8 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
         psize = db.header['xPixelSize']
         nchan = 1 
         sRad = 360.0/psize/np.pi / 2
-        if startind and stopind:
+        print(startind,stopind)
+        if (startind!=None) and (stopind!=None):
             ints = stopind - startind + 1
         else:
             ints = len(db)
