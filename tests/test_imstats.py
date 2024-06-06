@@ -5,6 +5,19 @@ from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.readimage import readoims,readpims
 import unittest 
+import matplotlib.pyplot as plt
+
+def plotislands(islanddata):
+    islanddata = islanddata.copy('system')
+    fig = plt.figure()
+    subdata = islanddata[2,0,0,60:80,60:80]
+    plt.imshow(subdata, cmap='coolwarm', vmin=0,vmax=1, origin='upper')
+    for label in np.unique(subdata):
+        ypix,xpix = np.where(subdata==label)
+        for xp,yp in zip(xpix,ypix):
+            plt.annotate(str(label), (xp-0.5,yp+0.5))
+    plt.show()
+    plt.close()
 
 class TestIMSTATS(unittest.TestCase):
     def test_all_stats(self):
@@ -46,3 +59,18 @@ class TestIMSTATS(unittest.TestCase):
         diffstdver = np.load("data/diffstdver.npy")
         np.testing.assert_array_equal(meanofdiff, diffmeanver)
         np.testing.assert_array_equal(stdofdiff, diffstdver)
+
+        removechan = []
+        rmsdata =[]
+        for i,c in enumerate(corrfluxlist):
+            if c==0:
+                removechan.append(c)
+            else:
+                rmsdata.append(minrms[i]*c)
+
+        islanddata = maskislands(data,rmsdata,ints,nchan,ngrid,nsigma=5)
+        islanddata = islanddata.copy("system")
+        isldat = np.load("data/imstatisl.npy")
+        np.testing.assert_array_equal(isldat,np.array(islanddata))
+
+
