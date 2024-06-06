@@ -135,7 +135,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
-        print("corrflux:",corrfluxlist)
+        # print("corrflux:",corrfluxlist)
         removechan = []
         outchannels=0
         for i,c in enumerate(corrfluxlist):
@@ -153,7 +153,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         nchan = imagedata.shape[1]
         
 
-        print("rmsdata:",rmsdata)
+        # print("rmsdata:",rmsdata)
         
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
@@ -240,9 +240,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # impose restrictions on conditions 
 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
-        print(np.sum(numsrccond),"Images with a valid number of sources")
+        # print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
-        print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
+        # print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
         firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  
         angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         nsigmacondition = np.zeros(ints,dtype=bool)
@@ -252,10 +252,10 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
             brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/maxrms
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
-        if not quiet:
-            print(ints - np.sum(angvelcond),"slow moving sources rejected")
-            print(np.sum(nsigmacondition), "passed nsigma condition")
-        print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
+        # if not quiet:
+            # print(ints - np.sum(angvelcond),"slow moving sources rejected")
+            # print(np.sum(nsigmacondition), "passed nsigma condition")
+        # print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
         whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
@@ -297,25 +297,24 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         lastlabel = label
                         uniquesrcid += 1
         for t in range(ints):
-            dtstart = (start_epoch + datetime.timedelta(days=file_start)+
-                       datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            dtend = (start_epoch + datetime.timedelta(days=file_start)+
-                       datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            sens = rmsdata[i].max()
-            ra = hdrlist[i]['center_ra']
-            dec = hdrlist[i]['center_dec']
-            gaps="False"
-            fov=sRad*float(config['Quality Control']['pbpercent'])
-            obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
-        print(obslist)
+            for c in range(nchan):
+                dtstart = (start_epoch + datetime.timedelta(days=file_start)+
+                           datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                dtend = (start_epoch + datetime.timedelta(days=file_start)+
+                           datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                sens = rmsdata[i,c]
+                ra = hdrlist[i]['center_ra']
+                dec = hdrlist[i]['center_dec']
+                gaps="False"
+                fov=sRad*float(config['Quality Control']['pbpercent'])
+                obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
-   #  print(obslist)
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, allimagedata, fullhdrlist, station
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), minrms, corrfluxlist, allimagedata, fullhdrlist, station, obslist
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -353,10 +352,16 @@ if __name__ == "__main__":
             f.write(configfile)
     else:
         config.read("config.ini")
+        fullobslist = []
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
+                srcarr, minrms, corrfluxlist, allimagedata, fullhdrlist, station, obslist = main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
+                fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
                 print("Issue with ",filename,"skipping.")
+        outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
+        with open(outobsfile,"w") as f:
+            for o in fullobslist:
+                f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]}\n")

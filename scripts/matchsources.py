@@ -54,20 +54,34 @@ if __name__=="__main__":
     lastfilename1 = ""
     lastfilename2 = ""
     results = []
+    fullobslist = []
     uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,minrms1,corrfluxlist1,imagedata1,hdrlist1,station1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+            dat1,minrms1,corrfluxlist1,imagedata1,hdrlist1,station1,obslist1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
             diffdata1 = np.copy(imagedata1)
             diffdata1[:-1]  = diffdata1[1:] - diffdata1[:-1]
         if lastfilename2!=filename2:
-            dat2,minrms2,corrfluxlist2,imagedata2,hdrlist2,station2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+            dat2,minrms2,corrfluxlist2,imagedata2,hdrlist2,station2, obslist2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
             diffdata2 = np.copy(imagedata2)
             diffdata2[:-1]  = diffdata2[1:] - diffdata2[:-1]
         if (dat1 is None) or (dat2 is None):
             continue
         lastfilename1 = filename1
         lastfilename2 = filename2
+        for o1 in obslist1:
+            o1sens = o1[2]
+            o1t = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+            for o2 in obslist2:
+                o2sens = o2[2]
+                o2t = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+                if (np.abs((o1t-o2t).total_seconds()) < args.timedelta):
+                    outsens = max(o1sens,o2sens)
+                    outfov = min(o1[-1],o2[-1])
+                    fullobslist.append((o1[0],o2[1],outsens,o1[3],o1[4],o1[5],outfov))
+
+
+
         if args.keepcatmatch:
             keepdat1 = dat1
             keepdat2 = dat2
@@ -104,6 +118,12 @@ if __name__=="__main__":
                     exportcrtf(ra1,dec1,f"src{uniqueid}-region-station1.crtf")
                     exportcrtf(ra2,dec2,f"src{uniqueid}-region-station2.crtf")
                     uniqueid+=1
+
+
+    outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
+    with open(outobsfile,"w") as f:
+        for o in fullobslist:
+            f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]}\n")
 
                         
 
