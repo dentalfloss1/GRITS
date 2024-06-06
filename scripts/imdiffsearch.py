@@ -140,11 +140,11 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         removechan = []
         outchannels=0
         for i,c in enumerate(corrfluxlist):
-            if c!=0:
+            if c>0:
                 outchannels+=1
         rmsdata = np.zeros((ints,outchannels))
         for i,c in enumerate(corrfluxlist):
-            if c==0:
+            if c<=0:
                 removechan.append(c)
             else:
                 rmsdata[:,i] = minrms[:,i]*c

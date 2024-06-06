@@ -72,11 +72,11 @@ if __name__=="__main__":
         for o1 in obslist1:
             o1sens = o1[2]
             o1t1 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-            o1t2 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+            o1t2 = datetime.datetime.strptime(o1[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
             for o2 in obslist2:
                 o2sens = o2[2]
                 o2t1 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-                o2t2 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+                o2t2 = datetime.datetime.strptime(o2[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
                 if (np.abs((o1t1-o2t1).total_seconds()) < args.timedelta):
                     start = max(o1t1,o2t1)
                     stop = min(o1t2,o2t2)
