@@ -150,8 +150,6 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         nchan = imagedata.shape[1]
         
 
-        # Get S/N and RMS from calibrated data
-        sndata, _, stdarray, meanarray = getmultistat(sRad, imagedata, ints, nchan, ngrid)
         print("rmsdata:",rmsdata)
         
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
@@ -242,9 +240,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
         print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
-        drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
-        print(np.sum(drcondition),"Images with correct dynamic range")
-        firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  &  drcondition
+      #   drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
+      #   print(np.sum(drcondition),"Images with correct dynamic range")
+        firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  
         angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         nsigmacondition = np.zeros(ints,dtype=bool)
         islandloc = np.where(islandcondition) 

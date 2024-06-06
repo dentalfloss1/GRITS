@@ -45,7 +45,7 @@ def plottwoisland(isl1,isl2):
     plt.show()
     plt.close()
 
-class TestFFT(unittest.TestCase):
+class TestGROUPING(unittest.TestCase):
     # Might be better split up, but I want to be sure that each step is run in order.
     # Otherwise the output will not match.
     def test_all_grouping(self):  
