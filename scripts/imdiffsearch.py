@@ -135,7 +135,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
-        # print("corrflux:",corrfluxlist)
+        if not quiet:
+            print("corrflux:",corrfluxlist)
         removechan = []
         outchannels=0
         for i,c in enumerate(corrfluxlist):
@@ -152,8 +153,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
         nchan = imagedata.shape[1]
         
-
-        # print("rmsdata:",rmsdata)
+        if not quiet:
+            print("rmsdata:",rmsdata)
         
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
@@ -240,9 +241,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # impose restrictions on conditions 
 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
-        # print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
-        # print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
         firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  
         angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         nsigmacondition = np.zeros(ints,dtype=bool)
@@ -252,10 +251,12 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
             brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/maxrms
             nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
-        # if not quiet:
-            # print(ints - np.sum(angvelcond),"slow moving sources rejected")
-            # print(np.sum(nsigmacondition), "passed nsigma condition")
-        # print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
+        if not quiet:
+            print(np.sum(numsrccond),"Images with a valid number of sources")
+            print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
+            print(ints - np.sum(angvelcond),"slow moving sources rejected")
+            print(np.sum(nsigmacondition), "passed nsigma condition")
+            print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
         whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
