@@ -145,9 +145,12 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
     islandmasks = np.zeros(data.shape,dtype=bool)
     for i in range(ints-1):
         for j in range(nchan):
-            for k in [0,3]:
-                islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)
-                islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            k = 0 
+            islandcond = data[i,j,k] > (rmsdata[i,:].max()*nsigma)
+            islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            k = 3
+            islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)
+            islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
     islanddata = BFArray(islandmasks, space='cuda', dtype='i64')
