@@ -299,9 +299,9 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                        datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
             dtend = (start_epoch + datetime.timedelta(days=file_start)+
                        datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            sens = rmsdata[i,:].max()
-            ra = hdrlist[i]['center_ra']
-            dec = hdrlist[i]['center_dec']
+            sens = rmsdata[t,:].max()
+            ra = hdrlist[t]['center_ra']
+            dec = hdrlist[t]['center_dec']
             gaps="False"
             fov=sRad*float(config['Quality Control']['pbpercent'])
             obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
