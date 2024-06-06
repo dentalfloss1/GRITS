@@ -11,10 +11,8 @@ maxabsmean = 1e6
 DynamicRange = 1e16
 ; Minimum angular velocity of moving sources in degrees per second
 minangvel = 1e-6
-; Initial, low nsigma. Keeping this low improves the qc performance, but takes longer
-initialnsigma=2
-; Final, higher nsigma. This nsigma will determine what candidates are returned.
-finalnsigma=5
+; Detection sigma 
+nsigma=5
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
 rtol = 0.2
 ; Maximum separation from catalog for reporting

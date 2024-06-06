@@ -162,7 +162,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             print(minrms,maxrms,medrms)
         
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
-        islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
+        islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['nsigma']))
 
         stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])
         rmscond  = rmsdata.max(axis=1) > float(config['Quality Control']['maxrms'])
@@ -249,20 +249,12 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         islandcondition = islanddata >0
         firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  
         angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
-        nsigmacondition = np.zeros(ints,dtype=bool)
-        islandloc = np.where(islandcondition) 
-        maxrms = np.amax(rmsdata)
-        for i in np.unique(islandloc[0]):
-            islchan, islstokes, islx, isly = np.where((islanddata[i] > 0))
-            brightpix = np.nanmax(data[i,islchan,islstokes,islx,isly])/maxrms
-            nsigmacondition[i] = brightpix > float(config['Quality Control']['finalnsigma'])
-        whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
+        whereislands = list(np.where(firstcut &   angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
         if not quiet:
             print(np.sum(numsrccond),"Images with a valid number of sources")
             print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
-            print(np.sum(nsigmacondition), "passed nsigma condition")
-            print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
+            print(np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
