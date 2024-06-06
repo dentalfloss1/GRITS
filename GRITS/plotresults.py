@@ -79,7 +79,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
     
 
     
-def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr,sRad,catsep=5,vmax=8000,chunkt=0):
+def plotresults(i,filename, mean,std,rms,islands,imagedata,data,hdr,sRad,catsep=5,vmax=8000,chunkt=0):
     ints = data.shape[0]
     nchan = data.shape[1]
     ngrid = data.shape[-1]
@@ -167,7 +167,7 @@ def plotresults(i,filename, mean,std,rms,dynamicrange,islands,imagedata,data,hdr
     else:
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
-    fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E},sn:{dynamicrange:.2E}")
+    fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E}")
     plotfile = filename.replace(".oims",f"-{i+chunkt}.png").replace(".pims",f"-{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)
     print("saving file as ",plotfile)

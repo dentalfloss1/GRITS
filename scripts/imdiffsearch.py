@@ -133,17 +133,20 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
-        print("minrms:",minrms)
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         print("corrflux:",corrfluxlist)
         removechan = []
-        rmsdata =[]
+        outchannels=0
+        for i,c in enumerate(corrfluxlist):
+            if c!=0:
+                outchannels+=1
+        rmsdata = np.zeros((ints,outchannels))
         for i,c in enumerate(corrfluxlist):
             if c==0:
                 removechan.append(c)
             else:
-                rmsdata.append(minrms[i]*c)
+                rmsdata[:,i] = minrms[:,i]*c
         allchannels = np.arange(data.shape[1])
         data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
         imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
@@ -156,7 +159,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['initialnsigma']))
 
         stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])
-        rmscond  = np.amax(rmsdata) > float(config['Quality Control']['maxrms'])
+        rmscond  = rmsdata.max(axis=1) > float(config['Quality Control']['maxrms'])
         absmeancond = np.abs(np.array(meanofdiff)) > float(config['Quality Control']['maxabsmean'])
         pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
         islanddata = islanddata.copy("system")
@@ -240,8 +243,6 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         print(np.sum(numsrccond),"Images with a valid number of sources")
         islandcondition = islanddata >0
         print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
-      #   drcondition = np.array(sndata) < float(config['Quality Control']['DynamicRange'])
-      #   print(np.sum(drcondition),"Images with correct dynamic range")
         firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  
         angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         nsigmacondition = np.zeros(ints,dtype=bool)
@@ -254,8 +255,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         if not quiet:
             print(ints - np.sum(angvelcond),"slow moving sources rejected")
             print(np.sum(nsigmacondition), "passed nsigma condition")
-        print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))),np.sum(drcondition))
-        whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) &  drcondition )[0])
+        print(np.sum(nsigmacondition),np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
+        whereislands = list(np.where(firstcut &  nsigmacondition & angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
@@ -263,7 +264,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         for i in np.unique(whereislands):
             hdr = hdrlist[i]
             if not noplot:
-                plotresults(i,filename,meanofdiff[i],stdofdiff[i],maxrms,sndata[i],islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
+                plotresults(i,filename,meanofdiff[i],stdofdiff[i],maxrms,islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
             lastlabel=-1
             for label in range(1,np.amax(islanddata[i,:,:,:,:])+1):
                 for c in range(nchan):
@@ -295,17 +296,17 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename))
                         lastlabel = label
                         uniquesrcid += 1
-      #   for t in range(ints):
-      #       dtstart = (start_epoch + datetime.timedelta(days=file_start)+
-      #                  datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-      #       dtend = (start_epoch + datetime.timedelta(days=file_start)+
-      #                  datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-      #       sens = rmsdata[i] 
-      #       ra = hdrlist[i]['center_ra']
-      #       dec = hdrlist[i]['center_dec']
-      #       gaps="False"
-      #       fov=sRad*float(config['Quality Control']['pbpercent'])
-      #       obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+        for t in range(ints):
+            dtstart = (start_epoch + datetime.timedelta(days=file_start)+
+                       datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            dtend = (start_epoch + datetime.timedelta(days=file_start)+
+                       datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            sens = rmsdata[i].max()
+            ra = hdrlist[i]['center_ra']
+            dec = hdrlist[i]['center_dec']
+            gaps="False"
+            fov=sRad*float(config['Quality Control']['pbpercent'])
+            obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime

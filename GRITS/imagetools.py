@@ -146,7 +146,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
     for i in range(ints-1):
         for j in range(nchan):
             for k in [0,3]:
-                islandcond = (np.abs(data[i,j,k])) > (rmsdata[j]*nsigma)
+                islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,j]*nsigma)
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')

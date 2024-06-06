@@ -39,13 +39,21 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid):
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
     gpurmsdata = gpurmsdata.copy('system')
 
-    minrms = np.zeros((nchan))
+    # minrmsfreq = np.zeros((nchan))
+    minrms = np.zeros((ints,nchan))
     avindices = np.where((gpurmsdata!=0) & (gpurmsdata!=fltmax))
-    for c in range(nchan):
-        if c not in avindices[1]:
+   #  for c in range(nchan):
+   #      if c not in avindices[1]:
+   #          continue
+   #      minrmsfreq[c] = np.amin(gpurmsdata[:,c,:,:])
+    for t in range(ints):
+        if t not in avindices[0]:
             continue
-        minrms[c] = np.amin(gpurmsdata[:,c,:,:])
-    return minrms
+        for c in range(nchan):
+            if c not in avindices[1]:
+                continue
+            minrms[t,c] = gpurmsdata[t,c,:,:].min()
+    return  minrms
 def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid):
     # we can calibrate off of cyg a, cas a, virgo a, or tau a for now
     # We do all the masking of regions we don't want to detect transients from here
@@ -78,7 +86,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 cygmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
-                        cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[c],c))
+                        cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[i,c],c))
         casacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CAS_A[0],CAS_A[1])
         for p in casacoord:
             if p[0]: 
@@ -88,7 +96,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 casmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
-                        casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[c],c))
+                        casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[i,c],c))
         viracoord = hdrtopixmask(hdrlist[i],ngrid,sRad,VIRGO_A[0],VIRGO_A[1])
         for p in viracoord:
             if p[0]: 
@@ -98,7 +106,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 virmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
-                        viraflux.append((imagedata[i,c,0,virmask[0],virmask[1]].max() - minrms[c],c))
+                        viraflux.append((imagedata[i,c,0,virmask[0],virmask[1]].max() - minrms[i,c],c))
         tauacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,TAU_A[0],TAU_A[1])
         for p in tauacoord:
             if p[0]: 
@@ -108,7 +116,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 taumask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
-                        tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[c],c))
+                        tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[i,c],c))
         invalid = np.where( completemask[i] )
 
 
@@ -155,7 +163,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 print("Invalid corrflux for channel ",c)
                 corrflux = 0
             corrfluxlist.append(corrflux)
-            imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
+            imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[i,c])*corrflux
             data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
         return imagedata, data, corrfluxlist 
 
