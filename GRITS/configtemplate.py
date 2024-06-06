@@ -12,9 +12,9 @@ DynamicRange = 1e16
 ; Minimum angular velocity of moving sources in degrees per second
 minangvel = 1e-6
 ; Initial, low nsigma. Keeping this low improves the qc performance, but takes longer
-initialnsigma=1
+initialnsigma=8
 ; Final, higher nsigma. This nsigma will determine what candidates are returned.
-finalnsigma=6
+finalnsigma=10
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
 rtol = 0.2
 ; Maximum separation from catalog for reporting
@@ -27,6 +27,6 @@ minwid = 0
 pbpercent = 0.667
 [Batch Control]
 ; Number of Orville files to process at time. PASI files do this numberX4.
-chunktime = 400
+chunktime = 200
 ; Overlap in time between chunks. Helps catch moving objects.
 overlaptime = 10"""
