@@ -137,6 +137,10 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
         print("corrflux:",corrfluxlist)
+        postcalrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
+        print("postcalrms:",postcalrms)
+        print("scaledrms:",[r*c for r,c in zip(minrms,corrfluxlist)])
+        exit()
         removechan = []
         rmsdata =[]
         for i,c in enumerate(corrfluxlist):
