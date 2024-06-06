@@ -307,6 +307,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             gaps="False"
             fov=sRad*float(config['Quality Control']['pbpercent'])
             obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+        print(obslist)
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
