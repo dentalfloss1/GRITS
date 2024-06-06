@@ -295,10 +295,12 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         lastlabel = label
                         uniquesrcid += 1
         for t in range(ints):
-            dtstart = (start_epoch + datetime.timedelta(days=file_start)+
-                       datetime.timedelta(seconds=(t*(file_end-file_start)/ints)*24.0*3600.0)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            dtend = (start_epoch + datetime.timedelta(days=file_start)+
-                       datetime.timedelta(seconds=(t+1)*(((file_end-file_start)/ints)*24.0*3600.0))).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            if round(hdrlist[i]['int_len']) > 0:
+                tInt = hdrlist[i]['int_len']
+            else:
+                tInt = hdrlist[i]['int_len']*86400.0
+            dtstart = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+            dtend = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
             sens = rmsdata[t,:].max()
             ra = hdrlist[t]['center_ra']
             dec = hdrlist[t]['center_dec']

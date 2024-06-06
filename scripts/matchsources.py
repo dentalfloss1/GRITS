@@ -71,14 +71,18 @@ if __name__=="__main__":
         lastfilename2 = filename2
         for o1 in obslist1:
             o1sens = o1[2]
-            o1t = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+            o1t1 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+            o1t2 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
             for o2 in obslist2:
                 o2sens = o2[2]
-                o2t = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+                o2t1 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+                o2t2 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
                 if (np.abs((o1t-o2t).total_seconds()) < args.timedelta):
+                    start = max(o1t1,o2t1)
+                    stop = min(o1t2,o2t2)
                     outsens = max(o1sens,o2sens)
                     outfov = min(o1[-1],o2[-1])
-                    fullobslist.append((o1[0],o2[1],outsens,o1[3],o1[4],o1[5],outfov))
+                    fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),stop.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
 
 
 
