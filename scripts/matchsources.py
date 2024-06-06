@@ -34,7 +34,7 @@ if __name__=="__main__":
     parser.add_argument("--vmax2", type=float, default=8000, help="controls contrast of station 2 plots")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
-    parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
+    parser.add_argument("--timedelta",default=2.5,type=float, help="Time in seconds between source appearing in the two source lists")
     parser.add_argument("--angdelta",default=5,type=float, help="Maximum angular separation between a source in the two lists in degrees")
     parser.add_argument("--keepcatmatch",action="store_true", help="Keep sources with catalog matches")
     args = parser.parse_args()
@@ -77,7 +77,7 @@ if __name__=="__main__":
                 o2sens = o2[2]
                 o2t1 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
                 o2t2 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-                if (np.abs((o1t-o2t).total_seconds()) < args.timedelta):
+                if (np.abs((o1t1-o2t1).total_seconds()) < args.timedelta):
                     start = max(o1t1,o2t1)
                     stop = min(o1t2,o2t2)
                     outsens = max(o1sens,o2sens)
