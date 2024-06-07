@@ -130,42 +130,43 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     for cas,c in casaflux:
         if cas!=0:
                 allcorr.append((c,getcasa(freq(c))/cas))
-        for vir,c in viraflux:
-            if vir!=0:
-                allcorr.append((c,getvira(freq(c))/vir))
-        for tau,c in tauaflux:
-            if tau!=0:
-                allcorr.append((c,getcrab(freq(c))/tau))
-        allcorr = np.array(allcorr,dtype=[('channel','i8'),('corrfac','f8')])
-        calchans = np.unique(allcorr['channel'])
-        removechan = []
-        for c in range(nchan):
-            if c not in calchans:
-                print("Channel",c,"not calibrated. Removing this channel.")
-                if nchan==1:
-                    print("No good channels")
-                    exit()
-                removechan.append(c)
-        if removechan:
-            removechan = tuple(removechan)
-            imagedata[:,removechan,:,:,:]=0
-            data[:,removechan,:,:,:]=0
-         
-        if nchan == 0 :
-            print("No channels calibrated. Skipping file.")
-            return False, False
-        #### flux correct, 
-        corrfluxlist = []
-        for c in range(nchan):
-            try:
-                corrflux = np.nanmean(allcorr['corrfac'][(allcorr['channel']==c)])
-            except RuntimeWarning:
-                print("Invalid corrflux for channel ",c)
-                corrflux = 0
-            corrfluxlist.append(corrflux)
-            imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[i,c])*corrflux
-            data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
-        return imagedata, data, corrfluxlist 
+    for vir,c in viraflux:
+        if vir!=0:
+            allcorr.append((c,getvira(freq(c))/vir))
+    for tau,c in tauaflux:
+        if tau!=0:
+            allcorr.append((c,getcrab(freq(c))/tau))
+    allcorr = np.array(allcorr,dtype=[('channel','i8'),('corrfac','f8')])
+    allcorr = allcorr[allcorr["corrfac"]>0]
+    calchans = np.unique(allcorr['channel'])
+    removechan = []
+    for c in range(nchan):
+        if c not in calchans:
+            print("Channel",c,"not calibrated. Removing this channel.")
+            if nchan==1:
+                print("No good channels")
+                exit()
+            removechan.append(c)
+    if removechan:
+        removechan = tuple(removechan)
+        imagedata[:,removechan,:,:,:]=0
+        data[:,removechan,:,:,:]=0
+     
+    if nchan == 0 :
+        print("No channels calibrated. Skipping file.")
+        return False, False
+    #### flux correct, 
+    corrfluxlist = []
+    for c in range(nchan):
+        try:
+            corrflux = np.nanmean(allcorr['corrfac'][(allcorr['channel']==c)])
+        except RuntimeWarning:
+            print("Invalid corrflux for channel ",c)
+            corrflux = 0
+        corrfluxlist.append(corrflux)
+        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[i,c])*corrflux
+        data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
+    return imagedata, data, corrfluxlist 
 
 def getmultistat(sRad, imagedata, ints, nchan, ngrid):
     # Get rms, mean, and std from clibrated data
