@@ -30,7 +30,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
     nchan = data.shape[1]
     for c in range(nchan):
         corrflux = corrfluxlist[c]
-        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[c])*corrflux
+        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[:,c])*corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
     srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
     avx,avy = srcloc[0]

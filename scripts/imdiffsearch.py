@@ -298,12 +298,12 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         uniquesrcid += 1
         for t in range(ints):
             if numsrccond[t]:
-                if round(hdrlist[i]['int_len']) > 0:
-                    tInt = hdrlist[i]['int_len']
+                if round(hdrlist[t]['int_len']) > 0:
+                    tInt = hdrlist[t]['int_len']
                 else:
-                    tInt = hdrlist[i]['int_len']*86400.0
-                dtstart = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-                dtend = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                    tInt = hdrlist[t]['int_len']*86400.0
+                dtstart = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                dtend = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
                 sens = rmsdata[t,:].max()
                 ra = hdrlist[t]['center_ra']
                 dec = hdrlist[t]['center_dec']
