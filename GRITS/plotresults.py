@@ -28,10 +28,19 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
         print("Unknown filetype")
         exit()
     nchan = data.shape[1]
-    for c in range(nchan):
-        corrflux = corrfluxlist[c]
-        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[:,c])*corrflux
-        data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
+    counter = 0
+    print(minrms)
+    print(minrms.shape)
+    for i,c in enumerate(corrfluxlist):
+        if c<=0:
+            removechan.append(c)
+        else:
+            rmsdata[:,counter] = minrms[:,i]*c
+            counter+=1
+    allchannels = np.arange(data.shape[1])
+    data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
+    imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
+    nchan = imagedata.shape[1]
     srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
     avx,avy = srcloc[0]
     extent = SetExtent(sRad,data)

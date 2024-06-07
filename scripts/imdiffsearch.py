@@ -158,10 +158,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         if not quiet:
             medrms = np.median(rmsdata)
             maxrms = np.amax(rmsdata)
-            minrms = np.amin(rmsdata)
-            print("rmsdata")
             print("min","max","median")
-            print(minrms,maxrms,medrms)
+            print(np.amin(rmsdata),maxrms,medrms)
         
         meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['nsigma']))
