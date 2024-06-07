@@ -34,6 +34,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
             outchannels+=1
     rmsdata = np.zeros((ints,outchannels))
     counter = 0
+    removechan=[]
     for i,c in enumerate(corrfluxlist):
         if c<=0:
             removechan.append(c)
