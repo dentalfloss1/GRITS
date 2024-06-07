@@ -28,9 +28,12 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
         print("Unknown filetype")
         exit()
     nchan = data.shape[1]
+    outchannels=0
+    for i,c in enumerate(corrfluxlist):
+        if c>0:
+            outchannels+=1
+    rmsdata = np.zeros((ints,outchannels))
     counter = 0
-    print(minrms)
-    print(minrms.shape)
     for i,c in enumerate(corrfluxlist):
         if c<=0:
             removechan.append(c)
