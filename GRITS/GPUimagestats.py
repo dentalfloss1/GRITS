@@ -16,13 +16,14 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid):
     imdata = BFArray(imagedata,dtype='f32',space='cuda')
     fltmax = np.finfo('f4').max
     gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
+    rmsbox = 2*int(round(ngrid/28.8))
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
              auto y = (float) j - center + 0.5 ;
              auto intermediate = 0.0 ;
-             auto nx=10;
-             auto ny=10;
+             auto nx=%i;
+             auto ny=%i;
              if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
                  for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
                      for (auto offj=-(ny/2); offj<=(ny/2); offj++){
@@ -34,7 +35,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid):
              }
              else {
                  rmsdat(time,chan,i,j) = %f;
-                 }""" % (boxhalflen,float(ngrid),fltmax,),
+                 }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,fltmax,),
                  {"dat":imdata, "rmsdat":gpurmsdata},
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
     gpurmsdata = gpurmsdata.copy('system')
