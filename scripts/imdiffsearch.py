@@ -304,8 +304,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                 dtstart = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
                 dtend = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
                 sens = rmsdata[t,:].max()
-                ra = hdrlist[t]['center_ra']
-                dec = hdrlist[t]['center_dec']
+                ra = 0.0
+                dec = 0.0
                 gaps="False"
                 fov=sRad*float(config['Quality Control']['pbpercent'])
                 obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
