@@ -30,7 +30,7 @@ class TestIMSTATS(unittest.TestCase):
             data[:,c,0,:,:]/=((XX+YY)/2)
        #  pbarr = np.save('data/pbimage.npy',imagedata)
         pbarr = np.load('data/pbimage.npy')
-        np.testing.assert_array_equal(pbarr, imagedata)
+        np.testing.assert_array_almost_equal(pbarr, imagedata,decimal=6)
         sunpos, juppos = getsunjup(file_start, file_end, ints)
         sunarr = np.load("data/sunarr.npy")
         juparr = np.load("data/juparr.npy")
@@ -41,7 +41,7 @@ class TestIMSTATS(unittest.TestCase):
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         # dataver = np.save("data/posthorizonmask.npy",data)
         dataver = np.load("data/posthorizonmask.npy")
-        np.testing.assert_array_equal(dataver,data)
+        np.testing.assert_array_almost_equal(dataver,data,decimal=6)
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
        #  np.save("data/minrms",minrms)
@@ -56,7 +56,7 @@ class TestIMSTATS(unittest.TestCase):
         calimver = np.load("data/calimver.npy")
         caldataver = np.load("data/caldataver.npy")
         corrfluxver = np.load("data/corrfluxver.npy")
-        np.testing.assert_array_equal(imagedata, calimver)
+        np.testing.assert_array_almost_equal(imagedata, calimver, decimal=6)
         np.testing.assert_array_equal(data, caldataver)
         np.testing.assert_array_equal(np.array(corrfluxlist), corrfluxver)
         

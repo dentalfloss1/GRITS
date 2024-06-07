@@ -143,11 +143,13 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             if c>0:
                 outchannels+=1
         rmsdata = np.zeros((ints,outchannels))
+        counter = 0
         for i,c in enumerate(corrfluxlist):
             if c<=0:
                 removechan.append(c)
             else:
-                rmsdata[:,i] = minrms[:,i]*c
+                rmsdata[:,counter] = minrms[:,i]*c
+                counter+=1
         allchannels = np.arange(data.shape[1])
         data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
         imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
@@ -191,7 +193,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         groupvertcols(islanddata,ngrid)
         # plotislands(islanddata)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
+        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
@@ -214,7 +216,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # GROUPCOLS
         groupvertcols(islanddata,ngrid)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype=int)
+        rotateddata = BFArray(np.zeros((ints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islanddata,'rm':rotateddata},
             axis_names = ('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
@@ -295,18 +297,19 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         lastlabel = label
                         uniquesrcid += 1
         for t in range(ints):
-            if round(hdrlist[i]['int_len']) > 0:
-                tInt = hdrlist[i]['int_len']
-            else:
-                tInt = hdrlist[i]['int_len']*86400.0
-            dtstart = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            dtend = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-            sens = rmsdata[t,:].max()
-            ra = hdrlist[t]['center_ra']
-            dec = hdrlist[t]['center_dec']
-            gaps="False"
-            fov=sRad*float(config['Quality Control']['pbpercent'])
-            obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+            if numsrccond[t]:
+                if round(hdrlist[i]['int_len']) > 0:
+                    tInt = hdrlist[i]['int_len']
+                else:
+                    tInt = hdrlist[i]['int_len']*86400.0
+                dtstart = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                dtend = (start_epoch + datetime.timedelta(days=hdrlist[i]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                sens = rmsdata[t,:].max()
+                ra = hdrlist[t]['center_ra']
+                dec = hdrlist[t]['center_dec']
+                gaps="False"
+                fov=sRad*float(config['Quality Control']['pbpercent'])
+                obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
