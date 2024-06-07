@@ -9,9 +9,6 @@ import argparse
 import sys
 from configparser import ConfigParser 
 from contextlib import closing
-if not sys.warnoptions:
-    import warnings
-    warnings.simplefilter("error",category=RuntimeWarning)
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -51,6 +48,9 @@ from GRITS.readimage import readoims,readpims
 from tqdm import tqdm
 
 from lsl_toolkits.PasiImage import PasiImageDB
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("error",category=RuntimeWarning)
 
 def plotislands(islanddata):
     islanddata = islanddata.copy('system')

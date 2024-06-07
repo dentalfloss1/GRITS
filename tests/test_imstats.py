@@ -18,6 +18,16 @@ def plotislands(islanddata):
             plt.annotate(str(label), (xp-0.5,yp+0.5))
     plt.show()
     plt.close()
+def plottwoisland(isl1,isl2):
+    fig,axs = plt.subplots(1,2)
+    for ax,isl in zip(axs,[isl1,isl2]):
+        ax.imshow(isl, cmap='coolwarm', vmin=0,vmax=1, origin='upper')
+        for label in np.unique(isl):
+            ypix,xpix = np.where(isl==label)
+            for xp,yp in zip(xpix,ypix):
+                ax.annotate(str(label), (xp-0.5,yp+0.5))
+    plt.show()
+    plt.close()
 
 class TestIMSTATS(unittest.TestCase):
     def test_all_stats(self):
@@ -88,6 +98,12 @@ class TestIMSTATS(unittest.TestCase):
         islanddata = maskislands(data,rmsdata,ints,nchan,ngrid,nsigma=5)
         islanddata = islanddata.copy("system")
         isldat = np.load("data/imstatisl.npy")
+        time,chan,stokes,y,x = np.where(isldat!=np.array(islanddata))
+        if time.size>0:
+            for t,yp,xp in zip(time,y,x):
+                print(t,yp,xp)
+                plottwoisland(np.array(islanddata[time,chan,stokes,(yp-15):(yp+15),(xp-15):(xp+15)][0]),isldat[time,chan,stokes,(yp-15):(yp+15),(xp-15):(xp+15)][0])
+
         np.testing.assert_array_equal(isldat,np.array(islanddata))
 
 
