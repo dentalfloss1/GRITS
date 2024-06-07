@@ -16,7 +16,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid):
     imdata = BFArray(imagedata,dtype='f32',space='cuda')
     fltmax = np.finfo('f4').max
     gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
-    rmsbox = 2*int(round(ngrid/28.8))
+    rmsbox = 10 #2*int(round(ngrid/28.8))
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
