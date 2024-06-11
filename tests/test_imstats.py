@@ -53,13 +53,13 @@ class TestIMSTATS(unittest.TestCase):
         dataver = np.load("data/posthorizonmask.npy")
         np.testing.assert_array_almost_equal(dataver,data,decimal=6)
         
-        minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
+        minrms = getminrms(sRad, imagedata,ints,nchan,ngrid,station)
        #  np.save("data/minrms",minrms)
         minrmsver = np.load("data/minrms.npy")
         np.testing.assert_array_equal(minrmsver, minrms)
         
         
-        imagedata, data ,corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
+        imagedata, data ,corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station)
         # np.save("data/calimver.npy",imagedata)
         # np.save("data/caldataver.npy",data)
         # np.save("data/corrfluxver.npy",np.array(corrfluxlist))

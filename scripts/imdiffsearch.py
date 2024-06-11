@@ -133,28 +133,30 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=float(config['Quality Control']['pbpercent']))
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         
-        minrms = getminrms(sRad, imagedata,ints,nchan,ngrid)
+        minrms = getminrms(sRad, imagedata,ints,nchan,ngrid,station)
         # Flux calibrate data and mask off A-Team
-        imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid)
+        imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station)
         if not quiet:
             print("corrflux:",corrfluxlist)
         removechan = []
         outchannels=0
-        for i,c in enumerate(corrfluxlist):
-            if c>0:
-                outchannels+=1
-        rmsdata = np.zeros((ints,outchannels))
+       #  for i,c in enumerate(corrfluxlist):
+       #      if c>0:
+       #          outchannels+=1
+       #  rmsdata = np.zeros((ints,outchannels))
         counter = 0
         for i,c in enumerate(corrfluxlist):
             if c<=0:
                 removechan.append(c)
             else:
-                rmsdata[:,counter] = minrms[:,i]*c
+             #    rmsdata[:,counter] = minrms[:,i]*c
                 counter+=1
         allchannels = np.arange(data.shape[1])
         data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
         imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
         nchan = imagedata.shape[1]
+        rmsdata = getminrms(sRad, data,ints,nchan,ngrid,station)
+        print(rmsdata)
         
         if not quiet:
             medrms = np.median(rmsdata)
@@ -333,15 +335,7 @@ if __name__ == "__main__":
                         help="Flux correction multiplicative factor")
     parser.add_argument('--channel', type=int,
                         help="Only image this channel")
-    parser.add_argument('-d', '--diff', action='store_true',
-                        help='Generate diff images')
-    parser.add_argument('-f', '--force', action='store_true',
-                        help='force overwriting of FITS files')
-    parser.add_argument('-i', '--index', type=int,
-                        help='Only output this index')
     parser.add_argument('--noplot', action="store_true")
-    parser.add_argument('-p', '--pbcorr', action='store_true',
-                        help='Perform primary beam correction on Stokes I')
     parser.add_argument('-q','--quiet', action='store_true')
     parser.add_argument("--vmax", type=float, default=8000, help="controls contrast of plots")
     parser.add_argument('-v', '--verbose', action='store_true',

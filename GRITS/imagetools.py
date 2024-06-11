@@ -146,7 +146,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
     for i in range(ints-1):
         for j in range(nchan):
             k = 0 
-            islandcond = data[i,j,k] > (rmsdata[i,:].max()*nsigma)
+            islandcond = np.abs(data[i,j,k]) > (rmsdata[i,:].max()*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
             k = 3
             islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)

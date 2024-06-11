@@ -11,12 +11,18 @@ from GRITS.imagetools import hdrtopixmask,hdrtoworld
 # Set up center region for minrms calculation
 # We want a box in the center that does not go beyond the horizon. Also 
 # We need to account for the extra one pixel perimeter in the computations.
-def getminrms(sRad, imagedata, ints, nchan, ngrid):
+def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
-    imdata = BFArray(imagedata,dtype='f32',space='cuda')
     fltmax = np.finfo('f4').max
+    imagedata[np.isnan(imagedata)] = fltmax
+    idata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='system')
+    idata[...] = imagedata
+    idata= idata.copy('cuda')
     gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
-    rmsbox = 10 #2*int(round(ngrid/28.8))
+    if station==b'LWANA':
+        rmsbox = 60 #2*int(round(ngrid/28.8))
+    else:
+        rmsbox = 30 #2*int(round(ngrid/28.8))
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
@@ -36,7 +42,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid):
              else {
                  rmsdat(time,chan,i,j) = %f;
                  }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,fltmax,),
-                 {"dat":imdata, "rmsdat":gpurmsdata},
+                 {"dat":idata, "rmsdat":gpurmsdata},
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
     gpurmsdata = gpurmsdata.copy('system')
 
@@ -54,8 +60,9 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid):
             if c not in avindices[1]:
                 continue
             minrms[t,c] = gpurmsdata[t,c,:,:].min()
+    imagedata[imagedata==fltmax] = np.nan
     return  minrms
-def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid):
+def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station):
     # we can calibrate off of cyg a, cas a, virgo a, or tau a for now
     # We do all the masking of regions we don't want to detect transients from here
     # Also we are getting the max flux from the aforementioned a team sources for 
@@ -65,6 +72,10 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     viraflux = []
     tauaflux = []
     completemask = np.zeros((len(data),ngrid,ngrid),dtype=bool)
+    if station==b'LWANA':
+        masksize=15
+    else:
+        masksize=7
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
@@ -75,13 +86,13 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             pixcoord.extend(hdrtopixmask(hdrlist[i],ngrid,sRad,src[0],src[1]))
         for p in pixcoord:
             if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 completemask[i] = completemask[i] | currcond
                 ateammask = ateammask | currcond
         cygacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CYG_A[0],CYG_A[1])
         for p in cygacoord:
             if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 ateammask = ateammask | currcond
                 completemask[i] = completemask[i] | currcond
                 cygmask = np.where(currcond)
@@ -91,7 +102,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         casacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CAS_A[0],CAS_A[1])
         for p in casacoord:
             if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 ateammask = ateammask | currcond
                 completemask[i] = completemask[i] | currcond
                 casmask = np.where(currcond)
@@ -101,7 +112,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         viracoord = hdrtopixmask(hdrlist[i],ngrid,sRad,VIRGO_A[0],VIRGO_A[1])
         for p in viracoord:
             if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 ateammask = ateammask | currcond
                 completemask[i] = completemask[i] | currcond
                 virmask = np.where(currcond)
@@ -111,7 +122,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         tauacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,TAU_A[0],TAU_A[1])
         for p in tauacoord:
             if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (7**2)
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 ateammask = ateammask | currcond
                 completemask[i] = completemask[i] | currcond
                 taumask = np.where(currcond)
