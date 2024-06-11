@@ -4,9 +4,10 @@ from astropy.coordinates import SkyCoord
 from GRITS.imagetools import hdrtoworld
 
 def restrictnumsrc(islanddata,ints,nchan,maxsrcs=2):
-    numsrcs = np.zeros(ints,dtype=int)
+    numsrcs = np.zeros((ints,nchan),dtype=int)
     for i in range(ints):
-        numsrcs[i] = len(np.unique(islanddata[i,:,:,:,:]))
+        for c in range(nchan):
+            numsrcs[i,c] = len(np.unique(islanddata[i,c,:,:,:]))
     numsrccond = numsrcs <= maxsrcs
     return numsrccond
 
@@ -15,7 +16,7 @@ def restrictangvel(whereislands, islanddata, hdrlist, nchan,ngrid,sRad,minangvel
     srcinfo = []
     srcid=0
     for i in np.sort(np.unique(whereislands[0])):
-        for label in range(0,np.amax(islanddata[i,:,:,:,:])+1):
+        for label in range(1,np.amax(islanddata[i,:,:,:,:])+1):
             for c in range(nchan):
                 for s in [0,3]:
                     srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)

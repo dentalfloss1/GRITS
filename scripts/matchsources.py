@@ -86,12 +86,12 @@ if __name__=="__main__":
 
 
 
-        if args.keepcatmatch:
-            keepdat1 = dat1
-            keepdat2 = dat2
-        else:
-            keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
-            keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
+       #  if args.keepcatmatch:
+        keepdat1 = dat1
+        keepdat2 = dat2
+       #  else:
+       #      keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
+       #      keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
         for s1 in keepdat1:
             seps = angsep(s1['ra'],s1['dec'],keepdat2['ra'],keepdat2['dec']) < args.angdelta
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
@@ -103,22 +103,24 @@ if __name__=="__main__":
                     filename1 = str(s1['filename'])
                     ra1 = s1['ra']
                     dec1 = s1['dec']
+                    c1 = s1['channel']
                     plotfile1 = f"src{uniqueid}-station1-"+filename1.replace(".oims",f"-{index1}.png").replace(".pims",f"-{index1}.png").replace(':','-').split('/')[-1]
                     index2 = s2['index']
                     filename2 = str(s2['filename'])
                     ra2 = s2['ra']
                     dec2 = s2['dec']
+                    c2 = s2['channel']
                     plotfile2 = f"src{uniqueid}-station2-"+filename2.replace(".oims",f"-{index2}.png").replace(".pims",f"-{index2}.png").replace(':','-').split('/')[-1]
-                    plotsource(index1,plotfile1,filename1,ra1,dec1,minrms1,corrfluxlist1,vmax=args.vmax1)
-                    plotsource(index2,plotfile2,filename2,ra2,dec2,minrms2,corrfluxlist2,vmax=args.vmax2)
+                    plotsource(index1,plotfile1,filename1,ra1,dec1,minrms1,corrfluxlist1, c1,vmax=args.vmax1)
+                    plotsource(index2,plotfile2,filename2,ra2,dec2,minrms2,corrfluxlist2, c2,vmax=args.vmax2)
                     if "pims" in filename1:
-                        pimsfitsout(imagedata1, diffdata1, index1, hdrlist1, station1, plotfile1.replace(".png",".fits"))
+                        pimsfitsout(imagedata1, diffdata1[:,c1,:,:,:], index1, hdrlist1, station1, plotfile1.replace(".png",".fits"),c1)
                     if "pims" in filename2:
-                        pimsfitsout(imagedata2, diffdata2, index2, hdrlist2, station2, plotfile2.replace(".png",".fits"))
+                        pimsfitsout(imagedata2, diffdata2[:,c2,:,:,:], index2, hdrlist2, station2,  plotfile2.replace(".png",".fits"), c2)
                     if "oims" in filename1:
-                        oimsfitsout(imagedata1, diffdata1, index1, hdrlist1, station1, plotfile1.replace(".png",".fits"))
+                        oimsfitsout(imagedata1, diffdata1[:,c1,:,:,:], index1, hdrlist1, station1, plotfile1.replace(".png",".fits"), c1)
                     if "oims" in filename2:
-                        oimsfitsout(imagedata2, diffdata2, index2, hdrlist2, station2, plotfile2.replace(".png",".fits"))
+                        oimsfitsout(imagedata2, diffdata2[:,c2,:,:,:], index2, hdrlist2, station2, plotfile2.replace(".png",".fits"), c2)
                     exportcrtf(ra1,dec1,f"src{uniqueid}-region-station1.crtf")
                     exportcrtf(ra2,dec2,f"src{uniqueid}-region-station2.crtf")
                     uniqueid+=1

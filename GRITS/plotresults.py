@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lsl.common.mcs import mjdmpm_to_datetime
 from GRITS.catalogs import cat3c,VLSSr50jy
-from GRITS.imagetools import angsep, hdrtoworld,hdrtopixmask
+from GRITS.imagetools import angsep, hdrtoworld,hdrtopixmask,pbcorr
 from GRITS.readimage import readoims, readpims
 def SetExtent(sRad, data):
     #### Set up extent for plot ## 
@@ -17,7 +17,7 @@ def SetExtent(sRad, data):
     y2 = y - 1 / sRad
     extent = (x2.max(), x2.min(), y.min(), y.max())
     return extent
-def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=8000):
+def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,channel,vmax=8000):
     print(index,filename)
 
     if "oims" in filename:
@@ -27,49 +27,30 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
     else:
         print("Unknown filetype")
         exit()
-    nchan = data.shape[1]
-    outchannels=0
-    for i,c in enumerate(corrfluxlist):
-        if c>0:
-            outchannels+=1
-    rmsdata = np.zeros((ints,outchannels))
-    counter = 0
-    removechan=[]
-    for i,c in enumerate(corrfluxlist):
-        if c<=0:
-            removechan.append(c)
-        else:
-            rmsdata[:,counter] = minrms[:,i]*c
-            counter+=1
-    allchannels = np.arange(data.shape[1])
-    data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
-    imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
-    nchan = imagedata.shape[1]
+    mycorr = corrfluxlist[channel] 
+    imagedata = imagedata[:,channel,:,:,:]
+    data = data[:,channel,:,:,:]
+    XX,YY = pbcorr(hdrlist[0],ngrid,channel,psize,station)
+    imagedata[:,0,:,:]/=((XX+YY)/2)
+    data[:,0,:,:]/=((XX+YY)/2)
+    data  = np.copy(data[:,:,:,:])*mycorr
+    imagedata  = np.copy(imagedata[:,:,:,:])*mycorr
     srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
     avx,avy = srcloc[0]
     extent = SetExtent(sRad,data)
     fig, axs = plt.subplots(3,5,figsize=(30,15))
     nchan = data.shape[1]
-    currimage = np.zeros(data[index,0,0,:,:].shape)
-    for c in range(nchan):
-        currimage += imagedata[index,c,0,:,:]
-    currimage/=nchan
+    currimage = data[index,0,:,:]
     # Stokes I image
     axs[0,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
-    currimage = np.zeros(imagedata[index,0,0,:,:].shape)
-    for c in range(nchan):
-        currimage += imagedata[index,c,3,:,:]
-    currimage/=nchan
+    currimage = imagedata[index,0,:,:]
     # Stokes V image
     axs[0,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
     mintime = max(0,index-2)
     maxtime = min(ints-1,index+2)
     # Series of Stokes I diff image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = np.zeros(data[t,0,0,:,:].shape)
-        for c in range(nchan):
-            currimage += data[t,c,0,:,:]
-        currimage/=nchan
+        currimage = data[t,0,:,:]
         axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
         axs[1,timenum].axvline(avx,color='black',alpha=0.25)
         axs[1,timenum].axhline(avy,color='black',alpha=0.25)
@@ -77,10 +58,7 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
         axs[1,timenum].add_artist(circle)
     # Series of Stokes V image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = np.zeros(data[t,0,3,:,:].shape)
-        for c in range(nchan):
-            currimage += imagedata[t,c,3,:,:]
-        currimage/=nchan
+        currimage = data[t,3,:,:]
         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
         axs[2,timenum].axvline(avx,color='black',alpha=0.25)
         axs[2,timenum].axhline(avy,color='black',alpha=0.25)
@@ -92,9 +70,8 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,vmax=80
     
 
     
-def plotresults(i,filename, mean,std,rms,islands,imagedata,data,hdr,sRad,catsep=5,vmax=8000,chunkt=0):
+def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,catsep=5,vmax=8000,chunkt=0):
     ints = data.shape[0]
-    nchan = data.shape[1]
     ngrid = data.shape[-1]
     skip = False
     extent = SetExtent(sRad,data)
@@ -105,72 +82,55 @@ def plotresults(i,filename, mean,std,rms,islands,imagedata,data,hdr,sRad,catsep=
     mintime = max(0,i-2)
     maxtime = min(ints-1,i+2)
     for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = np.zeros(data[t,chantoplot,0,:,:].shape)
-        for c in range(nchan):
-            currimage += data[t,c,0,:,:]
-        currimage/=nchan
+        currimage = data[t,0,:,:]
         axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = np.zeros(data[t,chantoplot,3,:,:].shape)
-        for c in range(nchan):
-            currimage += imagedata[t,c,3,:,:]
-        currimage/=nchan
+        currimage = data[t,3,:,:]
         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for label in range(1,int(np.nanmax(islands[i,:,:,:,:]))+1):
-        for c in range(nchan):
-            for s in [0,3]:
-                srclocs = np.argwhere(islands[i,c,s,:,:]==label)
-                if srclocs.size==0:
-                    continue
-                avy, avx = np.average(srclocs+0.5,axis=0)
-                if label==lastlabel:
-                    continue
-                radec = hdrtoworld(hdr,ngrid,sRad,avx,avy)
-                axs[1,4].text(0,ytextloc,f"{c},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
-                for anum in [0,2]:
-                    for imind in range(5):
-                        axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
-                        circle = plt.Circle((avx,avy),5,fill=False)
-                        axs[anum,imind].add_artist(circle)
-                
+    for label in range(1,int(np.nanmax(islands[i,:,:,:]))+1):
+        for s in [0,3]:
+            srclocs = np.argwhere(islands[i,s,:,:]==label)
+            if srclocs.size==0:
+                continue
+            avy, avx = np.average(srclocs+0.5,axis=0)
+            if label==lastlabel:
+                continue
+            radec = hdrtoworld(hdr,ngrid,sRad,avx,avy)
+            axs[1,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
+            for anum in [0,2]:
+                for imind in range(5):
+                    axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
+                    circle = plt.Circle((avx,avy),5,fill=False)
+                    axs[anum,imind].add_artist(circle)
+            
+            ytextloc -= 0.15
+            VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
+            VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
+            VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
+            if VLSSrsep < catsep: 
+                axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
                 ytextloc -= 0.15
-                VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
-                VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
-                VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-                if VLSSrsep < catsep: 
-                    axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
-                    ytextloc -= 0.15
-                cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-                cat3cnum = cat3c['3C'][cat3cclose]
-                cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-                if cat3csep < catsep:
-                    axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
-                    ytextloc -= 0.15
-                lastlabel = label
+            cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
+            cat3cnum = cat3c['3C'][cat3cclose]
+            cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
+            if cat3csep < catsep:
+                axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
+                ytextloc -= 0.15
+            lastlabel = label
 
     axs[1,4].set_axis_off()
 
-    islandplot = np.zeros((ngrid,ngrid))
-    for c in range(nchan):
-        islandplot+=islands[i,c,0]
+    islandplot = islands[i,0,:,:]
     axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[1,2].set_title('I src')
-    islandplot = np.zeros((ngrid,ngrid))
-    for c in range(nchan):
-        islandplot+=islands[i,c,3]
+    islandplot = islands[i,3,:,:]
     axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[1,3].set_title('V src')
-    currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
-    for c in range(nchan):
-        currimage += imagedata[i,c,0,:,:]
-    currimage/=nchan
+    currimage = imagedata[i,0,:,:]
     axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
-    currimage = np.zeros(imagedata[i,chantoplot,0,:,:].shape)
-    for c in range(nchan):
-        currimage += imagedata[i,c,3,:,:]
-    currimage/=nchan
+    currimage = imagedata[i,3,:,:]
     axs[1,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
     mjd = int(hdr['start_time'])
     mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
@@ -180,8 +140,8 @@ def plotresults(i,filename, mean,std,rms,islands,imagedata,data,hdr,sRad,catsep=
     else:
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
-    fig.suptitle(f"{dateObs.isoformat()},std:{std:.2E},mean:{mean:.2E},rms:{rms:.2E}")
-    plotfile = filename.replace(".oims",f"-{i+chunkt}.png").replace(".pims",f"-{i+chunkt}.png").replace(':','-')
+    fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E}")
+    plotfile = filename.replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)
     print("saving file as ",plotfile)
     plt.close()

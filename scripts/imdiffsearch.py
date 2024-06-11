@@ -139,40 +139,34 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         if not quiet:
             print("corrflux:",corrfluxlist)
         removechan = []
-        outchannels=0
-       #  for i,c in enumerate(corrfluxlist):
-       #      if c>0:
-       #          outchannels+=1
-       #  rmsdata = np.zeros((ints,outchannels))
+        outchannels=[]
         counter = 0
         for i,c in enumerate(corrfluxlist):
             if c<=0:
                 removechan.append(c)
             else:
+                outchannels.append(i)
              #    rmsdata[:,counter] = minrms[:,i]*c
                 counter+=1
+        outchannels = np.array(outchannels)
         allchannels = np.arange(data.shape[1])
         data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
         imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
         nchan = imagedata.shape[1]
         rmsdata = getminrms(sRad, data,ints,nchan,ngrid,station)
-        print(rmsdata)
         
         if not quiet:
-            medrms = np.median(rmsdata)
-            maxrms = np.amax(rmsdata)
+            medrms = np.median(rmsdata[1:])
+            maxrms = np.amax(rmsdata[1:])
             print("min","max","median")
-            print(np.amin(rmsdata),maxrms,medrms)
+            print(np.amin(rmsdata[1:]),maxrms,medrms)
         
-        meanofdiff, stdofdiff = getdiffstats(data,sRad,ints,nchan,ngrid)
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['nsigma']))
 
-        stdcondition = np.array(stdofdiff) > float(config['Quality Control']['maxstd'])
-        rmscond  = rmsdata.max(axis=1) > float(config['Quality Control']['maxrms'])
-        absmeancond = np.abs(np.array(meanofdiff)) > float(config['Quality Control']['maxabsmean'])
-        pregroupconditions = np.where(stdcondition | rmscond | absmeancond)
+        rmscond  = rmsdata > float(config['Quality Control']['maxrms'])
+        pregroupconditions = np.where(rmscond )
         islanddata = islanddata.copy("system")
-        islanddata[pregroupconditions,...] = 0
+        islanddata[pregroupconditions[0],pregroupconditions[1],...] = 0
 
         islanddata = islanddata.copy("cuda")
     
@@ -250,67 +244,69 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
         islandcondition = islanddata >0
-        firstcut =  numsrccond & islandcondition.any(axis=(1,2,3,4))  
-        angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
-        whereislands = list(np.where(firstcut &   angvelcond & numsrccond & islandcondition.any(axis=(1,2,3,4)) ))
+        firstcut =  numsrccond & islandcondition.any(axis=(2,3,4))  
+     #    angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
+        whereislands = np.where(firstcut ) 
         if not quiet:
             print(np.sum(numsrccond),"Images with a valid number of sources")
             print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
-            print(ints - np.sum(angvelcond),"slow moving sources rejected")
-            print(np.sum(angvelcond),np.sum(numsrccond),np.sum(islandcondition.any(axis=(1,2,3,4))))
+            print(np.sum(numsrccond),np.sum(islandcondition.any(axis=(2,3,4))))
         islandfloat = np.zeros(islanddata.shape,dtype=float)
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
        #  imagedata[:,:,:,circle[0],circle[1]] = np.nan
-        for i in np.unique(whereislands):
+        print("Iterating over sources")
+        for ind in tqdm(range(len(whereislands[0]))):
+            i = whereislands[0][ind]
+            c = whereislands[1][ind]
             hdr = hdrlist[i]
             if not noplot:
-                plotresults(i,filename,meanofdiff[i],stdofdiff[i],maxrms,islandfloat,imagedata,data,hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
+                plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
             lastlabel=-1
-            for label in range(1,np.amax(islanddata[i,:,:,:,:])+1):
-                for c in range(nchan):
-                    for s in [0,3]:
-                        srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
-                        if srclocs.size==0:
-                            continue
-                        avx, avy = np.average(srclocs+0.5,axis=0)
-                        if label==lastlabel:
-                            continue
-                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-                        mjd = int(hdr['start_time'])
-                        mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
-                        # determine if header is in seconds or days
-                        if round(hdr['int_len']) > 0:
-                            tInt = hdr['int_len']
-                        else:
-                            tInt = hdr['int_len']*86400.0
-                        dateObs = mjdmpm_to_datetime(mjd, mpm)
-                        if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
-                            vlss = True
-                        else:
-                            vlss = False
-                        if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
-                            c3 = True
-                        else:
-                            c3 = False
+            for s in [0,3]:
+                for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
+                    srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+                    if srclocs.size==0:
+                        continue
+                    avx, avy = np.average(srclocs+0.5,axis=0)
+                    if label==lastlabel:
+                        continue
+                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                    mjd = int(hdr['start_time'])
+                    mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+                    # determine if header is in seconds or days
+                    if round(hdr['int_len']) > 0:
+                        tInt = hdr['int_len']
+                    else:
+                        tInt = hdr['int_len']*86400.0
+                    dateObs = mjdmpm_to_datetime(mjd, mpm)
+                    if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                        vlss = True
+                    else:
+                        vlss = False
+                    if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                        c3 = True
+                    else:
+                        c3 = False
 
-                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename))
-                        lastlabel = label
-                        uniquesrcid += 1
+                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c]))
+                    lastlabel = label
+                    uniquesrcid += 1
         for t in range(ints):
-            if numsrccond[t]:
-                if round(hdrlist[t]['int_len']) > 0:
-                    tInt = hdrlist[t]['int_len']
-                else:
-                    tInt = hdrlist[t]['int_len']*86400.0
-                dtstart = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-                dtend = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-                sens = rmsdata[t,:].max()
-                ra = 0.0
-                dec = 0.0
-                gaps="False"
-                fov=sRad*float(config['Quality Control']['pbpercent'])
-                obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
+            for c in range(nchan):
+                if numsrccond[t,c] and (rmsdata[t,c] < float(config['Quality Control']['maxrms'])):
+                    if round(hdrlist[t]['int_len']) > 0:
+                        tInt = hdrlist[t]['int_len']
+                    else:
+                        tInt = hdrlist[t]['int_len']*86400.0
+                    dtstart = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time'])).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                    dtend = (start_epoch + datetime.timedelta(days=hdrlist[t]['start_time']) + datetime.timedelta(seconds=tInt)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+                    sens = rmsdata[t,c]
+                    ra = 0.0
+                    dec = 0.0
+                    gaps="False"
+                    fov=sRad*float(config['Quality Control']['pbpercent'])
+                    obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         allminrms[start:final+1,:] = minrms
         chunkt = chunkt + chunksize 
@@ -318,7 +314,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256")]), allminrms, corrfluxlist, allimagedata, fullhdrlist, station, obslist
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int)]), allminrms, corrfluxlist, allimagedata, fullhdrlist, station, obslist
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

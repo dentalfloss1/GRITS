@@ -25,6 +25,6 @@ minwid = 0
 pbpercent = 0.667
 [Batch Control]
 ; Number of Orville files to process at time. PASI files do this numberX4.
-chunktime = 200
+chunktime = 300
 ; Overlap in time between chunks. Helps catch moving objects.
-overlaptime = 10"""
+overlaptime = 0"""

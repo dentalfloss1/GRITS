@@ -53,7 +53,7 @@ if __name__=="__main__":
         try:
             dat,minrms,corrfluxlist,keepchan,imagedata,hdrlist,station = imdiffsearch.main(filename,config,vmax=args.vmax,noplot=True)
             diffdata = np.copy(imagedata)
-            diffdata[:-1] = diffdata[1:] - diffdata[:-1]
+            diffdata[1:] = diffdata[1:] - diffdata[:-1]
         except Exception as e:
             print(e)
             print("Issues with ",filename,"Skipping")

@@ -146,7 +146,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
     for i in range(ints-1):
         for j in range(nchan):
             k = 0 
-            islandcond = np.abs(data[i,j,k]) > (rmsdata[i,:].max()*nsigma)
+            islandcond = data[i,j,k] > (rmsdata[i,:].max()*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
             k = 3
             islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)
@@ -155,12 +155,12 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
     islanddata = BFArray(islandmasks, space='cuda', dtype='u16')
     islanddata = islanddata.copy('cuda')
-    # MULTI Channel detections only
-    BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},
-        axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+   #  # MULTI Channel detections only
+   #  BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},
+   #      axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
     return islanddata
 
-def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
+def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
     hdulist = astrofits.HDUList()
     ints = len(imagedata)
     ngrid = imagedata.shape[-1]
@@ -172,8 +172,8 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
     hdrlist = hdrlist[minind:maxind+1]
     for myint in range(len(imagedata)):
         hdr = hdrlist[myint]
-        imdata = imagedata[myint,:,:,:,:]
-        ddata = diffdata[myint,:,:,:,:]
+        imdata = imagedata[myint,:,:,:]
+        ddata = diffdata[myint,:,:,:]
         imSize = ngrid    
         psize = hdr['pixel_size']
         pScale = psize
@@ -190,7 +190,6 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             tInt = hdr['int_len']*86400.0
         dateObs = mjdmpm_to_datetime(mjd, mpm)
         dateEnd = dateObs + timedelta(seconds=int(tInt), microseconds=int((tInt-int(tInt))*1000000))
-        chan=0
         for curdata in [imdata,ddata]:
             ## Create the FITS HDU and fill in the header information
             hdu = astrofits.ImageHDU(data=curdata)
@@ -215,16 +214,9 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             hdu.header['CRVAL3'] = 1
             hdu.header['CTYPE4'] = 'FREQ'
             hdu.header['CRPIX4'] = 1
-            hdu.header['CDELT4'] = hdr['bandwidth']
-            hdu.header['CRVAL4'] = hdr['start_freq']
-            hdu.header['LONPOLE'] = 180.0
-            hdu.header['LATPOLE'] = 90.0
-            hdu.header['DATE-OBS'] = dateObs.strftime("%Y-%m-%dT%H:%M:%S")
-            hdu.header['END_UTC'] = dateEnd.strftime("%Y-%m-%dT%H:%M:%S")
-            hdu.header['EXPTIME'] = tInt
-            ### LWA1 approximate beam size
             midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
             beamSize = 2.2*74e6/midfreq
+            ### LWA1 approximate beam size
         #     hdu.header['BMAJ'] = beamSize/psize
         #     hdu.header['BMIN'] = beamSize/psize
         #     hdu.header['BPA'] = 0.0
@@ -238,7 +230,7 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             hdulist.append(hdu)
     hdulist.writeto(outfile, overwrite=True)
 
-def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):    
+def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
     hdulist = astrofits.HDUList()
     ints = len(imagedata)
     ngrid = imagedata.shape[-1]
@@ -303,8 +295,8 @@ def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile):
             hdu.header['BMIN'] = beamSize/psize
             hdu.header['BPA'] = 0.0
             ### Frequency
-            hdu.header['RESTFREQ'] = hdr['freq']
-            hdu.header['RESTFRQ'] = hdr['freq']
+            hdu.header['RESTFREQ'] = midfreq
+            hdu.header['RESTFRQ'] = midfreq
             hdu.header['RESTBW'] = hdr['bandwidth']
             
             ## Write it to disk
