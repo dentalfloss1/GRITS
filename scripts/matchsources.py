@@ -104,13 +104,13 @@ if __name__=="__main__":
                     ra1 = s1['ra']
                     dec1 = s1['dec']
                     c1 = s1['channel']
-                    plotfile1 = f"src{uniqueid}-station1-"+filename1.replace(".oims",f"-{index1}.png").replace(".pims",f"-{index1}.png").replace(':','-').split('/')[-1]
+                    plotfile1 = f"src{uniqueid}-station1-"+filename1.replace(".oims",f"-t{index1}-c{c1}.png").replace(".pims",f"-t{index1}-c{c1}.png").replace(':','-').split('/')[-1]
                     index2 = s2['index']
                     filename2 = str(s2['filename'])
                     ra2 = s2['ra']
                     dec2 = s2['dec']
                     c2 = s2['channel']
-                    plotfile2 = f"src{uniqueid}-station2-"+filename2.replace(".oims",f"-{index2}.png").replace(".pims",f"-{index2}.png").replace(':','-').split('/')[-1]
+                    plotfile2 = f"src{uniqueid}-station2-"+filename2.replace(".oims",f"-t{index2}-c{c2}.png").replace(".pims",f"-t{index2}-c{c2}.png").replace(':','-').split('/')[-1]
                     plotsource(index1,plotfile1,filename1,ra1,dec1,minrms1,corrfluxlist1, c1,vmax=args.vmax1)
                     plotsource(index2,plotfile2,filename2,ra2,dec2,minrms2,corrfluxlist2, c2,vmax=args.vmax2)
                     if "pims" in filename1:

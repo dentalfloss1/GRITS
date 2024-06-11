@@ -196,7 +196,7 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
             hdu.header['TELESCOP'] = station.decode()
             hdu.header['EXPTIME'] = tInt
             ### Coordinates - sky
-            hdu.header['NAXIS'] = 4
+            hdu.header['NAXIS'] = 3
             hdu.header['CTYPE1'] = 'RA---SIN'
             hdu.header['CRPIX1'] = imSize/2 + 1 + 0.5 * ((imSize+1)%2)
             hdu.header['CDELT1'] = -360.0/(2*sRad)/np.pi
@@ -212,8 +212,6 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
             hdu.header['CRPIX3'] = 1
             hdu.header['CDELT3'] = 1
             hdu.header['CRVAL3'] = 1
-            hdu.header['CTYPE4'] = 'FREQ'
-            hdu.header['CRPIX4'] = 1
             midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
             beamSize = 2.2*74e6/midfreq
             ### LWA1 approximate beam size
@@ -242,8 +240,8 @@ def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
     hdrlist = hdrlist[minind:maxind+1]
     for myint in range(len(imagedata)):
         hdr = hdrlist[myint]
-        imdata = imagedata[myint,:,:,:,:]
-        ddata = diffdata[myint,:,:,:,:]
+        imdata = imagedata[myint,:,:,:]
+        ddata = diffdata[myint,:,:,:]
         imSize = ngrid    
         psize = hdr['xPixelSize']
         pScale = psize

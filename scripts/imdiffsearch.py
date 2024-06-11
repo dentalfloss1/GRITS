@@ -96,7 +96,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     numchunks = np.ceil(fullsize/chunksize)
     allimagedata = np.zeros((fullsize,nchan,4,ngrid,ngrid))
     fullhdrlist = []
-    allminrms = np.zeros((fullsize,nchan))
+    allrmsdata = np.zeros((fullsize,nchan))
     startindex = 0
     if fullsize==0:
         raise Exception("file is empty")
@@ -268,7 +268,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
                     if srclocs.size==0:
                         continue
-                    avx, avy = np.average(srclocs+0.5,axis=0)
+                    avy, avx = np.average(srclocs+0.5,axis=0)
                     if label==lastlabel:
                         continue
                     radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
@@ -308,13 +308,13 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     fov=sRad*float(config['Quality Control']['pbpercent'])
                     obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
-        allminrms[start:final+1,:] = minrms
+        allrmsdata[start:final+1,~np.isin(allchannels,removechan)] =rmsdata 
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int)]), allminrms, corrfluxlist, allimagedata, fullhdrlist, station, obslist
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int)]), allrmsdata, corrfluxlist, allimagedata, fullhdrlist, station, obslist
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

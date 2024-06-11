@@ -17,8 +17,9 @@ def SetExtent(sRad, data):
     y2 = y - 1 / sRad
     extent = (x2.max(), x2.min(), y.min(), y.max())
     return extent
-def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,channel,vmax=8000):
+def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vmax=8000):
     print(index,filename)
+    rms = rms[index,channel]
 
     if "oims" in filename:
         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename) 
@@ -62,6 +63,12 @@ def plotsource(index, plotfile, filename,  ra, dec, minrms, corrfluxlist,channel
         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
         axs[2,timenum].axvline(avx,color='black',alpha=0.25)
         axs[2,timenum].axhline(avy,color='black',alpha=0.25)
+
+    hdr = hdrlist[index]
+    mjd = int(hdr['start_time'])
+    mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+    dateObs = mjdmpm_to_datetime(mjd, mpm)
+    fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E}")
     plt.savefig(plotfile)
     plt.close()
      
@@ -89,8 +96,8 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,catsep=5
         currimage = data[t,3,:,:]
         axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for label in range(1,int(np.nanmax(islands[i,:,:,:]))+1):
-        for s in [0,3]:
+    for s in [0,3]:
+        for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
             srclocs = np.argwhere(islands[i,s,:,:]==label)
             if srclocs.size==0:
                 continue
@@ -141,7 +148,6 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,catsep=5
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E}")
-    plotfile = filename.replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-{i+chunkt}.png").replace(':','-')
+    plotfile = filename.replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-t{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)
-    print("saving file as ",plotfile)
     plt.close()
