@@ -163,11 +163,6 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['nsigma']))
 
-        rmscond  = rmsdata < float(config['Quality Control']['maxrms'])
-        pregroupconditions = np.where(rmscond )
-        islanddata = islanddata.copy("system")
-        islanddata[pregroupconditions[0],pregroupconditions[1],...] = 0
-
         islanddata = islanddata.copy("cuda")
     
         # plotislands(islanddata)
@@ -242,9 +237,11 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         
         # impose restrictions on conditions 
 
+        rmscond  = rmsdata < float(config['Quality Control']['maxrms'])
+
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
         islandcondition = islanddata >0
-        firstcut =  numsrccond & islandcondition.any(axis=(2,3,4))  
+        firstcut =  rmscond & numsrccond & islandcondition.any(axis=(2,3,4))  
      #    angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         whereislands = np.where(firstcut ) 
         if not quiet:
