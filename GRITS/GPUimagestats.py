@@ -28,15 +28,18 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
              auto x = (float) i - center + 0.5 ;
              auto y = (float) j - center + 0.5 ;
              auto intermediate = 0.0 ;
+             auto intermediateI = 0.0;
+             auto intermediateV = 0.0;
              auto nx=%i;
              auto ny=%i;
              if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
                  for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
                      for (auto offj=-(ny/2); offj<=(ny/2); offj++){
-                         intermediate+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
+                         intermediateI+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
+                         intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
                      }
                  }
-
+                 intermediate = max(intermediateI,intermediateV);
                  rmsdat(time,chan,i,j) = sqrt(intermediate/((float) nx*ny)) ;
              }
              else {

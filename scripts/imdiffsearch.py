@@ -163,7 +163,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         
         islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['nsigma']))
 
-        rmscond  = rmsdata > float(config['Quality Control']['maxrms'])
+        rmscond  = rmsdata < float(config['Quality Control']['maxrms'])
         pregroupconditions = np.where(rmscond )
         islanddata = islanddata.copy("system")
         islanddata[pregroupconditions[0],pregroupconditions[1],...] = 0
@@ -326,6 +326,9 @@ if __name__ == "__main__":
     parser.add_argument('-b', '--background',type=float,
                         default = 0,
                         help='Uncorrected background flux')
+    parser.add_argument('--configfile', type=str,
+                        default='config.ini',
+                        help="Configuration file.")
     parser.add_argument('-c', '--corrfac', type=float,
                         default=1,
                         help="Flux correction multiplicative factor")
@@ -338,12 +341,12 @@ if __name__ == "__main__":
                         help='be verbose during the conversion')
     args = parser.parse_args()
     config = ConfigParser()
-    if not os.path.isfile("config.ini"):
-        print("config.ini does not exist. Creating one and stopping.")
-        with open("config.ini","w") as f:
+    if not os.path.isfile(args.configfile):
+        print(f"{args.configfile} does not exist. Creating one and stopping.")
+        with open(args.configfile,"w") as f:
             f.write(configfile)
     else:
-        config.read("config.ini")
+        config.read(args.configfile)
         fullobslist = []
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))

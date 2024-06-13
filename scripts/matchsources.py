@@ -25,6 +25,12 @@ if __name__=="__main__":
     t1 = datetime.datetime.now()
     # Parse arguments
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--configfile1', type=str,
+                        default='config.ini',
+                        help="Configuration file.")
+    parser.add_argument('--configfile2', type=str,
+                        default='config.ini',
+                        help="Configuration file.")
     parser.add_argument('--station1', type=str, nargs='+',
                         help="images from the first station",required=True)
     parser.add_argument('--station2', type=str, nargs='+',
@@ -39,14 +45,22 @@ if __name__=="__main__":
     parser.add_argument("--keepcatmatch",action="store_true", help="Keep sources with catalog matches")
     args = parser.parse_args()
     # Read config.ini or generate new one
-    config = ConfigParser()
-    if not os.path.isfile("config.ini"):
-        print("config.ini does not exist. Creating one and stopping.")
-        with open("config.ini","w") as f:
+    config1 = ConfigParser()
+    if not os.path.isfile(args.configfile1):
+        print(f"{args.configfile1} does not exist. Creating one and stopping.")
+        with open(args.configfile1,"w") as f:
             f.write(configfile)
         exit()
     else:
-        config.read("config.ini")
+        config1.read(args.configfile1)
+    config2 = ConfigParser()
+    if not os.path.isfile(args.configfile2):
+        print(f"{args.configfile2} does not exist. Creating one and stopping.")
+        with open(args.configfile2,"w") as f:
+            f.write(configfile)
+        exit()
+    else:
+        config2.read(args.configfile2)
 
     # run main execution loop
     matchedfiles = matchfilepairs(args.station1,args.station2) 
@@ -58,11 +72,11 @@ if __name__=="__main__":
     uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,minrms1,corrfluxlist1,imagedata1,hdrlist1,station1,obslist1 = imdiffsearch.main(filename1,config,vmax=args.vmax1,noplot=True)
+            dat1,minrms1,corrfluxlist1,imagedata1,hdrlist1,station1,obslist1 = imdiffsearch.main(filename1,config1,vmax=args.vmax1,noplot=True)
             diffdata1 = np.copy(imagedata1)
             diffdata1[:-1]  = diffdata1[1:] - diffdata1[:-1]
         if lastfilename2!=filename2:
-            dat2,minrms2,corrfluxlist2,imagedata2,hdrlist2,station2, obslist2 = imdiffsearch.main(filename2,config,vmax=args.vmax2,noplot=True)
+            dat2,minrms2,corrfluxlist2,imagedata2,hdrlist2,station2, obslist2 = imdiffsearch.main(filename2,config2,vmax=args.vmax2,noplot=True)
             diffdata2 = np.copy(imagedata2)
             diffdata2[:-1]  = diffdata2[1:] - diffdata2[:-1]
         if (dat1 is None) or (dat2 is None):
