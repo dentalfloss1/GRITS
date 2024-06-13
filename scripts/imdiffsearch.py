@@ -345,6 +345,7 @@ if __name__ == "__main__":
     else:
         config.read(args.configfile)
         fullobslist = []
+        outsrc = []
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
@@ -353,7 +354,26 @@ if __name__ == "__main__":
             except Exception as e:
                 print(traceback.format_exc())
                 print("Issue with ",filename,"skipping.")
+            for i in np.unique(srcarr['index']):
+                src = srcarr[srcarr['index']==i]
+                nsrcleft = len(src)
+                srcleft = src
+                while nsrcleft > 0:
+                    s1 = srcleft[0]
+                    seps = np.zeros(len(src),dtype=bool)
+                    for j,s in enumerate(src):
+                        if s==s1:
+                            seps[j]=True
+                        else:  
+                            seps[j] = angsep(s1['ra'],s1['dec'],s['ra'],s['dec']) < float(config['Quality Control']['catsep'])
+                    matching2 = src[seps]
+                    outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
+                    srcleft = srcleft[~np.isin(srcleft,matching2)]
+                    nsrcleft = srcleft.size
         outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
         with open(outobsfile,"w") as f:
             for o in fullobslist:
                 f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]}\n")
+        print("date","nchans")
+        for o in outsrc:
+            print(*o)

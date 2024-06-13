@@ -22,7 +22,6 @@ def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     dec1 = dec1deg*np.pi/180
     ra2 = ra2deg*np.pi/180
     dec2 = dec2deg*np.pi/180
-
     sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
     return 180*sep/np.pi
 
