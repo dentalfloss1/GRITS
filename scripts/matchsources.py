@@ -113,12 +113,9 @@ if __name__=="__main__":
                 for s2 in matching2:
                     print(s1,s2)
                     sourcesep =  angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec'])
-                    print(sourcesep,s1['nchan'],s2['nchan'])
-                    input("presskey")
                     if sourcesep > float(config1['Quality Control']['catsep']):
                         if (s1['nchan'] < 2) and (s2['nchan'] < 2):
                             print("not multi channel")
-                            print(s1,s2)
                             continue
                     fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
                     index1 = s1['index']
