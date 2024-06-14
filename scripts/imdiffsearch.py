@@ -281,6 +281,8 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     if label==lastlabel:
                         continue
                     radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                    thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
+                    detchan = len(np.unique(otherchan))
 
                     mjd = int(hdr['start_time'])
                     mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
@@ -298,22 +300,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         c3 = True
                     else:
                         c3 = False
-                    detchan = 1
-                    for c2 in range(nchan):
-                        if c2==c:
-                            continue
-                        for label in np.unique(islanddata[i,c2,s,:,:][islanddata[i,c2,s,:,:]>0]):
-                            srclocs2 = np.argwhere(islanddata[i,c2,s,:,:]==label)
-                            if srclocs2.size==0:
-                                continue
-                            avy2, avx2 = np.average(srclocs+0.5,axis=0)
-                            radec2 = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
-                            if (radec==radec2).all():
-                                srcsep = 0.0
-                            else:
-                                srcsep = angsep(radec[0][0],radec[0][1],radec2[0][0],radec2[0][1])
-                            if  srcsep < float(config['Quality Control']['catsep']): 
-                                detchan+=1 
+                    detchan=1
                         
                     srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c],detchan))
                     lastlabel = label
