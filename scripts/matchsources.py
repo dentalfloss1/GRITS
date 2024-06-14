@@ -69,7 +69,6 @@ if __name__=="__main__":
     results = []
     fullobslist = []
     fullsrclist = []
-    fullsrclist.append(("uniqueid","ra1","dec1","nchan1","ra2","dec2","nchan2","angsep"))
     uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
@@ -153,7 +152,7 @@ if __name__=="__main__":
     outsrcfile = f"srclist{datetime.datetime.now().timestamp()}.txt"
     with open(outsrcfile,"w") as f:
         for s in fullsrclist:
-            f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]},{o[7]}\n")
+            f.write(f"{s[0]},{s[1]},{s[2]},{s[3]},{s[4]},{s[5]},{s[6]},{s[7]}\n")
 
                         
 
