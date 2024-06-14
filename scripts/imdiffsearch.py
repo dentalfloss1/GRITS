@@ -129,13 +129,18 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # I could attempt to adapt that code to the GPU
         sunpos, juppos = getsunjup(file_start, file_end, ints)
 
-        # Get a mask for the parts of the image beyond 60 degrees from the center
-        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=float(config['Quality Control']['pbpercent']))
+        # Get a mask for the horizon, initially search the whole image, restrict later
+        # this is intended to reduce sources that are included due to edge effects
+        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.95)
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid,station)
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station)
+        # UN pbcorrect for a flat sky, we aren't measuring fluxes here anyway
+        for c in range(nchan):
+            imagedata[:,c,0,:,:]*=((XX+YY)/2)
+            data[:,c,0,:,:]*=((XX+YY)/2)
         if not quiet:
             print("corrflux:",corrfluxlist)
         removechan = []
@@ -233,10 +238,19 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
         
         data = np.where(data==floatmax,np.nan,data)
-
-        
-        # impose restrictions on conditions 
-
+        islandcopy = np.copy(islanddata)
+        for i in range(ints):
+            for c in range(nchan):
+                hdr = hdrlist[i]
+                for s in [0,3]:
+                    for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
+                        srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
+                        avy, avx = np.average(srclocs+0.5,axis=0)
+                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                        # impose restrictions on conditions 
+                        if (angsep(radec[0][0],radec[0][1],hdrlist[i]['center_ra'],hdrlist[i]['center_dec']) > float(config['Quality Control']['pbpercent'])*sRad):
+                            islandcopy[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
+        islanddata = np.copy(islandcopy)
         rmscond  = rmsdata < float(config['Quality Control']['maxrms'])
 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
@@ -257,8 +271,6 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             i = whereislands[0][ind]
             c = whereislands[1][ind]
             hdr = hdrlist[i]
-            if not noplot:
-                plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
             lastlabel=-1
             for s in [0,3]:
                 for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
@@ -269,6 +281,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     if label==lastlabel:
                         continue
                     radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+
                     mjd = int(hdr['start_time'])
                     mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
                     # determine if header is in seconds or days
@@ -285,10 +298,28 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                         c3 = True
                     else:
                         c3 = False
-
-                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c]))
+                    detchan = 1
+                    for c2 in range(nchan):
+                        if c2==c:
+                            continue
+                        for label in np.unique(islanddata[i,c2,s,:,:][islanddata[i,c2,s,:,:]>0]):
+                            srclocs2 = np.argwhere(islanddata[i,c2,s,:,:]==label)
+                            if srclocs2.size==0:
+                                continue
+                            avy2, avx2 = np.average(srclocs+0.5,axis=0)
+                            radec2 = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                            if (radec==radec2).all():
+                                srcsep = 0.0
+                            else:
+                                srcsep = angsep(radec[0][0],radec[0][1],radec2[0][0],radec2[0][1])
+                            if  srcsep < float(config['Quality Control']['catsep']): 
+                                detchan+=1 
+                        
+                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c],detchan))
                     lastlabel = label
                     uniquesrcid += 1
+            if not noplot:
+                plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
         for t in range(ints):
             for c in range(nchan):
                 if numsrccond[t,c] and (rmsdata[t,c] < float(config['Quality Control']['maxrms'])):
@@ -311,7 +342,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
 
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int)]), allrmsdata, corrfluxlist, allimagedata, fullhdrlist, station, obslist
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int)]), allrmsdata, corrfluxlist, allimagedata, fullhdrlist, station, obslist
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

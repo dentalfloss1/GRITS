@@ -41,7 +41,6 @@ if __name__=="__main__":
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
-    parser.add_argument("--angdelta",default=5,type=float, help="Maximum angular separation between a source in the two lists in degrees")
     parser.add_argument("--keepcatmatch",action="store_true", help="Keep sources with catalog matches")
     args = parser.parse_args()
     # Read config.ini or generate new one
@@ -69,6 +68,8 @@ if __name__=="__main__":
     lastfilename2 = ""
     results = []
     fullobslist = []
+    fullsrclist = []
+    fullsrclist.append(("uniqueid","ra1","dec1","nchan1","ra2","dec2","nchan2","angsep"))
     uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
@@ -107,12 +108,16 @@ if __name__=="__main__":
        #      keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
        #      keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
         for s1 in keepdat1:
-            seps = angsep(s1['ra'],s1['dec'],keepdat2['ra'],keepdat2['dec']) < args.angdelta
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
-            if np.sum(seps & simul) > 0:
-                matching2 = keepdat2[seps & simul]
+            if np.sum(simul) > 0:
+                matching2 = keepdat2[simul]
                 for s2 in matching2:
                     print(s1,s2)
+                    sourcesep =  angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec'])
+                    if sourcesep > float(config1['Quality Control']['catsep']):
+                        if (s1['nchan'] < 2) and (s2['nchan'] < 2):
+                            continue
+                    fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
                     index1 = s1['index']
                     filename1 = str(s1['filename'])
                     ra1 = s1['ra']
@@ -144,6 +149,11 @@ if __name__=="__main__":
     with open(outobsfile,"w") as f:
         for o in fullobslist:
             f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]}\n")
+
+    outsrcfile = f"srclist{datetime.datetime.now().timestamp()}.txt"
+    with open(outsrcfile,"w") as f:
+        for s in fullsrclist:
+            f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]},{o[7]}\n")
 
                         
 

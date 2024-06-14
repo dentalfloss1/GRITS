@@ -18,7 +18,6 @@ def SetExtent(sRad, data):
     extent = (x2.max(), x2.min(), y.min(), y.max())
     return extent
 def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vmax=8000):
-    print(index,filename)
     rms = rms[index,channel]
 
     if "oims" in filename:
@@ -31,9 +30,6 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     mycorr = corrfluxlist[channel] 
     imagedata = imagedata[:,channel,:,:,:]
     data = data[:,channel,:,:,:]
-    XX,YY = pbcorr(hdrlist[0],ngrid,channel,psize,station)
-    imagedata[:,0,:,:]/=((XX+YY)/2)
-    data[:,0,:,:]/=((XX+YY)/2)
     data  = np.copy(data[:,:,:,:])*mycorr
     imagedata  = np.copy(imagedata[:,:,:,:])*mycorr
     srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
@@ -55,8 +51,6 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
         axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
         axs[1,timenum].axvline(avx,color='black',alpha=0.25)
         axs[1,timenum].axhline(avy,color='black',alpha=0.25)
-        circle = plt.Circle((ngrid/2,ngrid/2),2*sRad/3,fill=False)
-        axs[1,timenum].add_artist(circle)
     # Series of Stokes V image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = data[t,3,:,:]
