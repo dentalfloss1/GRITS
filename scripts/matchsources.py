@@ -141,8 +141,8 @@ if __name__=="__main__":
                             oimsfitsout(imagedata1, diffdata1[:,c1,:,:,:], index1, hdrlist1, station1, plotfile1.replace(".png",".fits"), c1)
                         if "oims" in filename2:
                             oimsfitsout(imagedata2, diffdata2[:,c2,:,:,:], index2, hdrlist2, station2, plotfile2.replace(".png",".fits"), c2)
-                        exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf")
-                        exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf")
+                        exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf"))
+                        exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
                     uniqueid+=1
 
 
