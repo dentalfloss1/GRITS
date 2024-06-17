@@ -130,8 +130,8 @@ if __name__=="__main__":
                     dec2 = s2['dec']
                     c2 = s2['channel']
                     plotfiles = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(':','-').split('/')[-1]
-                    plotresults(index1,c1,plotfile1,minrms1[index1,c1],islands1[:,c1,:,:,:],imagedata1[:,c,:,:,:],diffdata1[:,c,:,:,:],hdrlist1[index1],sRad1,vmax=args.vmax1)
-                    plotresults(index2,c2,plotfile2,minrms2[index2,c2],islands2[:,c2,:,:,:],imagedata2[:,c,:,:,:],diffdata2[:,c,:,:,:],hdrlist2[index2],sRad2,vmax=args.vmax2)
+                    plotresults(index1,c1,plotfile1,minrms1[index1,c1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,vmax=args.vmax1)
+                    plotresults(index2,c2,plotfile2,minrms2[index2,c2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,vmax=args.vmax2)
                     if args.makefits:
                         if "pims" in filename1:
                             pimsfitsout(imagedata1, diffdata1[:,c1,:,:,:], index1, hdrlist1, station1, plotfile1.replace(".png",".fits"),c1)
