@@ -95,6 +95,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     chunkno = 1
     numchunks = np.ceil(fullsize/chunksize)
     allimagedata = np.zeros((fullsize,nchan,4,ngrid,ngrid))
+    allislanddata = np.zeros((fullsize,nchan,4,ngrid,ngrid))
     fullhdrlist = []
     allrmsdata = np.zeros((fullsize,nchan))
     startindex = 0
@@ -324,12 +325,13 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
         allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
         allrmsdata[start:final+1,~np.isin(allchannels,removechan)] =rmsdata 
+        allislanddata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = islanddata
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
 
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int)]), allrmsdata, corrfluxlist, allimagedata, fullhdrlist, station, obslist
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int)]), allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
