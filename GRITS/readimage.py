@@ -12,9 +12,12 @@ def matchfilepairs(station1,station2):
         try:
             if "oims" in f1:
                 hasoims = True
-                file_start,file_end = readoims(f1,hdronly=True)
+                file_start,file_end,minfreq = readoims(f1,hdronly=True)
             else:
-                file_start,file_end = readpims(f1,hdronly=True)
+                file_start,file_end,minfreq = readpims(f1,hdronly=True)
+            if minfreq < 18e6:
+                print(f1,"has frequencies that are too low for good results. Skipping")
+                continue
             if file_start != 0.0:
                 f1times.append((f1,file_start, file_end))
             else:
@@ -27,9 +30,12 @@ def matchfilepairs(station1,station2):
         try:
             if "oims" in f2:
                 hasoims = True
-                file_start,file_end = readoims(f2,hdronly=True)
+                file_start,file_end,minfreq = readoims(f2,hdronly=True)
             else:
-                file_start,file_end = readpims(f2,hdronly=True)
+                file_start,file_end,minfreq = readpims(f2,hdronly=True)
+            if minfreq < 18e6:
+                print(f2,"has frequencies that are too low for good results. Skipping")
+                continue
             if file_start != 0.0:
                 f2times.append((f2,file_start,file_end))
             else:
@@ -68,6 +74,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
         db.seek(stopind)
         hdr,_ = db.read_image()
         intlen = hdr['int_len']
+        minfreq = (hdr['start_freq']  + (hdr['bandwidth']/2))
         if intlen > 1: # if larger than one, has to be in seconds
             intlen = intlen/24.0/60.0/60.0 # seconds to days
         file_end = hdr['start_time'] + intlen
@@ -85,7 +92,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
             data[1:,:,0,:,:] = data[1:,:,0,:,:] - data[:-1,:,0,:,:]# PB Correct before masking
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
         else:
-            return file_start,file_end
+            return file_start,file_end,minfreq
 def readpims(filename,hdronly=False,startind=None,stopind=None):
     with closing(PasiImageDB(filename, 'r')) as db:
         file_start = db.header['startTime'] 
@@ -102,6 +109,9 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
             startind = 0
             stopind = ints - 1
         hdrlist = []
+        db.seek(stopind)
+        hdr,_,_ = db.readImage()
+        minfreq=hdr['freq']
         data = np.zeros((ints,nchan,4,ngrid,ngrid))
         if not hdronly:
             for i in range(ints):
@@ -122,6 +132,6 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
         else:
             
-            return file_start,file_end
+            return file_start,file_end,minfreq
 
 

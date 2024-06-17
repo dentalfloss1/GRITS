@@ -7,7 +7,7 @@ import os
 import argparse
 import imdiffsearch
 from GRITS.configtemplate import configfile
-from GRITS.plotresults import plotsource
+from GRITS.plotresults import plotresults
 from GRITS.readimage import matchfilepairs
 from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf
 
