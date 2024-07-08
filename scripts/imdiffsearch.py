@@ -369,7 +369,7 @@ if __name__ == "__main__":
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, fullhdrlist, station, obslist = main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad = main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())

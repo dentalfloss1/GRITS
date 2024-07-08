@@ -39,7 +39,8 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
                          intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
                      }
                  }
-                 intermediate = max(intermediateI,intermediateV);
+                 // intermediate = max(intermediateI,intermediateV);
+                 intermediate = intermediateI;
                  rmsdat(time,chan,i,j) = sqrt(intermediate/((float) nx*ny)) ;
              }
              else {
@@ -76,9 +77,9 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     tauaflux = []
     completemask = np.zeros((len(data),ngrid,ngrid),dtype=bool)
     if station==b'LWANA':
-        masksize=15
+        masksize=30
     else:
-        masksize=7
+        masksize=15
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
@@ -92,6 +93,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 completemask[i] = completemask[i] | currcond
                 ateammask = ateammask | currcond
+         
         cygacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CYG_A[0],CYG_A[1])
         for p in cygacoord:
             if p[0]: 
