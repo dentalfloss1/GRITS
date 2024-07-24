@@ -76,7 +76,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     viraflux = []
     tauaflux = []
     completemask = np.zeros((len(data),ngrid,ngrid),dtype=bool)
-    masksize = 10
+    masksize = 14
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
