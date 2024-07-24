@@ -83,7 +83,7 @@ def pbcorr(header,imSize,chan,pScale,station):
     x = np.arange(imSize) - 0.5
     y = np.arange(imSize) - 0.5
     x,y = np.meshgrid(x,y)
-    maskpix  = ((x-imSize/2.0)**2 + (y-imSize/2.0)**2) > ((0.98*sRad)**2)
+    maskpix  = ((x-imSize/2.0)**2 + (y-imSize/2.0)**2) > ((0.95*sRad)**2)
     x[maskpix] = imSize/2
     y[maskpix] = imSize/2
     sc = pixel_to_skycoord(x,y,wcs=w,mode='wcs')
@@ -106,7 +106,6 @@ def pbcorr(header,imSize,chan,pScale,station):
         aa = AltAz(location=lwana, obstime=time)
     else:
         print(station,"unrecognized")
-    print(sc)
     myaltaz = sc.transform_to(aa)
     alt = myaltaz.alt.deg
     az = myaltaz.az.deg
