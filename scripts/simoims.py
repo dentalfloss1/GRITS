@@ -1,6 +1,6 @@
 #!/usr/bin/env python
- 
-from GRITS.OrvilleImageDB import OrvilleImageDB
+
+from lsl_toolkits.OrvilleImageDB import OrvilleImageDB
 from GRITS.constants import CYG_A, CAS_A, TAU_A, VIRGO_A
 from GRITS.ateamtools import getcyga, getcasa, getcrab, getvira
 from GRITS.imagetools import hdrtopixmask,pbcorr,hdrtoworld
@@ -75,6 +75,7 @@ if __name__=="__main__":
     filename = "stablesky.oims"
     gaussiannoise =  rng.normal(loc=200,scale=10,size=(6,6,144,144))
     symgaussiannoise =  rng.normal(loc=0,scale=10,size=(6,6,144,144))
+    station = lwasv.name
     with closing(OrvilleImageDB(filename, mode='w', station=lwasv.name)) as sdb:
         for ind,off in enumerate(range(0,6*5,5)):
             info = setinfo(offset=off)
@@ -85,7 +86,7 @@ if __name__=="__main__":
             data = data.transpose(1,0,2,3)
             gausscube = np.zeros((6,144,144))
             for src,name,getflux in zip([CYG_A, CAS_A, TAU_A, VIRGO_A],["cyg a","cas a","tau a","virgo a"],[getcyga, getcasa, getcrab, getvira]):
-                coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1])[0]
+                coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1],station)[0]
                 if not np.isnan(coords).any():
                     for c,f in enumerate(freq):
                         fwhm = 2.2*74e6/(f+3300000.0/2)/info['pixel_size']
@@ -109,7 +110,7 @@ if __name__=="__main__":
             data = data.transpose(1,0,2,3)
             gausscube = np.zeros((6,144,144))
             for src,name,getflux in zip([CYG_A, CAS_A, TAU_A, VIRGO_A],["cyg a","cas a","tau a","virgo a"],[getcyga, getcasa, getcrab, getvira]):
-                coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1])[0]
+                coords = hdrtopixmask(info,data.shape[-1],360.0/info['pixel_size']/np.pi/2,src[0],src[1],station)[0]
                 if not np.isnan(coords).any():
                     for c,f in enumerate(freq):
                         fwhm = 2.2*74e6/(f+3300000.0/2)/info['pixel_size']

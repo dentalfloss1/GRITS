@@ -17,6 +17,8 @@ from astropy.wcs.utils import pixel_to_skycoord
 from astropy.time import Time
 from astropy.io import fits as astrofits
 
+from lsl_toolkits.OrvilleImage.getwcs import getSVwcs, getGENERICwcs
+
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
     dec1 = dec1deg*np.pi/180
@@ -74,15 +76,14 @@ def calcbeamprops(az,alt,header,freq):
 
 def pbcorr(header,imSize,chan,pScale,station):
     sRad   = 360.0/pScale/np.pi / 2
-    w = WCS(naxis=2)
-    w.wcs.crpix = [imSize/2 + 1 + 0.5 * ((imSize+1)%2),imSize/2 + 1 + 0.5 * ((imSize+1)%2)]
-    w.wcs.cdelt = np.array([-360.0/(2*sRad)/np.pi, 360.0/(2*sRad)/np.pi])
-    w.wcs.crval = [header['center_ra'], header['center_dec']]
-    w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+    if (station==b'LWASV') and ("startTime" not in header):
+        w = getSVwcs(header, imSize)
+    else:
+        w = getGENERICwcs(header, imSize)
     x = np.arange(imSize) - 0.5
     y = np.arange(imSize) - 0.5
     x,y = np.meshgrid(x,y)
-    maskpix  = ((x-imSize/2.0)**2 + (y-imSize/2.0)**2) > ((0.98*sRad)**2)
+    maskpix  = ((x-imSize/2.0)**2 + (y-imSize/2.0)**2) > ((0.95*sRad)**2)
     x[maskpix] = imSize/2
     y[maskpix] = imSize/2
     sc = pixel_to_skycoord(x,y,wcs=w,mode='wcs')
@@ -116,23 +117,21 @@ def pbcorr(header,imSize,chan,pScale,station):
     XX,YY = calcbeamprops(az,alt,header,freq)
     return XX,YY
 
-def hdrtopixmask(hdr,imSize,sRad,ra,dec):
-    w = WCS(naxis=2)
-    w.wcs.crpix = [imSize/2 + 1 + 0.5 * ((imSize+1)%2),imSize/2 + 1 + 0.5 * ((imSize+1)%2)]
-    w.wcs.cdelt = np.array([-360.0/(2*sRad)/np.pi, 360.0/(2*sRad)/np.pi])
-    w.wcs.crval = [hdr['center_ra'], hdr['center_dec']]
-    w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
+    if (station==b'LWASV') and ("startTime" not in hdr):
+        w = getSVwcs(hdr, imSize)
+    else:
+        w = getGENERICwcs(hdr, imSize)
     try: 
         pixcrd = [(r,d) for r,d in zip(ra,dec)]
     except TypeError:
         pixcrd = [(ra,dec)]
     return w.wcs_world2pix(pixcrd, 0)
-def hdrtoworld(hdr,imSize,sRad,x,y):
-    w = WCS(naxis=2)
-    w.wcs.crpix = [imSize/2 + 1 + 0.5 * ((imSize+1)%2),imSize/2 + 1 + 0.5 * ((imSize+1)%2)]
-    w.wcs.cdelt = np.array([-360.0/(2*sRad)/np.pi, 360.0/(2*sRad)/np.pi])
-    w.wcs.crval = [hdr['center_ra'], hdr['center_dec']]
-    w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+def hdrtoworld(hdr,imSize,sRad,x,y,station):
+    if (station==b'LWASV') and ("startTime" not in hdr):
+        w = getSVwcs(hdr, imSize)
+    else:
+        w = getGENERICwcs(hdr, imSize)
     try:
         pixcrd = [(xp,yp) for xp,yp in zip(x,y)]
     except TypeError:

@@ -41,12 +41,12 @@ from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups
 from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
-from GRITS import OrvilleImageDB
 from GRITS.plotresults import plotresults
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
 from tqdm import tqdm
 
+from lsl_toolkits.OrvilleImage import OrvilleImageDB
 from lsl_toolkits.PasiImage import PasiImageDB
 if not sys.warnoptions:
     import warnings
@@ -74,7 +74,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     
     if ".oims" in filename:
         chunksize = int(config['Batch Control']['chunktime'])
-        with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
+        with closing(OrvilleImageDB(filename, 'r')) as db:
             fullsize = db.nint
             ngrid = db.header.ngrid
             nchan = db.header.nchan
@@ -247,7 +247,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
                         srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
                         avy, avx = np.average(srclocs+0.5,axis=0)
-                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
                         # impose restrictions on conditions 
                         if (angsep(radec[0][0],radec[0][1],hdrlist[i]['center_ra'],hdrlist[i]['center_dec']) > float(config['Quality Control']['pbpercent'])*sRad):
                             islandcopy[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
@@ -281,7 +281,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     avy, avx = np.average(srclocs+0.5,axis=0)
                     if label==lastlabel:
                         continue
-                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
                     thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
                     detchan = len(np.unique(otherchan))
 
@@ -307,7 +307,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     lastlabel = label
                     uniquesrcid += 1
             if not noplot:
-                plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
+                plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
         for t in range(ints):
             for c in range(nchan):
                 if numsrccond[t,c] and (rmsdata[t,c] < float(config['Quality Control']['maxrms'])):

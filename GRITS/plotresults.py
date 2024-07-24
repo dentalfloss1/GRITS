@@ -32,7 +32,7 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     data = data[:,channel,:,:,:]
     data  = np.copy(data[:,:,:,:])*mycorr
     imagedata  = np.copy(imagedata[:,:,:,:])*mycorr
-    srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec)
+    srcloc = hdrtopixmask(hdrlist[index], ngrid, sRad, ra,dec,station)
     avx,avy = srcloc[0]
     extent = SetExtent(sRad,data)
     fig, axs = plt.subplots(3,5,figsize=(30,15))
@@ -71,7 +71,7 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     
 
     
-def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,catsep=5,vmax=8000,chunkt=0):
+def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,vmax=8000,chunkt=0):
     ints = data.shape[0]
     ngrid = data.shape[-1]
     skip = False
@@ -98,7 +98,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,catsep=5
             avy, avx = np.average(srclocs+0.5,axis=0)
             if label==lastlabel:
                 continue
-            radec = hdrtoworld(hdr,ngrid,sRad,avx,avy)
+            radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
             axs[1,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
             for anum in [0,2]:
                 for imind in range(5):
