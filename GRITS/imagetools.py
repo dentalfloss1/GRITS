@@ -76,7 +76,7 @@ def calcbeamprops(az,alt,header,freq):
 
 def pbcorr(header,imSize,chan,pScale,station):
     sRad   = 360.0/pScale/np.pi / 2
-    if station==b'LWASV':
+    if (station==b'LWASV') and ("startTime" not in header):
         w = getSVwcs(header, imSize)
     else:
         w = getGENERICwcs(header, imSize)
@@ -106,6 +106,7 @@ def pbcorr(header,imSize,chan,pScale,station):
         aa = AltAz(location=lwana, obstime=time)
     else:
         print(station,"unrecognized")
+    print(sc)
     myaltaz = sc.transform_to(aa)
     alt = myaltaz.alt.deg
     az = myaltaz.az.deg
@@ -117,21 +118,21 @@ def pbcorr(header,imSize,chan,pScale,station):
     XX,YY = calcbeamprops(az,alt,header,freq)
     return XX,YY
 
-def hdrtopixmask(hdr,imSize,sRad,ra,dec):
-    if station==b'LWASV':
-        w = getSVwcs(header, imSize)
+def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
+    if (station==b'LWASV') and ("startTime" not in hdr):
+        w = getSVwcs(hdr, imSize)
     else:
-        w = getGENERICwcs(header, imSize)
+        w = getGENERICwcs(hdr, imSize)
     try: 
         pixcrd = [(r,d) for r,d in zip(ra,dec)]
     except TypeError:
         pixcrd = [(ra,dec)]
     return w.wcs_world2pix(pixcrd, 0)
-def hdrtoworld(hdr,imSize,sRad,x,y):
-    if station==b'LWASV':
-        w = getSVwcs(header, imSize)
+def hdrtoworld(hdr,imSize,sRad,x,y,station):
+    if (station==b'LWASV') and ("startTime" not in hdr):
+        w = getSVwcs(hdr, imSize)
     else:
-        w = getGENERICwcs(header, imSize)
+        w = getGENERICwcs(hdr, imSize)
     try:
         pixcrd = [(xp,yp) for xp,yp in zip(x,y)]
     except TypeError:

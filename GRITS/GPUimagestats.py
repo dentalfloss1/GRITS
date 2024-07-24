@@ -76,10 +76,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     viraflux = []
     tauaflux = []
     completemask = np.zeros((len(data),ngrid,ngrid),dtype=bool)
-    if station==b'LWANA':
-        masksize=30
-    else:
-        masksize=15
+    masksize = 10
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
@@ -87,14 +84,14 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         ateammask = np.zeros((ngrid,ngrid),dtype=bool)
         pixcoord = []
         for src in [SGR_A,HERC_A,sunpos[i],juppos[i]]:
-            pixcoord.extend(hdrtopixmask(hdrlist[i],ngrid,sRad,src[0],src[1]))
+            pixcoord.extend(hdrtopixmask(hdrlist[i],ngrid,sRad,src[0],src[1],station))
         for p in pixcoord:
             if p[0]: 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 completemask[i] = completemask[i] | currcond
                 ateammask = ateammask | currcond
          
-        cygacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CYG_A[0],CYG_A[1])
+        cygacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CYG_A[0],CYG_A[1],station)
         for p in cygacoord:
             if p[0]: 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
@@ -104,7 +101,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 if np.sum(currcond) >0:
                     for c in range(nchan):
                         cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[i,c],c))
-        casacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CAS_A[0],CAS_A[1])
+        casacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CAS_A[0],CAS_A[1],station)
         for p in casacoord:
             if p[0]: 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
@@ -114,7 +111,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 if np.sum(currcond) >0:
                     for c in range(nchan):
                         casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[i,c],c))
-        viracoord = hdrtopixmask(hdrlist[i],ngrid,sRad,VIRGO_A[0],VIRGO_A[1])
+        viracoord = hdrtopixmask(hdrlist[i],ngrid,sRad,VIRGO_A[0],VIRGO_A[1],station)
         for p in viracoord:
             if p[0]: 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
@@ -124,7 +121,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 if np.sum(currcond) >0:
                     for c in range(nchan):
                         viraflux.append((imagedata[i,c,0,virmask[0],virmask[1]].max() - minrms[i,c],c))
-        tauacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,TAU_A[0],TAU_A[1])
+        tauacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,TAU_A[0],TAU_A[1],station)
         for p in tauacoord:
             if p[0]: 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)

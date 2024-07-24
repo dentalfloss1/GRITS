@@ -24,7 +24,7 @@ def restrictangvel(whereislands, islanddata, hdrlist, nchan,ngrid,sRad,minangvel
                         avx, avy = np.average(srclocs+0.5,axis=0)
                     except RuntimeWarning:
                         continue
-                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy)
+                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
                     srcinfo.append((i,srcid,radec[0][0],radec[0][1])) 
                     srcid+=1
     srcarray = np.array(srcinfo, dtype=[('imid','i8'),('srcid','i8'),('ra','f8'),('dec','f8')])
