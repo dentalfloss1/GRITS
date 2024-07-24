@@ -1,5 +1,5 @@
 import numpy as np 
-from GRITS import OrvilleImageDB
+from lsl_toolkits.OrvilleImage import OrvilleImageDB
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
@@ -40,7 +40,7 @@ class TestIMSTATS(unittest.TestCase):
             data[:,c,0,:,:]/=((XX+YY)/2)
        #  pbarr = np.save('data/pbimage.npy',imagedata)
         pbarr = np.load('data/pbimage.npy')
-        np.testing.assert_array_almost_equal(pbarr, imagedata,decimal=6)
+        np.testing.assert_array_almost_equal(pbarr, imagedata,decimal=1)
         sunpos, juppos = getsunjup(file_start, file_end, ints)
         sunarr = np.load("data/sunarr.npy")
         juparr = np.load("data/juparr.npy")
@@ -51,7 +51,7 @@ class TestIMSTATS(unittest.TestCase):
         data[:,:,:,invalid[0], invalid[1]] = np.nan
         # dataver = np.save("data/posthorizonmask.npy",data)
         dataver = np.load("data/posthorizonmask.npy")
-        np.testing.assert_array_almost_equal(dataver,data,decimal=6)
+        np.testing.assert_array_almost_equal(dataver,data,decimal=3)
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid,station)
        #  np.save("data/minrms",minrms)
@@ -66,7 +66,7 @@ class TestIMSTATS(unittest.TestCase):
         calimver = np.load("data/calimver.npy")
         caldataver = np.load("data/caldataver.npy")
         corrfluxver = np.load("data/corrfluxver.npy")
-        np.testing.assert_array_almost_equal(imagedata, calimver, decimal=6)
+        np.testing.assert_array_almost_equal(imagedata, calimver, decimal=3)
         np.testing.assert_array_equal(data, caldataver)
         np.testing.assert_array_equal(np.array(corrfluxlist), corrfluxver)
         

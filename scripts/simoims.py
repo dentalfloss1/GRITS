@@ -1,6 +1,6 @@
 #!/usr/bin/env python
- 
-from GRITS.OrvilleImageDB import OrvilleImageDB
+
+from lsl_toolkits.OrvilleImageDB import OrvilleImageDB
 from GRITS.constants import CYG_A, CAS_A, TAU_A, VIRGO_A
 from GRITS.ateamtools import getcyga, getcasa, getcrab, getvira
 from GRITS.imagetools import hdrtopixmask,pbcorr,hdrtoworld

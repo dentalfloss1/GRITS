@@ -1,4 +1,4 @@
-from GRITS import OrvilleImageDB
+from lsl_toolkits.OrvilleImage import OrvilleImageDB
 from contextlib import closing
 import numpy as np 
 from lsl_toolkits.PasiImage import PasiImageDB
@@ -55,7 +55,7 @@ def matchfilepairs(station1,station2):
     return matchingfilepairs
 
 def readoims(filename,hdronly=False,startind=None,stopind=None):
-    with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
+    with closing(OrvilleImageDB(filename, 'r')) as db:
         # Get parameters from the input file
         file_start = db.header.start_time # file start time
         ngrid = db.header.ngrid # image size (x-axis)

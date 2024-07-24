@@ -41,12 +41,12 @@ from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups
 from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
-from GRITS import OrvilleImageDB
 from GRITS.plotresults import plotresults
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
 from tqdm import tqdm
 
+from lsl_toolkits.OrvilleImage import OrvilleImageDB
 from lsl_toolkits.PasiImage import PasiImageDB
 if not sys.warnoptions:
     import warnings
@@ -74,7 +74,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
     
     if ".oims" in filename:
         chunksize = int(config['Batch Control']['chunktime'])
-        with closing(OrvilleImageDB.OrvilleImageDB(filename, 'r')) as db:
+        with closing(OrvilleImageDB(filename, 'r')) as db:
             fullsize = db.nint
             ngrid = db.header.ngrid
             nchan = db.header.nchan
