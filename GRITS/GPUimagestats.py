@@ -19,10 +19,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
     idata[...] = imagedata
     idata= idata.copy('cuda')
     gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
-    if station==b'LWANA':
-        rmsbox = 60 #2*int(round(ngrid/28.8))
-    else:
-        rmsbox = 30 #2*int(round(ngrid/28.8))
+    rmsbox = 30 #2*int(round(ngrid/28.8))
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
