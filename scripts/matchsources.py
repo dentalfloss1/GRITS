@@ -96,7 +96,7 @@ if __name__=="__main__":
                     stop = min(o1t2,o2t2)
                     outsens = max(o1sens,o2sens)
                     outfov = min(o1[-1],o2[-1])
-                    fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),stop.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
+                    fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),(start+datetime.timedelta(seconds=5).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
 
 
 
