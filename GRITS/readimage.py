@@ -9,6 +9,7 @@ def matchfilepairs(station1,station2):
     and pair up"""
     f1times = []
     for f1 in station1:
+        print(f1)
         try:
             if "oims" in f1:
                 hasoims = True
@@ -27,6 +28,7 @@ def matchfilepairs(station1,station2):
             print("Errors on file read, skip this one")
     f2times = []
     for f2 in station2:
+        print(f2)
         try:
             if "oims" in f2:
                 hasoims = True
@@ -85,6 +87,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
             for i in tqdm(range(ints)):
                 db.seek(i+startind)
                 hdr,alldata = db.read_image()
+                hdr['psize'] = psize
                 hdrlist.append(hdr)
                 data[i] = np.asarray(alldata.data)
             imagedata = np.copy(data)
@@ -123,6 +126,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
                 hdr['center_ra'] = hdr['zenithRA']
                 hdr['center_dec'] = hdr['zenithDec']
                 hdr['int_len'] = hdr['intLen']
+                hdr['psize'] = psize
                 hdrlist.append(hdr)
                 thisdata = alldata.data
                 data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))

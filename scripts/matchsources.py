@@ -62,6 +62,7 @@ if __name__=="__main__":
         config2.read(args.configfile2)
 
     # run main execution loop
+    print("Let us match the files")
     matchedfiles = matchfilepairs(args.station1,args.station2) 
     print(matchedfiles)
     lastfilename1 = ""
@@ -96,16 +97,16 @@ if __name__=="__main__":
                     stop = min(o1t2,o2t2)
                     outsens = max(o1sens,o2sens)
                     outfov = min(o1[-1],o2[-1])
-                    fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),(start+datetime.timedelta(seconds=5).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
+                    fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),(start+datetime.timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
 
 
 
        #  if args.keepcatmatch:
-        keepdat1 = dat1
-        keepdat2 = dat2
+       #  keepdat1 = dat1
+       #  keepdat2 = dat2
        #  else:
-       #      keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
-       #      keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
+        keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
+        keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
         for s1 in keepdat1:
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
             if np.sum(simul) > 0:

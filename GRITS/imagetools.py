@@ -120,6 +120,26 @@ def pbcorr(header,imSize,chan,pScale,station):
 def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     if (station==b'LWASV') and ("startTime" not in hdr):
         w = getSVwcs(hdr, imSize)
+    elif (station==b'LWA1') and ('startTime' in hdr):
+        cdelt = hdr['psize']
+        w = WCS(naxis=2)
+        ngrid = imSize
+        w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+        # 130 degrees is what is visible to the dipoles
+        HA = 0
+        lwa1 = EarthLocation.of_site('lwa1')
+        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=lwa1)
+        LST = t_obs.sidereal_time('apparent').degree
+        RA = LST-HA
+        dec = lwa1.lat.degree
+        corcdelt = cdelt*1.0023384615384616 
+        w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
+        w.wcs.crval = [RA,dec]
+        w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+        w.wcs.radesys = 'FK5'
+        w.wcs.specsys = 'TOPOCENT'
+        w.wcs.equinox = t_obs.jyear
+        
     else:
         w = getGENERICwcs(hdr, imSize)
     try: 
@@ -130,6 +150,26 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
     if (station==b'LWASV') and ("startTime" not in hdr):
         w = getSVwcs(hdr, imSize)
+    elif (station==b'LWA1') and ('startTime' in hdr):
+        cdelt = hdr['psize']
+        w = WCS(naxis=2)
+        ngrid = imSize
+        w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+        # 130 degrees is what is visible to the dipoles
+        HA = 0
+        lwa1 = EarthLocation.of_site('lwa1')
+        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=lwa1)
+        LST = t_obs.sidereal_time('apparent').degree
+        RA = LST-HA
+        dec = lwa1.lat.degree
+        corcdelt = cdelt*1.0023384615384616 
+        w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
+        w.wcs.crval = [RA,dec]
+        w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+        w.wcs.radesys = 'FK5'
+        w.wcs.specsys = 'TOPOCENT'
+        w.wcs.equinox = t_obs.jyear
+        
     else:
         w = getGENERICwcs(hdr, imSize)
     try:
@@ -146,9 +186,9 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
             k = 0 
             islandcond = data[i,j,k] > (rmsdata[i,:].max()*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-           #  k = 3
-           #  islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)
-           #  islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            k = 3
+            islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)
+            islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
     islanddata = BFArray(islandmasks, space='cuda', dtype='u16')
