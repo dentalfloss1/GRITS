@@ -36,7 +36,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
                          intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
                      }
                  }
-                 // intermediate = max(intermediateI,intermediateV);
+                 intermediate = max(intermediateI,intermediateV);
                  intermediate = intermediateI;
                  rmsdat(time,chan,i,j) = sqrt(intermediate/((float) nx*ny)) ;
              }

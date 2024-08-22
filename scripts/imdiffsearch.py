@@ -273,6 +273,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
             c = whereislands[1][ind]
             hdr = hdrlist[i]
             lastlabel=-1
+            checkscint = []
             for s in [0,3]:
                 for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
                     srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
@@ -302,12 +303,15 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     else:
                         c3 = False
                     detchan=1
-                        
+                    checkscint.append(c3 or vlss) 
+                    if c3 or vlss:
+                        islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                     srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c],detchan))
                     lastlabel = label
                     uniquesrcid += 1
             if not noplot:
-                plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
+                if not np.all(checkscint):
+                    plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
         for t in range(ints):
             for c in range(nchan):
                 if numsrccond[t,c] and (rmsdata[t,c] < float(config['Quality Control']['maxrms'])):

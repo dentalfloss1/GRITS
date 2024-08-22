@@ -39,22 +39,22 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     nchan = data.shape[1]
     currimage = data[index,0,:,:]
     # Stokes I image
-    axs[0,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
+    axs[0,0].imshow(currimage,vmin=0,vmax=vmax*50,origin='lower',extent=extent)
     currimage = imagedata[index,0,:,:]
     # Stokes V image
-    axs[0,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
+    axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',extent=extent,cmap="coolwarm")
     mintime = max(0,index-2)
     maxtime = min(ints-1,index+2)
     # Series of Stokes I diff image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = data[t,0,:,:]
-        axs[1,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
+        axs[1,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
         axs[1,timenum].axvline(avx,color='black',alpha=0.25)
         axs[1,timenum].axhline(avy,color='black',alpha=0.25)
     # Series of Stokes V image
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = data[t,3,:,:]
-        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
+        axs[2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
         axs[2,timenum].axvline(avx,color='black',alpha=0.25)
         axs[2,timenum].axhline(avy,color='black',alpha=0.25)
 
@@ -77,18 +77,30 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     skip = False
     extent = SetExtent(sRad,data)
     chantoplot = 0
-    fig, axs = plt.subplots(3,5,figsize=(30,15))
+    fig, axs = plt.subplots(5,5,figsize=(40,25))
     ytextloc = 0.9
     lastlabel = -1
     mintime = max(0,i-2)
     maxtime = min(ints-1,i+2)
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = data[t,0,:,:]
-        axs[0,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower')
+        axs[1,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
+        axs[1,2].set_title('I diff')
+        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+    for timenum, t in enumerate(range(mintime,maxtime+1)):
+        currimage = data[t,1,:,:]
+        axs[2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
+        axs[2,2].set_title('Q diff')
+        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+    for timenum, t in enumerate(range(mintime,maxtime+1)):
+        currimage = data[t,2,:,:]
+        axs[3,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
+        axs[3,2].set_title('U diff')
         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     for timenum, t in enumerate(range(mintime,maxtime+1)):
         currimage = data[t,3,:,:]
-        axs[2,timenum].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',cmap='coolwarm')
+        axs[4,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
+        axs[4,2].set_title('V diff')
         # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     for s in [0,3]:
         for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
@@ -99,40 +111,36 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             if label==lastlabel:
                 continue
             radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-            axs[1,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
-            for anum in [0,2]:
-                for imind in range(5):
-                    axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
-                    circle = plt.Circle((avx,avy),5,fill=False)
-                    axs[anum,imind].add_artist(circle)
+
             
-            ytextloc -= 0.15
             VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
             VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
             VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-            if VLSSrsep < catsep: 
-                axs[1,4].text(0,ytextloc,f"VLSSr #{VLSSrnum} is {round(VLSSrsep,1)} deg away")
-                ytextloc -= 0.15
             cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
             cat3cnum = cat3c['3C'][cat3cclose]
             cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-            if cat3csep < catsep:
-                axs[1,4].text(0,ytextloc,f"3C{cat3cnum} is {round(cat3csep,1)} deg away")
-                ytextloc -= 0.15
+            if ((cat3csep > catsep) and (VLSSrsep > catsep)):
+                axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
+                ytextloc-=0.15
+                for anum in [1,4]:
+                    for imind in range(5):
+                        axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
+                        circle = plt.Circle((avx,avy),5,fill=False)
+                        axs[anum,imind].add_artist(circle)
             lastlabel = label
 
-    axs[1,4].set_axis_off()
+    axs[0,4].set_axis_off()
 
     islandplot = islands[i,0,:,:]
-    axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[1,2].set_title('I src')
+    axs[0,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+    axs[0,2].set_title('I src')
     islandplot = islands[i,3,:,:]
-    axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[1,3].set_title('V src')
+    axs[0,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+    axs[0,3].set_title('V src')
     currimage = imagedata[i,0,:,:]
-    axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',extent=extent)
+    axs[0,0].imshow(currimage,vmin=0,vmax=vmax*50,origin='lower',extent=extent)
     currimage = imagedata[i,3,:,:]
-    axs[1,1].imshow(currimage,vmin=-vmax/50,vmax=vmax/50,origin='lower',extent=extent,cmap="coolwarm")
+    axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',extent=extent,cmap="coolwarm")
     mjd = int(hdr['start_time'])
     mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
     # determine if header is in seconds or days
