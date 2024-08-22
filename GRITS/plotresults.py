@@ -71,7 +71,8 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     
 
     
-def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,vmax=8000,chunkt=0):
+def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0):
+    vmax = rms*3
     ints = data.shape[0]
     ngrid = data.shape[-1]
     skip = False
@@ -80,29 +81,20 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     fig, axs = plt.subplots(5,5,figsize=(40,25))
     ytextloc = 0.9
     lastlabel = -1
-    mintime = max(0,i-2)
-    maxtime = min(ints-1,i+2)
-    for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = data[t,0,:,:]
-        axs[1,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
-        axs[1,2].set_title('I diff')
-        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = data[t,1,:,:]
-        axs[2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
-        axs[2,2].set_title('Q diff')
-        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = data[t,2,:,:]
-        axs[3,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
-        axs[3,2].set_title('U diff')
-        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for timenum, t in enumerate(range(mintime,maxtime+1)):
-        currimage = data[t,3,:,:]
-        axs[4,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
-        axs[4,2].set_title('V diff')
-        # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-    for s in [0,3]:
+    mintime = max(1,i-2)
+    maxtime = min(ints-1,mintime+4)
+    for stokesno,sname in enumerate(['I','Q','U','V']):
+        for timenum, t in enumerate(range(mintime,maxtime+1)):
+            # if (i==mintime):
+            #     currimage = imagedata[t,stokesno,:,:]-imagedata[maxtime+1,stokesno,:,:]
+            # else:
+            #     currimage = imagedata[t,stokesno,:,:]-imagedata[mintime-1,stokesno,:,:]
+            currimage = imagedata[t,stokesno,:,:]-imagedata[t-1,stokesno,:,:]
+            axs[stokesno+1,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
+            if t==i:
+                axs[stokesno+1,timenum].set_title(f'{sname} diff')
+            # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+    for s in [0,1,2,3]:
         for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
             srclocs = np.argwhere(islands[i,s,:,:]==label)
             if srclocs.size==0:
@@ -122,7 +114,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             if ((cat3csep > catsep) and (VLSSrsep > catsep)):
                 axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
                 ytextloc-=0.15
-                for anum in [1,4]:
+                for anum in range(1,5,1):
                     for imind in range(5):
                         axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
                         circle = plt.Circle((avx,avy),5,fill=False)
@@ -137,7 +129,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     islandplot = islands[i,3,:,:]
     axs[0,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[0,3].set_title('V src')
-    currimage = imagedata[i,0,:,:]
+    currimage = imagedata[i,2,:,:]
     axs[0,0].imshow(currimage,vmin=0,vmax=vmax*50,origin='lower',extent=extent)
     currimage = imagedata[i,3,:,:]
     axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',extent=extent,cmap="coolwarm")

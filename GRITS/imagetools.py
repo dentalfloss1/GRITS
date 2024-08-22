@@ -183,12 +183,24 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
     islandmasks = np.zeros(data.shape,dtype=bool)
     for i in range(ints-1):
         for j in range(nchan):
-            k = 0 
-            islandcond = data[i,j,k] > (rmsdata[i,:].max()*nsigma)
-            islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-            k = 3
-            islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,:].max()*nsigma)
-            islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            linearsigma = 10
+            k = 1
+            islandcond = data[i,j,k] > (rmsdata[i,j]*linearsigma)
+            brightQ = np.sum(islandcond)
+            k = 2
+            islandcond = data[i,j,k] > (rmsdata[i,j]*linearsigma)
+            brightU = np.sum(islandcond)
+
+                # print(np.amax(data[i,j,k]),print(rmsdata[i,:].max()*3),i,j,k)
+
+            # If detected at 100 sigma in linear polarization, skip due to likely RFI/bright sun
+            if (brightQ==0) and (brightU==0):
+                k = 0 
+                islandcond = data[i,j,k] > (rmsdata[i,j]*nsigma)
+                islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+                k = 3
+                islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,j]*nsigma)
+                islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
     islanddata = BFArray(islandmasks, space='cuda', dtype='u16')

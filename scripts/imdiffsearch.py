@@ -64,7 +64,7 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,vmax=8000,noplot=False,quiet=False):
+def main(filename,config,noplot=False,quiet=False):
     uniquesrcid=0
     srclist = []
     obslist = []
@@ -133,12 +133,13 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
         # Get a mask for the horizon, initially search the whole image, restrict later
         # this is intended to reduce sources that are included due to edge effects
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.95)
-        data[:,:,:,invalid[0], invalid[1]] = np.nan
+        for s in [0,3]:
+            data[:,:,s,invalid[0], invalid[1]] = np.nan
         
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid,station)
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station)
-        # UN pbcorrect for a flat sky, we aren't measuring fluxes here anyway
+        # UN pbcorrect diff ims for a flat sky. We measure fluxes using the image data, so we keep that as pb corrected
         for c in range(nchan):
             imagedata[:,c,0,:,:]*=((XX+YY)/2)
             data[:,c,0,:,:]*=((XX+YY)/2)
@@ -282,27 +283,28 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     avy, avx = np.average(srclocs+0.5,axis=0)
                     if label==lastlabel:
                         continue
-                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
-                    thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
-                    detchan = len(np.unique(otherchan))
+                    if s in [0,3]:
+                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
+                        thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
+                        detchan = len(np.unique(otherchan))
 
-                    mjd = int(hdr['start_time'])
-                    mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
-                    # determine if header is in seconds or days
-                    if round(hdr['int_len']) > 0:
-                        tInt = hdr['int_len']
-                    else:
-                        tInt = hdr['int_len']*86400.0
-                    dateObs = mjdmpm_to_datetime(mjd, mpm)
-                    if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
-                        vlss = True
-                    else:
-                        vlss = False
-                    if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
-                        c3 = True
-                    else:
-                        c3 = False
-                    detchan=1
+                        mjd = int(hdr['start_time'])
+                        mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+                        # determine if header is in seconds or days
+                        if round(hdr['int_len']) > 0:
+                            tInt = hdr['int_len']
+                        else:
+                            tInt = hdr['int_len']*86400.0
+                        dateObs = mjdmpm_to_datetime(mjd, mpm)
+                        if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                            vlss = True
+                        else:
+                            vlss = False
+                        if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                            c3 = True
+                        else:
+                            c3 = False
+                        detchan=1
                     checkscint.append(c3 or vlss) 
                     if c3 or vlss:
                         islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
@@ -311,7 +313,7 @@ def main(filename,config,vmax=8000,noplot=False,quiet=False):
                     uniquesrcid += 1
             if not noplot:
                 if not np.all(checkscint):
-                    plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),vmax=vmax,chunkt=startindex)
+                    plotresults(i,c,filename,rmsdata[i,c],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),chunkt=startindex)
         for t in range(ints):
             for c in range(nchan):
                 if numsrccond[t,c] and (rmsdata[t,c] < float(config['Quality Control']['maxrms'])):
@@ -357,7 +359,6 @@ if __name__ == "__main__":
                         help="Only image this channel")
     parser.add_argument('--noplot', action="store_true")
     parser.add_argument('-q','--quiet', action='store_true')
-    parser.add_argument("--vmax", type=float, default=8000, help="controls contrast of plots")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     args = parser.parse_args()
@@ -373,7 +374,7 @@ if __name__ == "__main__":
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad = main(filename,config,args.vmax,args.noplot,quiet=args.quiet)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad = main(filename,config,args.noplot,quiet=args.quiet)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
@@ -389,6 +390,7 @@ if __name__ == "__main__":
                         if s==s1:
                             seps[j]=True
                         else:  
+                            print(s1,s)
                             seps[j] = angsep(s1['ra'],s1['dec'],s['ra'],s['dec']) < float(config['Quality Control']['catsep'])
                     matching2 = src[seps]
                     outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))

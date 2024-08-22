@@ -130,8 +130,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                         tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[i,c],c))
         invalid = np.where( completemask[i] )
 
-
-        data[i,:,:,invalid[0], invalid[1]] = np.nan
+        for stokesno in [0,3]:
+            data[i,:,stokesno,invalid[0], invalid[1]] = np.nan
 
     freq = lambda c: (int(hdrlist[0]['start_freq'])  + ((c+1)*int(hdrlist[0]['bandwidth'])/2))*1e-6
     allcorr = []
