@@ -41,26 +41,14 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
                  rmsdat(time,chan,i,j) = sqrt(intermediate/((float) nx*ny)) ;
              }
              else {
-                 rmsdat(time,chan,i,j) = %f;
-                 }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,fltmax,),
+                 rmsdat(time,chan,i,j) = %f; 
+                 }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,floatmax,),
                  {"dat":idata, "rmsdat":gpurmsdata},
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
     gpurmsdata = gpurmsdata.copy('system')
-
-    # minrmsfreq = np.zeros((nchan))
-    minrms = np.zeros((ints,nchan))
-    avindices = np.where((gpurmsdata!=0) & (gpurmsdata!=fltmax))
-   #  for c in range(nchan):
-   #      if c not in avindices[1]:
-   #          continue
-   #      minrmsfreq[c] = np.amin(gpurmsdata[:,c,:,:])
-    for t in range(ints):
-        if t not in avindices[0]:
-            continue
-        for c in range(nchan):
-            if c not in avindices[1]:
-                continue
-            minrms[t,c] = gpurmsdata[t,c,:,:].min()
+    # minrmsfreq = np.zeros((nchan))A
+    gpurmsdata[gpurmsdata==0] = floatmax
+    minrms = gpurmsdata.min(axis=(-1,-2))
     imagedata[imagedata==fltmax] = np.nan
     return  minrms
 def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station):

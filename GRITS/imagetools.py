@@ -24,7 +24,11 @@ def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     dec1 = dec1deg*np.pi/180
     ra2 = ra2deg*np.pi/180
     dec2 = dec2deg*np.pi/180
-    sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
+    try:
+        sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
+    except Exception as e:
+        if round((np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2)),1)==1.0:
+            sep = 0
     return 180*sep/np.pi
 
 def maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.667):
@@ -178,12 +182,13 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
         pixcrd = [(x,y)]
     return w.wcs_pix2world(pixcrd, 0)
 
-def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
+def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3, maxDR=300):
     dataislands = np.copy(data)
     islandmasks = np.zeros(data.shape,dtype=bool)
-    for i in range(ints-1):
+    flaggedtimes = []
+    for i in range(ints):
         for j in range(nchan):
-            linearsigma = 10
+            linearsigma = maxDR
             k = 1
             islandcond = data[i,j,k] > (rmsdata[i,j]*linearsigma)
             brightQ = np.sum(islandcond)
@@ -194,6 +199,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
                 # print(np.amax(data[i,j,k]),print(rmsdata[i,:].max()*3),i,j,k)
 
             # If detected at 100 sigma in linear polarization, skip due to likely RFI/bright sun
+
             if (brightQ==0) and (brightU==0):
                 k = 0 
                 islandcond = data[i,j,k] > (rmsdata[i,j]*nsigma)
@@ -201,14 +207,17 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3):
                 k = 3
                 islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,j]*nsigma)
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            else:
+                flaggedtimes.append((i,j))
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
-    islanddata = BFArray(islandmasks, space='cuda', dtype='u16')
+    islanddata = BFArray(islandmasks, space='system', dtype='u16')
     islanddata = islanddata.copy('cuda')
     # MULTI Channel detections only
     BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},
         axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-    return islanddata
+    islanddata = islanddata.copy('system')
+    return flaggedtimes, islanddata
 
 def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
     hdulist = astrofits.HDUList()

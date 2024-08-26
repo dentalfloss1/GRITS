@@ -4,6 +4,7 @@ from lsl.common.mcs import mjdmpm_to_datetime
 from GRITS.catalogs import cat3c,VLSSr50jy
 from GRITS.imagetools import angsep, hdrtoworld,hdrtopixmask,pbcorr
 from GRITS.readimage import readoims, readpims
+import matplotlib.colors as colors
 def SetExtent(sRad, data):
     #### Set up extent for plot ## 
     ngrid = data.shape[-1]
@@ -91,15 +92,20 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[mintime-1,stokesno,:,:]
             currimage = imagedata[t,stokesno,:,:]-imagedata[t-1,stokesno,:,:]
             axs[stokesno+1,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
+            axs[stokesno+1,timenum].tick_params(axis='both',which='both',bottom=False,top=False,labelbottom=False)
             if t==i:
                 axs[stokesno+1,timenum].set_title(f'{sname} diff')
             # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     for s in [0,1,2,3]:
         for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
-            srclocs = np.argwhere(islands[i,s,:,:]==label)
-            if srclocs.size==0:
+            yloc, xloc = np.where(islands[i,s,:,:]==label)
+            if yloc.size==0:
                 continue
-            avy, avx = np.average(srclocs+0.5,axis=0)
+            for x,y in zip(xloc,yloc):
+                if data[i,s,y,x]==np.amax(data[i,s,yloc,xloc]):
+                    avx = x
+                    avy = y 
+                    break
             if label==lastlabel:
                 continue
             radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
@@ -113,6 +119,9 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
             if ((cat3csep > catsep) and (VLSSrsep > catsep)):
                 axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
+                ytextloc-=0.15
+                measI, measQ, measU, measV = data[i,:,int(avy),int(avx)] 
+                axs[0,4].text(0,ytextloc,f"I:{measI:.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%")
                 ytextloc-=0.15
                 for anum in range(1,5,1):
                     for imind in range(5):
@@ -141,7 +150,104 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     else:
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
-    fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E}")
+    nomaskimdiff = imagedata[i] - imagedata[i-1]
+    s2n = np.amax(nomaskimdiff)/rms
+    fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
     plotfile = filename.replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-t{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)
     plt.close()
+
+
+def plotLC(filename,plotdata,diffdata,dettimechan,srcid,timeind,t0):
+    plotfile = filename.replace(".oims",f"-srcid{srcid}_t{timeind}_LC.png").replace(".pims",f"-src{srcid}_LC.png").replace(':','-')
+    nchan = len(np.unique(plotdata['c']))
+    if nchan==1:
+        fig = plt.figure()
+        plt.scatter(plotdata['index'],plotdata['flux'],color='black')
+        for d in dettimechan:
+            plt.axvline(d['index'],alpha=0.5,color='black')
+        plt.savefig(plotfile)
+        plt.close()
+    else:
+        fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(24,8*nchan))
+        for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[:(2*nchan):2]):
+            freq = plotdata['freq'][plotdata['c']==c][0]
+            curdata = plotdata[plotdata['c']==c]
+            try:
+                fluxdat = curdata['flux'] # - np.nanmedian(curdata['flux'])
+            except RuntimeWarning:
+                continue
+            unflag = curdata[curdata['flagged']==False]
+            flagged = curdata[curdata['flagged']==True]
+            # ASSUMES 5 second integration time
+            ax.plot(unflag['index'],unflag['flux'],color='black',marker='s')
+            ax.scatter(flagged['index'],flagged['flux'],color='black',marker='*',label='flagged')
+            ax.legend()
+            ax.set_xlim(plotdata['index'].min(), plotdata['index'].max())
+            ax.set_title(f"{freq:5.2f} MHz")
+            # ax.set_ylim(np.nanmin(fluxdat), np.nanmax(fluxdat))
+            if ax==axs.flatten()[-4]:
+                ax.set_xlabel(f"image index")
+                # ax.set_ylabel("Flux above median (Jy)")
+                ax.set_ylabel("Approx. Flux (Jy)")
+            curdets = dettimechan[dettimechan['c']==c]
+            for c in curdets:
+                ax.axvline(c['index'],alpha=0.5,color='black')
+        for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[1:(2*nchan):2]):
+            freq = plotdata['freq'][plotdata['c']==c][0]
+            curdata = plotdata[plotdata['c']==c]
+            unflag = curdata[curdata['flagged']==False]
+            flagged = curdata[curdata['flagged']==True]
+            # ASSUMES 5 second integration time
+            xdata = unflag['index'][1:]
+            ydata = unflag['flux'][1:] - unflag['flux'][:-1]
+            ax.plot(xdata,ydata,color='black',marker='s')
+            xdata = flagged['index'][1:]
+            ydata = flagged['flux'][1:] - flagged['flux'][:-1]
+            ax.scatter(xdata,ydata,color='black',marker='*',label='flagged')
+            ax.legend()
+            ax.set_xlim(plotdata['index'].min(), plotdata['index'].max())
+            ax.set_title(f"{freq:5.2f} MHz")
+            # ax.set_ylim(np.nanmin(ydata), np.nanmax(ydata))
+            if ax==axs.flatten()[-3]:
+                ax.set_xlabel(f"image index")
+                # ax.set_ylabel("Flux above median (Jy)")
+                ax.set_ylabel("Approx. Flux (Jy)")
+            curdets = dettimechan[dettimechan['c']==c]
+            for c in curdets:
+                ax.axvline(c['index'],alpha=0.5,color='black')
+        ax = axs.flatten()[-2]
+        ax.scatter(plotdata['freq'],plotdata['flux'],alpha=0.5)
+        for d in np.unique(dettimechan['index']):
+            curdata = plotdata[plotdata['index']==d]
+            ax.plot(curdata['freq'],curdata['flux'],label=d,marker='x')
+        ax.set_xlabel('Freq (MHz)')
+        ax.set_ylabel('Approx. Flux (Jy)')
+        ax.legend()
+        ax = axs.flatten()[-1]
+        ax.scatter(diffdata['freq'],diffdata['flux'],color='black')
+        ax.set_xlabel('Freq (MHz)')
+        ax.set_ylabel('Approx. Flux (Jy)')
+        ax.legend()
+    #     Z = np.zeros((len(np.unique(plotdata['date'])),nchan))
+    #     sortudates = np.sort(np.unique(plotdata['date']))
+    #     for i,d in enumerate(sortudates):
+    #         for c in np.unique(plotdata['c']):
+    #             thisZ = plotdata['flux'][(plotdata['date']==d) & (plotdata['c']==c)][0]
+    #             try:
+    #                 Z[i,c] = np.log10(thisZ) # - np.nanmedian(thisZ)
+    #             except RuntimeWarning:
+    #                 continue
+    #     Z[np.isnan(Z)] = 0
+    #     # setvscale = 3*np.median(Z[Z>0])
+    #     # setvscale = np.amax(np.abs(Z))
+    #     waterfall = axs[-1].imshow(Z.transpose(),cmap='viridis',origin='lower',interpolation='nearest',aspect='auto')
+    #     cbar = fig.colorbar(waterfall,ax=axs[-1], orientation='horizontal', cmap='coolwarm',fraction=0.1)
+    #     cbar.set_label('Approx. Log10 Flux (Jy)')
+    #        
+        plt.savefig(plotfile)
+        plt.close()
+     
+
+
+

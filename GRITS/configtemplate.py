@@ -9,6 +9,8 @@ maxrms = 1e6
 maxabsmean = 1e6
 ; Max dynamic range
 DynamicRange = 1e16
+; Max percent polarization in stokes Q or U
+LinearStokes = 50
 ; Minimum angular velocity of moving sources in degrees per second
 minangvel = 1e-6
 ; Detection sigma 

@@ -36,8 +36,6 @@ if __name__=="__main__":
     parser.add_argument('--station2', type=str, nargs='+',
                         help="images from the station we check anti-concidence with",
                         required=True)
-    parser.add_argument("--vmax1", type=float, default=8000, help="controls contrast of station 1 plots")
-    parser.add_argument("--vmax2", type=float, default=8000, help="controls contrast of station 2 plots")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
@@ -73,11 +71,11 @@ if __name__=="__main__":
     uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1 = imdiffsearch.main(filename1,config1,vmax=args.vmax1,noplot=True)
+            dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1 = imdiffsearch.main(filename1,config1,noplot=True)
             diffdata1 = np.copy(imagedata1)
             diffdata1[:-1]  = diffdata1[1:] - diffdata1[:-1]
         if lastfilename2!=filename2:
-            dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2 = imdiffsearch.main(filename2,config2,vmax=args.vmax2,noplot=True)
+            dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2 = imdiffsearch.main(filename2,config2,noplot=True)
             diffdata2 = np.copy(imagedata2)
             diffdata2[:-1]  = diffdata2[1:] - diffdata2[:-1]
         if (dat1 is None) or (dat2 is None):
@@ -131,8 +129,10 @@ if __name__=="__main__":
                     dec2 = s2['dec']
                     c2 = s2['channel']
                     plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(':','-').split('/')[-1]
-                    plotresults(index1,c1,plotfile1,minrms1[index1,c1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1,vmax=args.vmax1)
-                    plotresults(index2,c2,plotfile2,minrms2[index2,c2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,station2,vmax=args.vmax2)
+                    plotresults(index1,c1,plotfile1,minrms1[index1,c1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1)
+                    plotresults(index2,c2,plotfile2,minrms2[index2,c2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,station2)
+                    uniquecoords = np.unique([(round(s[1],0),round(s[2],0)) for s in srclist] ,axis=0)
+                    skiplist = []
                     # plotsource(index1, plotfile1, filename1, ra1, dec1, minrms1, corrfluxlist1, c1, vmax=args.vmax1)
                     # plotsource(index2, plotfile2, filename2, ra2, dec2, minrms2, corrfluxlist2, c2, vmax=args.vmax2)
                     if args.makefits:
