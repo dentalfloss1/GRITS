@@ -205,7 +205,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3, maxDR=300):
                 islandcond = data[i,j,k] > (rmsdata[i,j]*nsigma)
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
                 k = 3
-                islandcond = (np.abs(data[i,j,k])) > (rmsdata[i,j]*nsigma)
+                islandcond = (data[i,j,k]) > (rmsdata[i,j]*nsigma)
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
             else:
                 flaggedtimes.append((i,j))
