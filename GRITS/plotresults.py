@@ -138,10 +138,12 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     islandplot = islands[i,3,:,:]
     axs[0,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[0,3].set_title('V src')
-    currimage = imagedata[i,2,:,:]
-    axs[0,0].imshow(currimage,vmin=0,vmax=vmax*50,origin='lower',extent=extent)
+    currimage = imagedata[i,0,:,:]
+    axs[0,0].imshow(currimage,origin='lower',extent=extent)
+    #axs[0,0].imshow(currimage,vmin=0,vmax=vmax*5,origin='lower',extent=extent)
     currimage = imagedata[i,3,:,:]
-    axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',extent=extent,cmap="coolwarm")
+    #axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmaxy,origin='lower',extent=extent,cmap="coolwarm")
+    axs[0,1].imshow(currimage,origin='lower',extent=extent,cmap="coolwarm")
     mjd = int(hdr['start_time'])
     mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
     # determine if header is in seconds or days
@@ -158,18 +160,35 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     plt.close()
 
 
-def plotLC(filename,plotdata,diffdata,dettimechan,srcid,timeind,t0):
-    plotfile = filename.replace(".oims",f"-srcid{srcid}_t{timeind}_LC.png").replace(".pims",f"-src{srcid}_LC.png").replace(':','-')
+def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec):
+    plotfile = filename.replace(".oims",f"-srcid{srcid}_t{timeind}_LC.png").replace(".pims",f"-src{srcid}_t{timeind}_LC.png").replace(':','-')
     nchan = len(np.unique(plotdata['c']))
     if nchan==1:
-        fig = plt.figure()
-        plt.scatter(plotdata['index'],plotdata['flux'],color='black')
-        for d in dettimechan:
-            plt.axvline(d['index'],alpha=0.5,color='black')
+        fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(24,8))
+        unflag = plotdata[plotdata['flagged']==False]
+        flagged = plotdata[plotdata['flagged']==True]
+        axs[0].scatter(unflag['minpst'],unflag['flux'],color='black',marker='s')
+        axs[0].scatter(flagged['minpst'],flagged['flux'],color='black',marker='*',label="flagged")
+        axs[0].legend()
+        axs[0].set_ylim(unflag['flux'].min(), unflag['flux'].max())
+        unflag = zoomplotdata[zoomplotdata['flagged']==False]
+        flagged = zoomplotdata[zoomplotdata['flagged']==True]
+        axs[1].scatter(unflag['minpst'],unflag['flux'],color='black',marker='s')
+        axs[1].scatter(flagged['minpst'],flagged['flux'],color='black',marker='*',label="flagged")
+        axs[1].legend()
+        for ax in axs:
+            for d in dettimechan:
+                detloc = plotdata['minpst'][plotdata['index']==d['index']][0]
+                ax.axvline(detloc,alpha=0.5,color='black')
+        axs[0].set_xlabel("Minutes past the hour")
+        axs[1].set_xlabel("Minutes past the hour")
+        axs[0].set_ylabel("Approximate Flux (Jy)")
+        fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
+        plt.tight_layout()
         plt.savefig(plotfile)
         plt.close()
     else:
-        fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(24,8*nchan))
+        fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(24,6*nchan))
         for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[:(2*nchan):2]):
             freq = plotdata['freq'][plotdata['c']==c][0]
             curdata = plotdata[plotdata['c']==c]
@@ -179,45 +198,43 @@ def plotLC(filename,plotdata,diffdata,dettimechan,srcid,timeind,t0):
                 continue
             unflag = curdata[curdata['flagged']==False]
             flagged = curdata[curdata['flagged']==True]
-            # ASSUMES 5 second integration time
-            ax.plot(unflag['index'],unflag['flux'],color='black',marker='s')
-            ax.scatter(flagged['index'],flagged['flux'],color='black',marker='*',label='flagged')
+            ax.scatter(unflag['minpst'],unflag['flux'],color='black',marker='s')
+            ax.scatter(flagged['minpst'],flagged['flux'],color='black',marker='*',label='flagged')
             ax.legend()
-            ax.set_xlim(plotdata['index'].min(), plotdata['index'].max())
+            ax.set_xlim(plotdata['minpst'].min(), plotdata['minpst'].max())
+            ax.set_ylim(unflag['flux'].min(), unflag['flux'].max())
             ax.set_title(f"{freq:5.2f} MHz")
-            # ax.set_ylim(np.nanmin(fluxdat), np.nanmax(fluxdat))
             if ax==axs.flatten()[-4]:
-                ax.set_xlabel(f"image index")
+                ax.set_xlabel(f"Minutes past the hour")
                 # ax.set_ylabel("Flux above median (Jy)")
                 ax.set_ylabel("Approx. Flux (Jy)")
             curdets = dettimechan[dettimechan['c']==c]
             for c in curdets:
-                ax.axvline(c['index'],alpha=0.5,color='black')
-        for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[1:(2*nchan):2]):
-            freq = plotdata['freq'][plotdata['c']==c][0]
-            curdata = plotdata[plotdata['c']==c]
+                detloc = plotdata['minpst'][plotdata['index']==c['index']][0]
+                ax.axvline(detloc,alpha=0.5,color='black')
+        for c,ax in zip(np.unique(zoomplotdata['c']),axs.flatten()[1:(2*nchan):2]):
+            freq = zoomplotdata['freq'][zoomplotdata['c']==c][0]
+            curdata = zoomplotdata[zoomplotdata['c']==c]
             unflag = curdata[curdata['flagged']==False]
             flagged = curdata[curdata['flagged']==True]
-            # ASSUMES 5 second integration time
-            xdata = unflag['index'][1:]
-            ydata = unflag['flux'][1:] - unflag['flux'][:-1]
-            ax.plot(xdata,ydata,color='black',marker='s')
-            xdata = flagged['index'][1:]
-            ydata = flagged['flux'][1:] - flagged['flux'][:-1]
+            xdata = unflag['minpst']
+            ydata = unflag['flux']
+            ax.scatter(xdata,ydata,color='black',marker='s')
+            xdata = flagged['minpst']
+            ydata = flagged['flux']
             ax.scatter(xdata,ydata,color='black',marker='*',label='flagged')
             ax.legend()
-            ax.set_xlim(plotdata['index'].min(), plotdata['index'].max())
+            ax.set_xlim(zoomplotdata['minpst'].min(), zoomplotdata['minpst'].max())
             ax.set_title(f"{freq:5.2f} MHz")
-            # ax.set_ylim(np.nanmin(ydata), np.nanmax(ydata))
             if ax==axs.flatten()[-3]:
-                ax.set_xlabel(f"image index")
+                ax.set_xlabel(f"Minutes past the hour")
                 # ax.set_ylabel("Flux above median (Jy)")
                 ax.set_ylabel("Approx. Flux (Jy)")
             curdets = dettimechan[dettimechan['c']==c]
             for c in curdets:
-                ax.axvline(c['index'],alpha=0.5,color='black')
+                detloc = zoomplotdata['minpst'][zoomplotdata['index']==c['index']][0]
+                ax.axvline(detloc,alpha=0.5,color='black')
         ax = axs.flatten()[-2]
-        ax.scatter(plotdata['freq'],plotdata['flux'],alpha=0.5)
         for d in np.unique(dettimechan['index']):
             curdata = plotdata[plotdata['index']==d]
             ax.plot(curdata['freq'],curdata['flux'],label=d,marker='x')
@@ -225,10 +242,7 @@ def plotLC(filename,plotdata,diffdata,dettimechan,srcid,timeind,t0):
         ax.set_ylabel('Approx. Flux (Jy)')
         ax.legend()
         ax = axs.flatten()[-1]
-        ax.scatter(diffdata['freq'],diffdata['flux'],color='black')
-        ax.set_xlabel('Freq (MHz)')
-        ax.set_ylabel('Approx. Flux (Jy)')
-        ax.legend()
+        fig.delaxes(ax)
     #     Z = np.zeros((len(np.unique(plotdata['date'])),nchan))
     #     sortudates = np.sort(np.unique(plotdata['date']))
     #     for i,d in enumerate(sortudates):
@@ -244,7 +258,8 @@ def plotLC(filename,plotdata,diffdata,dettimechan,srcid,timeind,t0):
     #     waterfall = axs[-1].imshow(Z.transpose(),cmap='viridis',origin='lower',interpolation='nearest',aspect='auto')
     #     cbar = fig.colorbar(waterfall,ax=axs[-1], orientation='horizontal', cmap='coolwarm',fraction=0.1)
     #     cbar.set_label('Approx. Log10 Flux (Jy)')
-    #        
+        plt.subplots_adjust(hspace=0.3)
+        fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
         plt.close()
      

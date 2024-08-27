@@ -6,10 +6,12 @@ import datetime
 import os 
 import argparse
 import imdiffsearch
+from astropy.time import Time
+
 from GRITS.configtemplate import configfile
-from GRITS.plotresults import plotresults,plotsource
+from GRITS.plotresults import plotresults,plotsource,plotLC
 from GRITS.readimage import matchfilepairs
-from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf
+from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
@@ -71,13 +73,13 @@ if __name__=="__main__":
     uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
-            dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1 = imdiffsearch.main(filename1,config1,noplot=True)
+            dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True)
             diffdata1 = np.copy(imagedata1)
-            diffdata1[:-1]  = diffdata1[1:] - diffdata1[:-1]
+            diffdata1[1:]  = diffdata1[1:] - diffdata1[:-1]
         if lastfilename2!=filename2:
-            dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2 = imdiffsearch.main(filename2,config2,noplot=True)
+            dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2,allflaggedtimes2 = imdiffsearch.main(filename2,config2,noplot=True)
             diffdata2 = np.copy(imagedata2)
-            diffdata2[:-1]  = diffdata2[1:] - diffdata2[:-1]
+            diffdata2[1:]  = diffdata2[1:] - diffdata2[:-1]
         if (dat1 is None) or (dat2 is None):
             continue
         lastfilename1 = filename1
@@ -105,6 +107,7 @@ if __name__=="__main__":
        #  else:
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
         keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
+        plottedlc = []
         for s1 in keepdat1:
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
             if np.sum(simul) > 0:
@@ -129,12 +132,69 @@ if __name__=="__main__":
                     dec2 = s2['dec']
                     c2 = s2['channel']
                     plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(':','-').split('/')[-1]
+                    print(index1,index2)
                     plotresults(index1,c1,plotfile1,minrms1[index1,c1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1)
                     plotresults(index2,c2,plotfile2,minrms2[index2,c2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,station2)
-                    uniquecoords = np.unique([(round(s[1],0),round(s[2],0)) for s in srclist] ,axis=0)
-                    skiplist = []
                     # plotsource(index1, plotfile1, filename1, ra1, dec1, minrms1, corrfluxlist1, c1, vmax=args.vmax1)
                     # plotsource(index2, plotfile2, filename2, ra2, dec2, minrms2, corrfluxlist2, c2, vmax=args.vmax2)
+                     
+                    for filename, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd in zip([filename1,filename2],[imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2]):        
+                            # If within the specified localization, we will skip it when we get to it in the primary loop
+                        print(filename,station)
+                        ngrid = imagedata.shape[-1]
+                        mintime = max(0,s['index']-12)
+                        maxtime = min(len(hdrlist)-1, s['index']+12)
+                        plotdata = []
+                        zoomplotdata = []
+                        ra = s['ra']
+                        dec = s['dec']
+                        psize = hdrlist[0]['psize']
+                        udet = s['index']
+                        dettimechan = []
+                        for keeprow in kd:
+                            if angsep(ra,dec,keeprow['ra'],keeprow['dec']) < float(config1['Quality Control']['statsep']):
+                                dettimechan.append((keeprow['index'],keeprow['channel']))
+                            
+                        dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
+                        curdettimechan = dettimechan[dettimechan['index']==udet]
+                        for pra,pdec,pstation,pindex in plottedlc:
+                            if (pstation==station) and (udet==pindex):
+                                if angsep(pra,pdec,ra,dec) < float(config['Quality Control']['statsep']):
+                                    continue
+                        beamI = []
+                        for c in range(imagedata.shape[1]):
+                            XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
+                            beamI.append((XX+YY)/2)
+                        for timeind in range(len(hdrlist)):
+                            x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
+                            for c in range(imagedata.shape[1]):
+                                pbcorrallimage= imagedata[timeind,c,0]/beamI[c]
+                                flux = pbcorrallimage[int(y),int(x)]
+                                flagged = (timeind,c) in allflaggedtimes
+                                midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
+                                mjd = hdrlist[timeind]['start_time']
+                                hourspastmid = (mjd - np.floor(mjd))*24
+                                minpasthr = (hourspastmid - np.floor(hourspastmid))*60
+                                plotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
+                        for timeind in range(mintime,maxtime+1):
+                            x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
+                            for c in range(imagedata.shape[1]):
+                                pbcorrallimage= imagedata[timeind,c,0]/beamI[c]
+                                flux = pbcorrallimage[int(y),int(x)]
+                                flagged = (timeind,c) in allflaggedtimes
+                                midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
+                                mjd = hdrlist[timeind]['start_time']
+                                hourspastmid = (mjd - np.floor(mjd))*24
+                                minpasthr = (hourspastmid - np.floor(hourspastmid))*60
+                                zoomplotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
+
+                        zoomplotdata = np.array(zoomplotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                        plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                        tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
+                        dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
+                        plotLC(filename, plotdata, zoomplotdata,curdettimechan,uniqueid,str(udet),tdet.isot,ra,dec)
+                        plottedlc.append((ra,dec,station,udet))
+                    
                     if args.makefits:
                         if "pims" in filename1:
                             pimsfitsout(imagedata1, diffdata1[:,c1,:,:,:], index1, hdrlist1, station1, plotfile1.replace(".png",".fits"),c1)

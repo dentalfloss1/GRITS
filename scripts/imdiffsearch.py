@@ -72,7 +72,7 @@ def main(filename,config,noplot=False,quiet=False):
     if not quiet:
         print("--------",filename,"------")
     # DATA and HEADER
-    
+#    radeckey = np.zeros((fullsize,ngrid,ngrid),dtype=[('ra','f8'),('dec','f8')])
     if ".oims" in filename:
         chunksize = int(config['Batch Control']['chunktime'])
         with closing(OrvilleImageDB(filename, 'r')) as db:
@@ -380,8 +380,12 @@ def main(filename,config,noplot=False,quiet=False):
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
     if not noplot:
-        uniquecoords = np.unique([(round(s[1],0),round(s[2],0)) for s in srclist] ,axis=0)
+        uniquecoords = np.unique([(s[1],s[2]) for s in srclist] ,axis=0)
         skiplist = []
+        beamI = []
+        for c in range(allimagedata.shape[1]):
+            XX,YY = pbcorr(fullhdrlist[0],ngrid,c,psize,station)
+            beamI.append((XX+YY)/2)
         for i,(ra,dec) in enumerate(uniquecoords):
             print(i+1,"out of",(len(uniquecoords)))
             if (ra,dec) in skiplist:
@@ -400,39 +404,48 @@ def main(filename,config,noplot=False,quiet=False):
             dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
             for udet in np.unique(dettimechan['index']):
                 plotdata = []
-                diffdata = []
+                zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
+                for timeind in range(len(fullhdrlist)):
+                    x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
+                    for c in range(allimagedata.shape[1]):
+                        pbcorrallimage= allimagedata[timeind,c,0]/beamI[c]
+                        flux = pbcorrallimage[int(y),int(x)]
+                        flagged = (timeind,c) in allflaggedtimes
+                        midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
+                        mjd = fullhdrlist[timeind]['start_time']
+                        hourspastmid = (mjd - np.floor(mjd))*24
+                        minpasthr = (hourspastmid - np.floor(hourspastmid))*60
+                        plotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
                 mintime = max(0,curdettimechan['index'].min()-12)
                 maxtime = min(len(fullhdrlist)-1, curdettimechan['index'].max()+12)
                 if mintime > maxtime:
                     raise RuntimeWarning
                 for timeind in range(mintime,maxtime+1):
-                    x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
                     for c in range(allimagedata.shape[1]):
-                        pbcorrallimage= allimagedata[timeind,c,0]/((XX+YY)/2)
+                        midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
+                        pbcorrallimage= allimagedata[timeind,c,0]/beamI[c]
                         flux = pbcorrallimage[int(y),int(x)]
                         flagged = (timeind,c) in allflaggedtimes
                         midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                        plotdata.append((timeind,flux,c,midfreq,flagged))
-                for c in range(allimagedata.shape[1]):
-                    midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                    diffallimage = allimagedata[udet,c,0] - allimagedata[udet-1,c,0]
-                    diffFlux = diffallimage[int(y),int(x)]
-                    diffdata.append((midfreq,diffFlux))
-                diffdata = np.array(diffdata, dtype=[('freq','f8'),('flux','f8')])
-                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool)])
-                t0 = Time(fullhdrlist[mintime]['start_time'],format='mjd',scale='utc')
+                        mjd = fullhdrlist[timeind]['start_time']
+                        hourspastmid = (mjd - np.floor(mjd))*24
+                        minpasthr = (hourspastmid - np.floor(hourspastmid))*60
+                        zoomplotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
+                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                zoomplotdata = np.array(zoomplotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :
-                    plotLC(src_filename, plotdata, diffdata,curdettimechan,srcid,str(udet),t0.isot)
+                    plotLC(src_filename, plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
+
 
 
 
 
                 
-
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int)]), allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int)]), allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad, allflaggedtimes
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -469,7 +482,7 @@ if __name__ == "__main__":
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad = main(filename,config,args.noplot,quiet=args.quiet)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
