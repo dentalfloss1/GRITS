@@ -45,6 +45,7 @@ from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtowor
 from GRITS.plotresults import plotresults, plotLC
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
+from GRITS.fitGaussian import fitGaussian
 from tqdm import tqdm
 
 from lsl_toolkits.OrvilleImage import OrvilleImageDB
@@ -52,6 +53,18 @@ from lsl_toolkits.PasiImage import PasiImageDB
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter("error",category=RuntimeWarning)
+
+def makeZoomCoords(rad, circular = True):
+    grid = np.mgrid[-rad : rad+1, -rad : rad+1].reshape((2, (rad*2+1)**2))
+    if circular:
+        dists = np.sqrt((grid**2).sum(axis = 0))
+        iRegion = (dists < rad + 0.33).nonzero()[0]
+        iEdge = (dists[iRegion] > rad - 0.67).nonzero()[0]
+        return grid[:, iRegion], iEdge
+    else:
+        iEdge = ((np.abs(grid[0,:]) == rad) +
+                 (np.abs(grid[1,:]) == rad)).nonzero()[0]
+        return grid, iEdge
 
 def plotislands(islanddata):
     islanddata = islanddata.copy('system')
@@ -406,12 +419,30 @@ def main(filename,config,noplot=False,quiet=False):
                 plotdata = []
                 zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
-                for timeind in range(len(fullhdrlist)):
+                print("udet","srcid","c","flux")
+                for timeind in range(1,len(fullhdrlist)):
                     x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
                     for c in range(allimagedata.shape[1]):
-                        pbcorrallimage= allimagedata[timeind,c,0]/beamI[c]
-                        flux = pbcorrallimage[int(y),int(x)]
-                        flagged = (timeind,c) in allflaggedtimes
+                        pbcorrallimage= (allimagedata[timeind,c,0]/beamI[c]) - (allimagedata[timeind-1,c,0]/beamI[c])
+                        pixflux = pbcorrallimage[int(y),int(x)]
+                        zoomRad = 7
+                        zoomCoords, iZoomEdge = makeZoomCoords(zoomRad)
+                        fitData = pbcorrallimage[int(y) + zoomCoords[1,:], int(x) + zoomCoords[0,:]]
+                        pixflux = pbcorrallimage[int(y),int(x)]
+                        params = fitGaussian( fitData, zoomCoords,[0,0,0,pixflux,0,0,1],freeze=[1,2])
+                        if params is not None:
+                            fitX, fitY, rad = params[4] + x, params[5] + y, abs(params[6])
+                            level, flux = params[0], params[3]
+                            if np.abs(flux) > 100*allrmsdata[timeind,c]:
+                                flux = pixflux
+                                flagged=True
+                            else:
+                                flagged = (timeind,c) in allflaggedtimes
+                                if timeind==udet:
+                                    print(udet,srcid,c,flux)
+                        else:
+                            flux = pixflux
+                            flagged = True
                         midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
                         mjd = fullhdrlist[timeind]['start_time']
                         hourspastmid = (mjd - np.floor(mjd))*24
@@ -421,19 +452,8 @@ def main(filename,config,noplot=False,quiet=False):
                 maxtime = min(len(fullhdrlist)-1, curdettimechan['index'].max()+12)
                 if mintime > maxtime:
                     raise RuntimeWarning
-                for timeind in range(mintime,maxtime+1):
-                    for c in range(allimagedata.shape[1]):
-                        midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                        pbcorrallimage= allimagedata[timeind,c,0]/beamI[c]
-                        flux = pbcorrallimage[int(y),int(x)]
-                        flagged = (timeind,c) in allflaggedtimes
-                        midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                        mjd = fullhdrlist[timeind]['start_time']
-                        hourspastmid = (mjd - np.floor(mjd))*24
-                        minpasthr = (hourspastmid - np.floor(hourspastmid))*60
-                        zoomplotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
                 plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
-                zoomplotdata = np.array(zoomplotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                 tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :
                     plotLC(src_filename, plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)

@@ -94,7 +94,7 @@ def fitGaussian(data, dataCoords, params,
             residFunc, params[iFitParams], Dfun = jacobian, col_deriv = True,
             maxfev = 100, xtol = 1e-4, **optimizeExtraArgs)
     
-    if success > 0 and success <= 4 and np.product(np.isfinite(params)):
+    if success > 0 and success <= 4 and np.prod(np.isfinite(params)):
         return params
     else:
         return None
@@ -147,7 +147,7 @@ def fitGaussian_freezeNone(data, dataCoords, params,
             residFunc, params, Dfun = jacobian, col_deriv = True,
             maxfev = 100, xtol = 1e-4, **optimizeExtraArgs)
     
-    if success > 0 and success <= 4 and np.product(np.isfinite(params)):
+    if success > 0 and success <= 4 and np.prod(np.isfinite(params)):
         return params
     else:
         return None
@@ -202,7 +202,7 @@ def fitGaussian_freezeLevel(data, dataCoords, params,
             residFunc, params[1:], Dfun = jacobian, col_deriv = True,
             maxfev = 100, xtol = 1e-4, **optimizeExtraArgs)
     
-    if success > 0 and success <= 4 and np.product(np.isfinite(params)):
+    if success > 0 and success <= 4 and np.prod(np.isfinite(params)):
         return params
     else:
         return None

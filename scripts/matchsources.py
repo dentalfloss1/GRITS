@@ -12,6 +12,19 @@ from GRITS.configtemplate import configfile
 from GRITS.plotresults import plotresults,plotsource,plotLC
 from GRITS.readimage import matchfilepairs
 from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask
+from GRITS.fitGaussian import fitGaussian
+
+def makeZoomCoords(rad, circular = True):
+    grid = np.mgrid[-rad : rad+1, -rad : rad+1].reshape((2, (rad*2+1)**2))
+    if circular:
+        dists = np.sqrt((grid**2).sum(axis = 0))
+        iRegion = (dists < rad + 0.33).nonzero()[0]
+        iEdge = (dists[iRegion] > rad - 0.67).nonzero()[0]
+        return grid[:, iRegion], iEdge
+    else:
+        iEdge = ((np.abs(grid[0,:]) == rad) +
+                 (np.abs(grid[1,:]) == rad)).nonzero()[0]
+        return grid, iEdge
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
@@ -138,7 +151,7 @@ if __name__=="__main__":
                     # plotsource(index1, plotfile1, filename1, ra1, dec1, minrms1, corrfluxlist1, c1, vmax=args.vmax1)
                     # plotsource(index2, plotfile2, filename2, ra2, dec2, minrms2, corrfluxlist2, c2, vmax=args.vmax2)
                      
-                    for filename, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd in zip([filename1,filename2],[imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2]):        
+                    for filename, rmsdata, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd in zip([filename1,filename2], [minrms1,minrms2], [imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2]):        
                             # If within the specified localization, we will skip it when we get to it in the primary loop
                         print(filename,station)
                         ngrid = imagedata.shape[-1]
@@ -165,10 +178,27 @@ if __name__=="__main__":
                         for c in range(imagedata.shape[1]):
                             XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
                             beamI.append((XX+YY)/2)
-                        for timeind in range(len(hdrlist)):
+                        for timeind in range(1,len(hdrlist)):
                             x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
                             for c in range(imagedata.shape[1]):
-                                pbcorrallimage= imagedata[timeind,c,0]/beamI[c]
+                                pbcorrallimage= (imagedata[timeind,c,0]/beamI[c]) - (imagedata[timeind-1,c,0]/beamI[c])
+                                pixflux = pbcorrallimage[int(y),int(x)]
+                                zoomRad = 7
+                                zoomCoords, iZoomEdge = makeZoomCoords(zoomRad)
+                                fitData = pbcorrallimage[int(y) + zoomCoords[1,:], int(x) + zoomCoords[0,:]]
+                                pixflux = pbcorrallimage[int(y),int(x)]
+                                params = fitGaussian( fitData, zoomCoords,[0,0,0,pixflux,0,0,1],freeze=[1,2])
+                                if params is not None:
+                                    fitX, fitY, rad = params[4] + x, params[5] + y, abs(params[6])
+                                    level, flux = params[0], params[3]
+                                    if np.abs(flux) > 100*rmsdata[timeind,c]:
+                                        flux = pixflux
+                                        flagged=True
+                                    else:
+                                        flagged = (timeind,c) in allflaggedtimes
+                                else:
+                                    flux = pixflux
+                                    flagged = True
                                 flux = pbcorrallimage[int(y),int(x)]
                                 flagged = (timeind,c) in allflaggedtimes
                                 midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
@@ -188,8 +218,8 @@ if __name__=="__main__":
                                 minpasthr = (hourspastmid - np.floor(hourspastmid))*60
                                 zoomplotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
 
-                        zoomplotdata = np.array(zoomplotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
                         plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                        zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                         tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
                         dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
                         plotLC(filename, plotdata, zoomplotdata,curdettimechan,uniqueid,str(udet),tdet.isot,ra,dec)
