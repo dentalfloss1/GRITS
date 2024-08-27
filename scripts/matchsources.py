@@ -172,7 +172,7 @@ if __name__=="__main__":
                         curdettimechan = dettimechan[dettimechan['index']==udet]
                         for pra,pdec,pstation,pindex in plottedlc:
                             if (pstation==station) and (udet==pindex):
-                                if angsep(pra,pdec,ra,dec) < float(config['Quality Control']['statsep']):
+                                if angsep(pra,pdec,ra,dec) < float(config1['Quality Control']['statsep']):
                                     continue
                         beamI = []
                         for c in range(imagedata.shape[1]):
