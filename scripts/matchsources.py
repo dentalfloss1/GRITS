@@ -11,7 +11,7 @@ from astropy.time import Time
 from GRITS.configtemplate import configfile
 from GRITS.plotresults import plotresults,plotsource,plotLC
 from GRITS.readimage import matchfilepairs
-from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask
+from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask, angsep
 from GRITS.fitGaussian import fitGaussian
 
 def makeZoomCoords(rad, circular = True):
@@ -26,14 +26,6 @@ def makeZoomCoords(rad, circular = True):
                  (np.abs(grid[1,:]) == rad)).nonzero()[0]
         return grid, iEdge
 
-def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
-    ra1 = ra1deg*np.pi/180
-    dec1 = dec1deg*np.pi/180
-    ra2 = ra2deg*np.pi/180
-    dec2 = dec2deg*np.pi/180
-
-    sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
-    return 180*sep/np.pi
 
 
 if __name__=="__main__":
@@ -182,25 +174,7 @@ if __name__=="__main__":
                             x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
                             for c in range(imagedata.shape[1]):
                                 pbcorrallimage= (imagedata[timeind,c,0]/beamI[c]) - (imagedata[timeind-1,c,0]/beamI[c])
-                                pixflux = pbcorrallimage[int(y),int(x)]
-                                zoomRad = 7
-                                zoomCoords, iZoomEdge = makeZoomCoords(zoomRad)
-                                fitData = pbcorrallimage[int(y) + zoomCoords[1,:], int(x) + zoomCoords[0,:]]
-                                pixflux = pbcorrallimage[int(y),int(x)]
-                                params = fitGaussian( fitData, zoomCoords,[0,0,0,pixflux,0,0,1],freeze=[1,2])
-                                if params is not None:
-                                    fitX, fitY, rad = params[4] + x, params[5] + y, abs(params[6])
-                                    level, flux = params[0], params[3]
-                                    if np.abs(flux) > 100*rmsdata[timeind,c]:
-                                        flux = pixflux
-                                        flagged=True
-                                    else:
-                                        flagged = (timeind,c) in allflaggedtimes
-                                else:
-                                    flux = pixflux
-                                    flagged = True
                                 flux = pbcorrallimage[int(y),int(x)]
-                                flagged = (timeind,c) in allflaggedtimes
                                 midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
                                 mjd = hdrlist[timeind]['start_time']
                                 hourspastmid = (mjd - np.floor(mjd))*24

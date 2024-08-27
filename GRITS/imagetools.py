@@ -124,18 +124,23 @@ def pbcorr(header,imSize,chan,pScale,station):
 def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     if (station==b'LWASV') and ("startTime" not in hdr):
         w = getSVwcs(hdr, imSize)
-    elif (station==b'LWA1') and ('startTime' in hdr):
+    elif ('startTime' in hdr):
         cdelt = hdr['psize']
         w = WCS(naxis=2)
         ngrid = imSize
-        w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
         # 130 degrees is what is visible to the dipoles
         HA = 0
-        lwa1 = EarthLocation.of_site('lwa1')
-        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=lwa1)
+        if station==b'LWASV':
+            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 0.5]
+            x,y,z = lsllwasv.geocentric_location
+            stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+        elif station==b'LWA1':
+            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+            stationLOC = EarthLocation.of_site('lwa1')
+        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
         LST = t_obs.sidereal_time('apparent').degree
         RA = LST-HA
-        dec = lwa1.lat.degree
+        dec = stationLOC.lat.degree
         corcdelt = cdelt*1.0023384615384616 
         w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
         w.wcs.crval = [RA,dec]
@@ -154,18 +159,23 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
     if (station==b'LWASV') and ("startTime" not in hdr):
         w = getSVwcs(hdr, imSize)
-    elif (station==b'LWA1') and ('startTime' in hdr):
+    elif ('startTime' in hdr):
         cdelt = hdr['psize']
         w = WCS(naxis=2)
         ngrid = imSize
-        w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
         # 130 degrees is what is visible to the dipoles
         HA = 0
-        lwa1 = EarthLocation.of_site('lwa1')
-        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=lwa1)
+        if station==b'LWASV':
+            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 0.5]
+            x,y,z = lsllwasv.geocentric_location
+            stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+        elif station==b'LWA1':
+            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+            stationLOC = EarthLocation.of_site('lwa1')
+        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
         LST = t_obs.sidereal_time('apparent').degree
         RA = LST-HA
-        dec = lwa1.lat.degree
+        dec = stationLOC.lat.degree
         corcdelt = cdelt*1.0023384615384616 
         w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
         w.wcs.crval = [RA,dec]
@@ -186,7 +196,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3, maxDR=300):
     dataislands = np.copy(data)
     islandmasks = np.zeros(data.shape,dtype=bool)
     flaggedtimes = []
-    for i in range(ints):
+    for i in range(1,ints):
         for j in range(nchan):
             linearsigma = maxDR
             k = 1

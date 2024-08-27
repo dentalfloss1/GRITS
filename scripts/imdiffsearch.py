@@ -424,25 +424,7 @@ def main(filename,config,noplot=False,quiet=False):
                     x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
                     for c in range(allimagedata.shape[1]):
                         pbcorrallimage= (allimagedata[timeind,c,0]/beamI[c]) - (allimagedata[timeind-1,c,0]/beamI[c])
-                        pixflux = pbcorrallimage[int(y),int(x)]
-                        zoomRad = 7
-                        zoomCoords, iZoomEdge = makeZoomCoords(zoomRad)
-                        fitData = pbcorrallimage[int(y) + zoomCoords[1,:], int(x) + zoomCoords[0,:]]
-                        pixflux = pbcorrallimage[int(y),int(x)]
-                        params = fitGaussian( fitData, zoomCoords,[0,0,0,pixflux,0,0,1],freeze=[1,2])
-                        if params is not None:
-                            fitX, fitY, rad = params[4] + x, params[5] + y, abs(params[6])
-                            level, flux = params[0], params[3]
-                            if np.abs(flux) > 100*allrmsdata[timeind,c]:
-                                flux = pixflux
-                                flagged=True
-                            else:
-                                flagged = (timeind,c) in allflaggedtimes
-                                if timeind==udet:
-                                    print(udet,srcid,c,flux)
-                        else:
-                            flux = pixflux
-                            flagged = True
+                        flux = pbcorrallimage[int(y),int(x)]
                         midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
                         mjd = fullhdrlist[timeind]['start_time']
                         hourspastmid = (mjd - np.floor(mjd))*24

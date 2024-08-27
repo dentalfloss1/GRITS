@@ -111,23 +111,16 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
 
             
-            VLSSrclose = np.argmin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))        
-            VLSSrnum = VLSSr50jy['sourcenum'][VLSSrclose] 
-            VLSSrsep = np.amin(angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]))     
-            cat3cclose = np.argmin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-            cat3cnum = cat3c['3C'][cat3cclose]
-            cat3csep = np.amin(angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]))
-            if ((cat3csep > catsep) and (VLSSrsep > catsep)):
-                axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
-                ytextloc-=0.15
-                measI, measQ, measU, measV = data[i,:,int(avy),int(avx)] 
-                axs[0,4].text(0,ytextloc,f"I:{measI:.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%")
-                ytextloc-=0.15
-                for anum in range(1,5,1):
-                    for imind in range(5):
-                        axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
-                        circle = plt.Circle((avx,avy),5,fill=False)
-                        axs[anum,imind].add_artist(circle)
+            axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
+            ytextloc-=0.15
+            measI, measQ, measU, measV = data[i,:,int(avy),int(avx)] 
+            axs[0,4].text(0,ytextloc,f"I:{measI:.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%")
+            ytextloc-=0.15
+            for anum in range(1,5,1):
+                for imind in range(5):
+                    axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
+                    circle = plt.Circle((avx,avy),5,fill=False)
+                    axs[anum,imind].add_artist(circle)
             lastlabel = label
 
     axs[0,4].set_axis_off()
