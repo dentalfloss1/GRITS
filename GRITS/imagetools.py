@@ -124,7 +124,7 @@ def pbcorr(header,imSize,chan,pScale,station):
 def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     if (station==b'LWASV') and ("startTime" not in hdr):
         w = getSVwcs(hdr, imSize)
-    elif ('startTime' in hdr):
+    elif ('startTime' in hdr) and (station==b"LWA1"):
         cdelt = hdr['psize']
         w = WCS(naxis=2)
         ngrid = imSize
@@ -159,7 +159,7 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
     if (station==b'LWASV') and ("startTime" not in hdr):
         w = getSVwcs(hdr, imSize)
-    elif ('startTime' in hdr):
+    elif ('startTime' in hdr) and (station==b"LWA1"):
         cdelt = hdr['psize']
         w = WCS(naxis=2)
         ngrid = imSize

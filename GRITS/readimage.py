@@ -131,7 +131,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
                 thisdata = alldata.data
                 data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))
             imagedata = np.copy(data)
-            #  last image is not a diff, we'll mask it later
+            #  first image is not a diff, we'll mask it later
             data[1:] = data[1:] - data[:-1]# PB Correct before masking
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
         else:
