@@ -404,7 +404,7 @@ def main(filename,config,noplot=False,quiet=False):
             XX,YY = pbcorr(fullhdrlist[0],ngrid,c,psize,station)
             beamI.append((XX+YY)/2)
         for i,(ra,dec) in enumerate(uniquecoords):
-            print(i+1,"out of",(len(uniquecoords)))
+            print(i+1,"out of",(len(uniquecoords)),end="\r")
             if (ra,dec) in skiplist:
                 continue
             for ra2,dec2 in uniquecoords[(i+1):]:
@@ -423,7 +423,6 @@ def main(filename,config,noplot=False,quiet=False):
                 plotdata = []
                 zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
-                print("timeind","x","y","ra","dec")
                 for timeind in range(1,len(fullhdrlist)):
                     if timeind in dettimechan['index']:
                         measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
@@ -437,7 +436,6 @@ def main(filename,config,noplot=False,quiet=False):
                     for c in range(allimagedata.shape[1]):
                         pbcorrallimage= (allimagedata[timeind,c,0]/beamI[c]) - (allimagedata[timeind-1,c,0]/beamI[c])
                         if hasDETECT:
-                            print(timeind,x,y,ra,dec)
                             flux = pbcorrallimage[int(y),int(x)]
                         else:
                             flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
@@ -445,13 +443,12 @@ def main(filename,config,noplot=False,quiet=False):
                         flagged = (timeind,c) in allflaggedtimes
                         mjd = fullhdrlist[timeind]['start_time']
                         hourspastmid = (mjd - np.floor(mjd))*24
-                        minpasthr = (hourspastmid - np.floor(hourspastmid))*60
-                        plotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
+                        plotdata.append((timeind,flux,c,midfreq,flagged,hourspastmid))
                 mintime = max(0,curdettimechan['index'].min()-12)
                 maxtime = min(len(fullhdrlist)-1, curdettimechan['index'].max()+12)
                 if mintime > maxtime:
                     raise RuntimeWarning
-                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('hrpst','f8')])
                 zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                 tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :

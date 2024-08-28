@@ -160,21 +160,21 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(24,8))
         unflag = plotdata[plotdata['flagged']==False]
         flagged = plotdata[plotdata['flagged']==True]
-        axs[0].scatter(unflag['minpst'],unflag['flux'],color='black',marker='s')
-        axs[0].scatter(flagged['minpst'],flagged['flux'],color='black',marker='*',label="flagged")
+        axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
+        axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label="flagged")
         axs[0].legend()
         axs[0].set_ylim(unflag['flux'].min(), unflag['flux'].max())
         unflag = zoomplotdata[zoomplotdata['flagged']==False]
         flagged = zoomplotdata[zoomplotdata['flagged']==True]
-        axs[1].scatter(unflag['minpst'],unflag['flux'],color='black',marker='s')
-        axs[1].scatter(flagged['minpst'],flagged['flux'],color='black',marker='*',label="flagged")
+        axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
+        axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label="flagged")
         axs[1].legend()
         for ax in axs:
             for d in dettimechan:
-                detloc = plotdata['minpst'][plotdata['index']==d['index']][0]
+                detloc = plotdata['hrpst'][plotdata['index']==d['index']][0]
                 ax.axvline(detloc,alpha=0.5,color='black')
-        axs[0].set_xlabel("Minutes past the hour")
-        axs[1].set_xlabel("Minutes past the hour")
+        axs[0].set_xlabel("Hours past midnight")
+        axs[1].set_xlabel("Hours past midnight")
         axs[0].set_ylabel("Approximate Flux (Jy)")
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.tight_layout()
@@ -191,41 +191,41 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
                 continue
             unflag = curdata[curdata['flagged']==False]
             flagged = curdata[curdata['flagged']==True]
-            ax.scatter(unflag['minpst'],unflag['flux'],color='black',marker='s')
-            ax.scatter(flagged['minpst'],flagged['flux'],color='black',marker='*',label='flagged')
+            ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
+            ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='flagged')
             ax.legend()
-            ax.set_xlim(plotdata['minpst'].min(), plotdata['minpst'].max())
+            ax.set_xlim(plotdata['hrpst'].min(), plotdata['hrpst'].max())
             ax.set_ylim(unflag['flux'].min(), unflag['flux'].max())
             ax.set_title(f"{freq:5.2f} MHz")
             if ax==axs.flatten()[-4]:
-                ax.set_xlabel(f"Minutes past the hour")
+                ax.set_xlabel(f"Hours past midnight")
                 # ax.set_ylabel("Flux above median (Jy)")
                 ax.set_ylabel("Approx. Flux (Jy)")
             curdets = dettimechan[dettimechan['c']==c]
             for c in curdets:
-                detloc = plotdata['minpst'][plotdata['index']==c['index']][0]
+                detloc = plotdata['hrpst'][plotdata['index']==c['index']][0]
                 ax.axvline(detloc,alpha=0.5,color='black')
         for c,ax in zip(np.unique(zoomplotdata['c']),axs.flatten()[1:(2*nchan):2]):
             freq = zoomplotdata['freq'][zoomplotdata['c']==c][0]
             curdata = zoomplotdata[zoomplotdata['c']==c]
             unflag = curdata[curdata['flagged']==False]
             flagged = curdata[curdata['flagged']==True]
-            xdata = unflag['minpst']
+            xdata = unflag['hrpst']
             ydata = unflag['flux']
             ax.scatter(xdata,ydata,color='black',marker='s')
-            xdata = flagged['minpst']
+            xdata = flagged['hrpst']
             ydata = flagged['flux']
             ax.scatter(xdata,ydata,color='black',marker='*',label='flagged')
             ax.legend()
-            ax.set_xlim(zoomplotdata['minpst'].min(), zoomplotdata['minpst'].max())
+            ax.set_xlim(zoomplotdata['hrpst'].min(), zoomplotdata['hrpst'].max())
             ax.set_title(f"{freq:5.2f} MHz")
             if ax==axs.flatten()[-3]:
-                ax.set_xlabel(f"Minutes past the hour")
+                ax.set_xlabel(f"Hours past midnight")
                 # ax.set_ylabel("Flux above median (Jy)")
                 ax.set_ylabel("Approx. Flux (Jy)")
             curdets = dettimechan[dettimechan['c']==c]
             for c in curdets:
-                detloc = zoomplotdata['minpst'][zoomplotdata['index']==c['index']][0]
+                detloc = zoomplotdata['hrpst'][zoomplotdata['index']==c['index']][0]
                 ax.axvline(detloc,alpha=0.5,color='black')
         ax = axs.flatten()[-2]
         for d in np.unique(dettimechan['index']):
