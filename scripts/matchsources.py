@@ -146,6 +146,12 @@ if __name__=="__main__":
                     for filename, rmsdata, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd in zip([filename1,filename2], [minrms1,minrms2], [imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2]):        
                             # If within the specified localization, we will skip it when we get to it in the primary loop
                         print(filename,station)
+                        if filename==filename1:
+                            plotfile = filename.replace(".oims","-station1.oims").replace('.pims','-station1.pims')
+                        else:
+                            plotfile = filename.replace(".oims","-station2.oims").replace('.pims','-station2.pims')
+                        
+                            
                         ngrid = imagedata.shape[-1]
                         mintime = max(0,s['index']-12)
                         maxtime = min(len(hdrlist)-1, s['index']+12)
@@ -199,7 +205,7 @@ if __name__=="__main__":
                         plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('hrpst','f8')])
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                         tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
-                        plotLC(filename, plotdata, zoomplotdata,curdettimechan,uniqueid,str(udet),tdet.isot,ra,dec)
+                        plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,str(udet),tdet.isot,ra,dec)
                         plottedlc.append((ra,dec,station,udet))
                     
                     if args.makefits:
@@ -213,7 +219,7 @@ if __name__=="__main__":
                             oimsfitsout(imagedata2, diffdata2[:,c2,:,:,:], index2, hdrlist2, station2, plotfile2.replace(".png",".fits"), c2)
                         exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf"))
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
-                    uniqueid+=1
+            uniqueid+=1
 
 
     outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
