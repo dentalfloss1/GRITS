@@ -426,6 +426,7 @@ def main(filename,config,noplot=False,quiet=False):
                         pbcorrallimage= (allimagedata[timeind,c,0]/beamI[c]) - (allimagedata[timeind-1,c,0]/beamI[c])
                         flux = pbcorrallimage[int(y),int(x)]
                         midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
+                        flagged = (timeind,c) in allflaggedtimes
                         mjd = fullhdrlist[timeind]['start_time']
                         hourspastmid = (mjd - np.floor(mjd))*24
                         minpasthr = (hourspastmid - np.floor(hourspastmid))*60
