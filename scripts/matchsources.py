@@ -161,7 +161,7 @@ if __name__=="__main__":
                         xcoord,ycoord = np.meshgrid(xcoord, ycoord)
                         for keeprow in kd:
                             if angsep(ra,dec,keeprow['ra'],keeprow['dec']) < float(config1['Quality Control']['statsep']):
-                                dettimechan.append((src_index,src_channel,src_ra,src_dec))
+                                dettimechan.append((keeprow['index'],keeprow['channel'],keeprow['ra'],keeprow['dec']))
                             
                         dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8')])
                         curdettimechan = dettimechan[dettimechan['index']==udet]
