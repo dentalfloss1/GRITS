@@ -169,6 +169,7 @@ if __name__=="__main__":
                             if (pstation==station) and (udet==pindex):
                                 if angsep(pra,pdec,ra,dec) < float(config1['Quality Control']['statsep']):
                                     continue
+                        prad = float(config['Quality Control']['statsep'])/psize
                         beamI = []
                         for c in range(imagedata.shape[1]):
                             XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
