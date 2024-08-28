@@ -156,6 +156,9 @@ if __name__=="__main__":
                         psize = hdrlist[0]['psize']
                         udet = s['index']
                         dettimechan = []
+                        xcoord = np.arange(ngrid)
+                        ycoord = np.arange(ngrid)
+                        xcoord,ycoord = np.meshgrid(xcoord, ycoord)
                         for keeprow in kd:
                             if angsep(ra,dec,keeprow['ra'],keeprow['dec']) < float(config1['Quality Control']['statsep']):
                                 dettimechan.append((keeprow['index'],keeprow['channel']))
@@ -171,18 +174,28 @@ if __name__=="__main__":
                             XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
                             beamI.append((XX+YY)/2)
                         for timeind in range(1,len(hdrlist)):
-                            x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
+                            if timeind in dettimechan['index']:
+                                measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
+                                measDec = dettimechan['dec'][dettimechan['index']==timeind][0]
+                                hasDETECT = True
+                            else:
+                                measRA = ra
+                                measDec = dec
+                                hasDETECT= False
+                            x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
                             for c in range(imagedata.shape[1]):
                                 pbcorrallimage= (imagedata[timeind,c,0]/beamI[c]) - (imagedata[timeind-1,c,0]/beamI[c])
-                                flux = pbcorrallimage[int(y),int(x)]
+                                if hasDETECT:
+                                    flux = pbcorrallimage[int(y),int(x)]
+                                else:
+                                    flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
                                 midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
                                 flagged = (timeind,c) in allflaggedtimes
                                 mjd = hdrlist[timeind]['start_time']
                                 hourspastmid = (mjd - np.floor(mjd))*24
-                                minpasthr = (hourspastmid - np.floor(hourspastmid))*60
-                                plotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
+                                plotdata.append((timeind,flux,c,midfreq,flagged,hourspastmid))
 
-                        plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
+                        plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('hrpst','f8')])
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                         tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
                         dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
