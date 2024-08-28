@@ -139,11 +139,11 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
             stationLOC = EarthLocation.of_site('lwa1')
         t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
         LST = t_obs.sidereal_time('apparent').degree
-        RA = LST-HA
-        dec = stationLOC.lat.degree
+        center_RA = LST-HA
+        center_dec = stationLOC.lat.degree
         corcdelt = cdelt*1.0023384615384616 
         w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
-        w.wcs.crval = [RA,dec]
+        w.wcs.crval = [center_RA,center_dec]
         w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
         w.wcs.radesys = 'FK5'
         w.wcs.specsys = 'TOPOCENT'
@@ -174,11 +174,11 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
             stationLOC = EarthLocation.of_site('lwa1')
         t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
         LST = t_obs.sidereal_time('apparent').degree
-        RA = LST-HA
-        dec = stationLOC.lat.degree
+        center_RA = LST-HA
+        center_dec = stationLOC.lat.degree
         corcdelt = cdelt*1.0023384615384616 
         w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
-        w.wcs.crval = [RA,dec]
+        w.wcs.crval = [center_RA,center_dec]
         w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
         w.wcs.radesys = 'FK5'
         w.wcs.specsys = 'TOPOCENT'

@@ -396,6 +396,10 @@ def main(filename,config,noplot=False,quiet=False):
         uniquecoords = np.unique([(s[1],s[2]) for s in srclist] ,axis=0)
         skiplist = []
         beamI = []
+        prad = float(config['Quality Control']['statsep'])/psize
+        xcoord = np.arange(ngrid)
+        ycoord = np.arange(ngrid)
+        xcoord,ycoord = np.meshgrid(xcoord, ycoord)
         for c in range(allimagedata.shape[1]):
             XX,YY = pbcorr(fullhdrlist[0],ngrid,c,psize,station)
             beamI.append((XX+YY)/2)
@@ -412,18 +416,31 @@ def main(filename,config,noplot=False,quiet=False):
             for src_id,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan in srclist:
                 if angsep(src_ra,src_dec,ra,dec) < float(config['Quality Control']['statsep']):
                     srcid = src_id # Grab a src id for a valid detection
-                    dettimechan.append((src_index,src_channel))
+                    dettimechan.append((src_index,src_channel,src_ra,src_dec))
                     timelist.append(str(src_index))
-            dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
+            dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8')])
             for udet in np.unique(dettimechan['index']):
                 plotdata = []
                 zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
+                print("timeind","x","y","ra","dec")
                 for timeind in range(1,len(fullhdrlist)):
-                    x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
+                    if timeind in dettimechan['index']:
+                        measRA = dettimechan['ra'][dettimechan['index']==udet][0]
+                        measDec = dettimechan['dec'][dettimechan['index']==udet][0]
+                        hasDETECT = True
+                    else:
+                        measRA = ra
+                        measDec = dec
+                        hasDETECT= False
+                    x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
                     for c in range(allimagedata.shape[1]):
                         pbcorrallimage= (allimagedata[timeind,c,0]/beamI[c]) - (allimagedata[timeind-1,c,0]/beamI[c])
-                        flux = pbcorrallimage[int(y),int(x)]
+                        if hasDETECT:
+                            print(timeind,x,y,ra,dec)
+                            flux = pbcorrallimage[int(y),int(x)]
+                        else:
+                            flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
                         midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
                         flagged = (timeind,c) in allflaggedtimes
                         mjd = fullhdrlist[timeind]['start_time']
