@@ -199,7 +199,6 @@ if __name__=="__main__":
                         plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('hrpst','f8')])
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                         tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
-                        dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2')])
                         plotLC(filename, plotdata, zoomplotdata,curdettimechan,uniqueid,str(udet),tdet.isot,ra,dec)
                         plottedlc.append((ra,dec,station,udet))
                     
