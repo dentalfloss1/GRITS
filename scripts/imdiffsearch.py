@@ -419,7 +419,6 @@ def main(filename,config,noplot=False,quiet=False):
                 plotdata = []
                 zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
-                print("udet","srcid","c","flux")
                 for timeind in range(1,len(fullhdrlist)):
                     x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
                     for c in range(allimagedata.shape[1]):
