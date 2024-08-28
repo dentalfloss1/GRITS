@@ -176,21 +176,11 @@ if __name__=="__main__":
                                 pbcorrallimage= (imagedata[timeind,c,0]/beamI[c]) - (imagedata[timeind-1,c,0]/beamI[c])
                                 flux = pbcorrallimage[int(y),int(x)]
                                 midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
+                                flagged = (timeind,c) in allflaggedtimes
                                 mjd = hdrlist[timeind]['start_time']
                                 hourspastmid = (mjd - np.floor(mjd))*24
                                 minpasthr = (hourspastmid - np.floor(hourspastmid))*60
                                 plotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
-                        for timeind in range(mintime,maxtime+1):
-                            x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, ra,dec, station)[0]
-                            for c in range(imagedata.shape[1]):
-                                pbcorrallimage= imagedata[timeind,c,0]/beamI[c]
-                                flux = pbcorrallimage[int(y),int(x)]
-                                flagged = (timeind,c) in allflaggedtimes
-                                midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                                mjd = hdrlist[timeind]['start_time']
-                                hourspastmid = (mjd - np.floor(mjd))*24
-                                minpasthr = (hourspastmid - np.floor(hourspastmid))*60
-                                zoomplotdata.append((timeind,flux,c,midfreq,flagged,minpasthr))
 
                         plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('minpst','f8')])
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])

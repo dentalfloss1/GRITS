@@ -154,7 +154,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
 
 
 def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec):
-    plotfile = filename.replace(".oims",f"-srcid{srcid}_t{timeind}_LC.png").replace(".pims",f"-src{srcid}_t{timeind}_LC.png").replace(':','-')
+    plotfile = filename.split('/')[-1].replace(".oims",f"-srcid{srcid}_t{timeind}_LC.png").replace(".pims",f"-src{srcid}_t{timeind}_LC.png").replace(':','-')
     nchan = len(np.unique(plotdata['c']))
     if nchan==1:
         fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(24,8))
