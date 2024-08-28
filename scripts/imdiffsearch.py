@@ -426,8 +426,8 @@ def main(filename,config,noplot=False,quiet=False):
                 print("timeind","x","y","ra","dec")
                 for timeind in range(1,len(fullhdrlist)):
                     if timeind in dettimechan['index']:
-                        measRA = dettimechan['ra'][dettimechan['index']==udet][0]
-                        measDec = dettimechan['dec'][dettimechan['index']==udet][0]
+                        measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
+                        measDec = dettimechan['dec'][dettimechan['index']==timeind][0]
                         hasDETECT = True
                     else:
                         measRA = ra
