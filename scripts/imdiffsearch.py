@@ -337,11 +337,6 @@ def main(filename,config,noplot=False,quiet=False):
                         continue
                     if s in [0,3]:
                         measI, measQ, measU, measV = data[i,c,:,int(avy),int(avx)] 
-                        maxlinstokes =np.abs( max(measQ/measI,measU/measI)*100)
-                        if False: # maxlinstokes > float(config['Quality Control']['LinearStokes']):
-                            linstokes = True
-                        else:
-                            linstokes = False
                         if measI < 0 :
                             negflux = True
                         else:
@@ -367,8 +362,8 @@ def main(filename,config,noplot=False,quiet=False):
                         else:
                             c3 = False
                         detchan=1
-                    flagsrc.append(c3 or vlss or linstokes or negflux) 
-                    if c3 or vlss or linstokes or negflux:
+                    flagsrc.append(c3 or vlss or negflux) 
+                    if c3 or vlss  or negflux:
                         islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                     else:
                         srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c],detchan))
