@@ -251,9 +251,6 @@ if __name__=="__main__":
                         mintime = max(0,s['index']-12)
                         maxtime = min(len(hdrlist)-1, s['index']+12)
                         for f1,f2,freq1,freq2 in matchedsrc:
-                            print(np.sum(((plotdata['flux']==f1) & (plotdata['freq']==freq1)) | ((plotdata['flux']==f2) & (plotdata['freq']==freq2))))
-                            print(np.sum(((plotdata['flux']==f1) & (plotdata['freq']==freq1))))
-                            print(np.sum(((plotdata['flux']==f2) & (plotdata['freq']==freq2))))
                             plotdata['statmatch'][((plotdata['flux']==f1) & (plotdata['freq']==freq1)) | ((plotdata['flux']==f2) & (plotdata['freq']==freq2))] = True
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                         plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,udet,tdet,ra,dec)

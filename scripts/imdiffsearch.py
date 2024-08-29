@@ -338,7 +338,7 @@ def main(filename,config,noplot=False,quiet=False):
                     if s in [0,3]:
                         measI, measQ, measU, measV = data[i,c,:,int(avy),int(avx)] 
                         maxlinstokes =np.abs( max(measQ/measI,measU/measI)*100)
-                        if maxlinstokes > float(config['Quality Control']['LinearStokes']):
+                        if False: # maxlinstokes > float(config['Quality Control']['LinearStokes']):
                             linstokes = True
                         else:
                             linstokes = False

@@ -157,10 +157,10 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
     plotfile = filename.split('/')[-1].replace(".oims",f"-srcid{srcid}_t{timeind}_LC.png").replace(".pims",f"-src{srcid}_t{timeind}_LC.png").replace(':','-')
     nchan = len(np.unique(plotdata['c']))
     if nchan==1:
-        fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(24,8))
+        fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(50,16))
         unflag = plotdata[plotdata['flagged']==False]
         flagged = plotdata[plotdata['flagged']==True]
-        statmatched = plotdata[(plotdata['statmatch']==True) & (plotdata['c']==c)]
+        statmatched = plotdata[(plotdata['statmatch']==True)]
         axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
         axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
         if statmatched.size >0:
@@ -176,7 +176,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
             ymin = plotdata['flux'].min()
             ymax = plotdata['flux'].max()
         axs[0].set_ylim(ymin,ymax)
-        statmatched = zoomplotdata[(zoomplotdata['statmatch']==True) & (zoomplotdata['c']==c)]
+        statmatched = zoomplotdata[(zoomplotdata['statmatch']==True) ]
         unflag = zoomplotdata[zoomplotdata['flagged']==False]
         flagged = zoomplotdata[zoomplotdata['flagged']==True]
         axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
@@ -199,7 +199,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         plt.savefig(plotfile)
         plt.close()
     else:
-        fig, axs = plt.subplots(nrows=nchan+2,ncols=2,figsize=(24,6*nchan))
+        fig, axs = plt.subplots(nrows=nchan+2,ncols=2,figsize=(50,12*nchan))
         for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[:(2*nchan):2]):
             freq = plotdata['freq'][plotdata['c']==c][0]
             curdata = plotdata[plotdata['c']==c]
@@ -213,7 +213,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
             ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
             ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label='flagged',alpha=0.25)
             if statmatched.size >0:
-                unflag = statmatcheda[statmatched['flagged']==False]
+                unflag = statmatched[statmatched['flagged']==False]
                 flagged = statmatched[statmatched['flagged']==True]
                 ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
                 ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
