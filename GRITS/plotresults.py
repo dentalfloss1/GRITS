@@ -146,7 +146,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     nomaskimdiff = imagedata[i] - imagedata[i-1]
-    s2n = np.amax(nomaskimdiff)/rms
+    s2n = np.amax(np.abs(nomaskimdiff))/rms
     fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
     plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-t{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)
@@ -161,13 +161,13 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         unflag = plotdata[plotdata['flagged']==False]
         flagged = plotdata[plotdata['flagged']==True]
         axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
-        axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label="flagged")
+        axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
         axs[0].legend()
         axs[0].set_ylim(unflag['flux'].min(), unflag['flux'].max())
         unflag = zoomplotdata[zoomplotdata['flagged']==False]
         flagged = zoomplotdata[zoomplotdata['flagged']==True]
         axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
-        axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label="flagged")
+        axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
         axs[1].legend()
         for ax in axs:
             for d in dettimechan:
@@ -181,7 +181,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         plt.savefig(plotfile)
         plt.close()
     else:
-        fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(24,6*nchan))
+        fig, axs = plt.subplots(nrows=nchan+2,ncols=2,figsize=(24,6*nchan))
         for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[:(2*nchan):2]):
             freq = plotdata['freq'][plotdata['c']==c][0]
             curdata = plotdata[plotdata['c']==c]
@@ -192,7 +192,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
             unflag = curdata[curdata['flagged']==False]
             flagged = curdata[curdata['flagged']==True]
             ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
-            ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='flagged')
+            ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label='flagged',alpha=0.25)
             ax.legend()
             ax.set_xlim(plotdata['hrpst'].min(), plotdata['hrpst'].max())
             ax.set_ylim(unflag['flux'].min(), unflag['flux'].max())
@@ -215,7 +215,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
             ax.scatter(xdata,ydata,color='black',marker='s')
             xdata = flagged['hrpst']
             ydata = flagged['flux']
-            ax.scatter(xdata,ydata,color='black',marker='*',label='flagged')
+            ax.scatter(xdata,ydata,color='black',marker='.',label='flagged',alpha=0.25)
             ax.legend()
             ax.set_xlim(zoomplotdata['hrpst'].min(), zoomplotdata['hrpst'].max())
             ax.set_title(f"{freq:5.2f} MHz")
@@ -235,12 +235,12 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         ax.set_ylabel('Approx. Flux (Jy)')
         ax.legend()
         ax = axs.flatten()[-1]
-        fig.delaxes(ax)
-    #     Z = np.zeros((len(np.unique(plotdata['date'])),nchan))
-    #     sortudates = np.sort(np.unique(plotdata['date']))
-    #     for i,d in enumerate(sortudates):
-    #         for c in np.unique(plotdata['c']):
-    #             thisZ = plotdata['flux'][(plotdata['date']==d) & (plotdata['c']==c)][0]
+        
+        Z = np.zeros((len(np.unique(zoomplotdata['hrpst'])),nchan))
+        sortuhrpsts = np.sort(np.unique(zoomplotdata['hrpst']))
+        for i,d in enumerate(sortuhrpsts):
+            for c in np.unique(zoomplotdata['c']):
+                Z[i,c] = zoomplotdata['flux'][(zoomplotdata['hrpst']==d) & (zoomplotdata['c']==c)][0]
     #             try:
     #                 Z[i,c] = np.log10(thisZ) # - np.nanmedian(thisZ)
     #             except RuntimeWarning:
@@ -248,8 +248,8 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
     #     Z[np.isnan(Z)] = 0
     #     # setvscale = 3*np.median(Z[Z>0])
     #     # setvscale = np.amax(np.abs(Z))
-    #     waterfall = axs[-1].imshow(Z.transpose(),cmap='viridis',origin='lower',interpolation='nearest',aspect='auto')
-    #     cbar = fig.colorbar(waterfall,ax=axs[-1], orientation='horizontal', cmap='coolwarm',fraction=0.1)
+        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',interpolation='nearest',aspect='auto')
+        cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     #     cbar.set_label('Approx. Log10 Flux (Jy)')
         plt.subplots_adjust(hspace=0.3)
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")

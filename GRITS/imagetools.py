@@ -207,10 +207,10 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3, maxDR=300):
         for j in range(nchan):
             linearsigma = maxDR
             k = 1
-            islandcond = data[i,j,k] > (rmsdata[i,j]*linearsigma)
+            islandcond = np.abs(data[i,j,k]) > (rmsdata[i,j]*linearsigma)
             brightQ = np.sum(islandcond)
             k = 2
-            islandcond = data[i,j,k] > (rmsdata[i,j]*linearsigma)
+            islandcond = np.abs(data[i,j,k]) > (rmsdata[i,j]*linearsigma)
             brightU = np.sum(islandcond)
 
                 # print(np.amax(data[i,j,k]),print(rmsdata[i,:].max()*3),i,j,k)
