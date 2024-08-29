@@ -160,14 +160,32 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(24,8))
         unflag = plotdata[plotdata['flagged']==False]
         flagged = plotdata[plotdata['flagged']==True]
+        statmatched = plotdata[(plotdata['statmatch']==True) & (plotdata['c']==c)]
         axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
         axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
+        if statmatched.size >0:
+            unflag = statmatched[statmatched['flagged']==False]
+            flagged = statmatched[statmatched['flagged']==True]
+            axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
+            axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
         axs[0].legend()
-        axs[0].set_ylim(unflag['flux'].min(), unflag['flux'].max())
+        if unflag['flux'].size > 0:
+            ymin = unflag['flux'].min()
+            ymax = unflag['flux'].max()
+        else:
+            ymin = plotdata['flux'].min()
+            ymax = plotdata['flux'].max()
+        axs[0].set_ylim(ymin,ymax)
+        statmatched = zoomplotdata[(zoomplotdata['statmatch']==True) & (zoomplotdata['c']==c)]
         unflag = zoomplotdata[zoomplotdata['flagged']==False]
         flagged = zoomplotdata[zoomplotdata['flagged']==True]
         axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
         axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
+        if statmatched.size >0:
+            unflag = statmatched[statmatched['flagged']==False]
+            flagged = statmatched[statmatched['flagged']==True]
+            axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
+            axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
         axs[1].legend()
         for ax in axs:
             for d in dettimechan:
@@ -191,11 +209,23 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
                 continue
             unflag = curdata[curdata['flagged']==False]
             flagged = curdata[curdata['flagged']==True]
+            statmatched = plotdata[(plotdata['statmatch']==True) & (plotdata['c']==c)]
             ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
             ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label='flagged',alpha=0.25)
+            if statmatched.size >0:
+                unflag = statmatcheda[statmatched['flagged']==False]
+                flagged = statmatched[statmatched['flagged']==True]
+                ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
+                ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
             ax.legend()
             ax.set_xlim(plotdata['hrpst'].min(), plotdata['hrpst'].max())
-            ax.set_ylim(unflag['flux'].min(), unflag['flux'].max())
+            if unflag['flux'].size > 0:
+                ymin = unflag['flux'].min()
+                ymax = unflag['flux'].max()
+            else:
+                ymin = plotdata['flux'].min()
+                ymax = plotdata['flux'].max()
+            ax.set_ylim(ymin,ymax)
             ax.set_title(f"{freq:5.2f} MHz")
             if ax==axs.flatten()[-4]:
                 ax.set_xlabel(f"Hours past midnight")
@@ -216,6 +246,12 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
             xdata = flagged['hrpst']
             ydata = flagged['flux']
             ax.scatter(xdata,ydata,color='black',marker='.',label='flagged',alpha=0.25)
+            statmatched = zoomplotdata[(zoomplotdata['statmatch']==True) & (zoomplotdata['c']==c)]
+            if statmatched.size >0:
+                unflag = statmatched[statmatched['flagged']==False]
+                flagged = statmatched[statmatched['flagged']==True]
+                ax.scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
+                ax.scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
             ax.legend()
             ax.set_xlim(zoomplotdata['hrpst'].min(), zoomplotdata['hrpst'].max())
             ax.set_title(f"{freq:5.2f} MHz")

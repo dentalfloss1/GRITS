@@ -450,12 +450,12 @@ def main(filename,config,noplot=False,quiet=False):
                         flagged = (timeind,c) in allflaggedtimes
                         mjd = fullhdrlist[timeind]['start_time']
                         hourspastmid = (mjd - np.floor(mjd))*24
-                        plotdata.append((timeind,flux,c,midfreq,flagged,hourspastmid))
+                        plotdata.append((timeind,flux,c,midfreq,flagged,False,hourspastmid))
                 mintime = max(0,curdettimechan['index'].min()-12)
                 maxtime = min(len(fullhdrlist)-1, curdettimechan['index'].max()+12)
                 if mintime > maxtime:
                     raise RuntimeWarning
-                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('hrpst','f8')])
+                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('statmatch',bool),('hrpst','f8')])
                 zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                 tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :
