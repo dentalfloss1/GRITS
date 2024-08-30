@@ -214,10 +214,11 @@ def main(filename,config,noplot=False,quiet=False):
                     s2n = np.amax(np.abs(nomaskimdiff))/rmsdata[i,j]
                     maxstokesplane, maxyplane, maxxplane = np.where(np.abs(nomaskimdiff)==np.amax(np.abs(nomaskimdiff)))
                     if s2n > maxDR:
-                        if islanddata[i,j,maxstokesplane,maxyplane,maxxplane]!=0:
+                        if np.any(islanddata[i,j,maxstokesplane,maxyplane,maxxplane]!=0):
                             # In this case we have a bright non A-team source. We keep that source and get rid of all the
                             # others. They are likely sidelobes
-                            islanddata[i,j,:,:,:][islanddata[i,j,:,:,:]!=islanddata[i,j,maxstokesplane,maxyplane,maxxplane]] = 0 
+                            for maxs,maxy,maxx in zip(maxstokesplane,maxyplane,maxxplane):
+                                islanddata[i,j,:,:,:][islanddata[i,j,:,:,:]!=islanddata[i,j,maxs,maxy,maxx]] = 0 
                         else:
                             # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
                             flaggedtimes.append((i,j))
