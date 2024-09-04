@@ -17,7 +17,7 @@ from astropy.wcs.utils import pixel_to_skycoord
 from astropy.time import Time
 from astropy.io import fits as astrofits
 
-from lsl_toolkits.OrvilleImage.getwcs import getSVwcs, getGENERICwcs
+from lsl_toolkits.OrvilleImage.wcs import getSVwcs, getGENERICwcs
 
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
