@@ -8,6 +8,7 @@ import os
 import argparse
 import imdiffsearch
 from astropy.time import Time
+from bifrost.device import set_device
 
 from GRITS.configtemplate import configfile
 from GRITS.plotresults import plotresults,plotsource,plotLC
@@ -39,6 +40,8 @@ if __name__=="__main__":
     parser.add_argument('--configfile2', type=str,
                         default='config.ini',
                         help="Configuration file.")
+    parser.add_argument('--device', type=int, default=0,
+                        help="Use this GPU device number")
     parser.add_argument('--station1', type=str, nargs='+',
                         help="images from the first station",required=True)
     parser.add_argument('--station2', type=str, nargs='+',
@@ -49,6 +52,7 @@ if __name__=="__main__":
     parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
     parser.add_argument("--makefits",action="store_true", help="Make fits and region files")
     args = parser.parse_args()
+    set_device(args.device)
     # Read config.ini or generate new one
     config1 = ConfigParser()
     if not os.path.isfile(args.configfile1):
@@ -247,12 +251,19 @@ if __name__=="__main__":
                                                         plotdatalist[1][plotdatalist[1]['hrpst']==hrstat2]['flagged'] = False
                                                         completed1.append(hrstat1)
                                                         completed2.append(hrstat2)
+
+                    skipnext = False
                     for plotfile,plotdata,curdettimechan,udet,tdet,ra,dec,s,hdrlist in zip(plotfilelist,plotdatalist, curdettimechanlist,udetlist,tdetlist,ralist,declist,[s1,s2],[hdrlist1,hdrlist2]):
+                        if skipnext==True:
+                            continue
                         mintime = max(0,s['index']-12)
                         maxtime = min(len(hdrlist)-1, s['index']+12)
                         for f1,f2,freq1,freq2 in matchedsrc:
                             plotdata['statmatch'][((plotdata['flux']==f1) & (plotdata['freq']==freq1)) | ((plotdata['flux']==f2) & (plotdata['freq']==freq2))] = True
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
+                        if curdettimechan.size=0:
+                            skipnext = True
+                            continue
                         plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,udet,tdet,ra,dec)
                                             
                                     

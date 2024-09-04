@@ -199,12 +199,14 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
     return w.wcs_pix2world(pixcrd, 0)
 
 
-def maskislands(data, rmsdata,  ints, nchan, ngrid,nsigma=3, maxDR=300):
+def maskislands(data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxDR=300):
     dataislands = np.copy(data)
     islandmasks = np.zeros(data.shape,dtype=bool)
     flaggedtimes = []
     for i in range(1,ints):
         for j in range(nchan):
+            if (i,j) in flaggedtimes:
+                continue
             linearsigma = maxDR
             k = 1
             islandcond = np.abs(data[i,j,k]) > (rmsdata[i,j]*linearsigma)
