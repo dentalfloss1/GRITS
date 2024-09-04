@@ -9,6 +9,7 @@ import argparse
 import sys
 from configparser import ConfigParser 
 from contextlib import closing
+from bifrost.device import set_device
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -308,6 +309,8 @@ def main(filename,config,noplot=False,quiet=False):
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
         islandcondition = islanddata >0
         firstcut =  rmscond & numsrccond & islandcondition.any(axis=(2,3,4))  
+        print("rmscond","numsrccond","islandcondition.any(axis=(2,3,4))","islandcondition")
+        print(rmscond.shape, numsrccond.shape,islandcondition.any(axis=(2,3,4)).shape, islandcondition.shape)
      #    angvelcond = restrictangvel(np.where(firstcut), islanddata, hdrlist, nchan, ngrid,sRad,minangvel=float(config['Quality Control']['minangvel']),rtol=float(config['Quality Control']['rtol']))
         whereislands = np.where(firstcut ) 
         if not quiet:
@@ -367,6 +370,7 @@ def main(filename,config,noplot=False,quiet=False):
                     if c3 or vlss  or negflux:
                         islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                     else:
+                        print(data.shape,islanddata.shape,outchannels)
                         srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c],detchan))
                     lastlabel = label
                     uniquesrcid += 1
@@ -484,12 +488,15 @@ if __name__ == "__main__":
                         help="Flux correction multiplicative factor")
     parser.add_argument('--channel', type=int,
                         help="Only image this channel")
+    parser.add_argument('--device', type=int, default=0,
+                        help="Use this GPU device number")
     parser.add_argument('--noplot', action="store_true")
     parser.add_argument('-q','--quiet', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     args = parser.parse_args()
     config = ConfigParser()
+    set_device(args.device)
     if not os.path.isfile(args.configfile):
         print(f"{args.configfile} does not exist. Creating one and stopping.")
         with open(args.configfile,"w") as f:
