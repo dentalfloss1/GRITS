@@ -4,6 +4,7 @@ from bifrost import map as BFMap
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.constants import CYG_A, CAS_A, SGR_A, TAU_A, VIRGO_A, HERC_A, floatmax
 from GRITS.imagetools import hdrtopixmask,hdrtoworld
+import datetime
 
 # Pre-calibration RMS measurement. 
 # IN: imagedata, sRad
@@ -62,65 +63,68 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     tauaflux = []
     completemask = np.zeros((len(data),ngrid,ngrid),dtype=bool)
     masksize = 14
-    x = np.arange(ngrid) + 0.5
-    y = np.arange(ngrid) + 0.5
-    x,y = np.meshgrid(x,y)
+    xgrid = np.arange(ngrid) + 0.5
+    ygrid = np.arange(ngrid) + 0.5
+    xgrid,ygrid = np.meshgrid(xgrid,ygrid)
+    xgrid = np.tile(xgrid, len(data)).reshape((len(data),ngrid,ngrid))
+    y = np.tile(ygrid, len(data)).reshape((len(data),ngrid,ngrid))
+    t0 = datetime.datetime.now()
+    pixcoord = np.zeros((len(data),4,2)) 
+    cygacoord = np.zeros((len(data),2))
+    casacoord = np.zeros((len(data),2))
+    viracoord = np.zeros((len(data),2))
+    tauacoord = np.zeros((len(data),2))
     for i in range(len(data)):
-        ateammask = np.zeros((ngrid,ngrid),dtype=bool)
-        pixcoord = []
-        for src in [SGR_A,HERC_A,sunpos[i],juppos[i]]:
-            pixcoord.extend(hdrtopixmask(hdrlist[i],ngrid,sRad,src[0],src[1],station))
-        for p in pixcoord:
-            if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-                completemask[i] = completemask[i] | currcond
-                ateammask = ateammask | currcond
-         
-        cygacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CYG_A[0],CYG_A[1],station)
-        for p in cygacoord:
-            if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-                ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
-                cygmask = np.where(currcond)
-                if np.sum(currcond) >0:
-                    for c in range(nchan):
-                        cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[i,c],c))
-        casacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,CAS_A[0],CAS_A[1],station)
-        for p in casacoord:
-            if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-                ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
-                casmask = np.where(currcond)
-                if np.sum(currcond) >0:
-                    for c in range(nchan):
-                        casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[i,c],c))
-        viracoord = hdrtopixmask(hdrlist[i],ngrid,sRad,VIRGO_A[0],VIRGO_A[1],station)
-        for p in viracoord:
-            if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-                ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
-                virmask = np.where(currcond)
-                if np.sum(currcond) >0:
-                    for c in range(nchan):
-                        viraflux.append((imagedata[i,c,0,virmask[0],virmask[1]].max() - minrms[i,c],c))
-        tauacoord = hdrtopixmask(hdrlist[i],ngrid,sRad,TAU_A[0],TAU_A[1],station)
-        for p in tauacoord:
-            if p[0]: 
-                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-                ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
-                taumask = np.where(currcond)
-                if np.sum(currcond) >0:
-                    for c in range(nchan):
-                        tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[i,c],c))
-        invalid = np.where( completemask[i] )
+        src_ra = [src[0] for src in [SGR_A,HERC_A,sunpos[i],juppos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
+        src_dec = [src[1] for src in [SGR_A,HERC_A,sunpos[i],juppos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
+        srccoords = hdrtopixmask(hdrlist[i],ngrid,sRad,src_ra,src_dec,station)
+        for srcno,(x,y) in enumerate(srccoords[0:4]):
+            pixcoord[i,srcno,...] = (x,y)
+        cygacoord[i,...] = srccoords[4]
+        casacoord[i,...] = srccoords[5]
+        viracoord[i,...] = srccoords[6]
+        tauacoord[i,...] = srccoords[7]
+    for srcno in range(4):
+        currcond = ((xgrid-np.tile(pixcoord[:,srcno,0],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2 + (ygrid-np.tile(pixcoord[:,srcno,1],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2) < (masksize**2)
+        completemask = completemask | currcond
+    noncalmask = np.copy(completemask)
 
-        for stokesno in [0,3]:
-            data[i,:,stokesno,invalid[0], invalid[1]] = np.nan
+    t1 = datetime.datetime.now()
+    # CYG A flux measurements
+    currcond = ((xgrid-np.tile(cygacoord[:,0],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2 + (ygrid-np.tile(cygacoord[:,1],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2) < (masksize**2)
+    completemask = completemask | currcond
+    cygaflux = []
+    for c in range(nchan):
+        cygchanflux = np.where(currcond & ~noncalmask,imagedata[:,c,0,:,:] - np.tile(minrms[:,c],ngrid*ngrid).reshape(len(data),ngrid,ngrid), -1)
+        cygaflux.extend(pair for pair in zip(np.nanmax(cygchanflux,axis=(1,2)),np.repeat(c,len(data))))
+    # CAS A flux measurements
+    currcond = ((xgrid-np.tile(casacoord[:,0],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2 + (ygrid-np.tile(casacoord[:,1],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2) < (masksize**2)
+    completemask = completemask | currcond
+    casaflux = []
+    for c in range(nchan):
+        caschanflux = np.where(currcond & ~noncalmask,imagedata[:,c,0,:,:] - np.tile(minrms[:,c],ngrid*ngrid).reshape(len(data),ngrid,ngrid), -1)
+        casaflux.extend(pair for pair in zip(np.nanmax(caschanflux,axis=(1,2)),np.repeat(c,len(data))))
+    # VIRGO A flux measurements
+    currcond = ((xgrid-np.tile(viracoord[:,0],ngrid*ngrid).reshape((len(data),ngrid,ngrid)))**2 + (ygrid-np.tile(viracoord[:,1],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2) < (masksize**2)
+    completemask = completemask | currcond
+    viraflux = []
+    for c in range(nchan):
+        virchanflux = np.where(currcond & ~noncalmask,imagedata[:,c,0,:,:] - np.tile(minrms[:,c],ngrid*ngrid).reshape(len(data),ngrid,ngrid), -1)
+        viraflux.extend(pair for pair in zip(np.nanmax(virchanflux,axis=(1,2)),np.repeat(c,len(data))))
+    # TAU A flux measurements
+    currcond = ((xgrid-np.tile(tauacoord[:,0],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2 + (ygrid-np.tile(tauacoord[:,1],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2) < (masksize**2)
+    completemask = completemask | currcond
+    tauaflux = []
+    for c in range(nchan):
+        tauchanflux = np.where(currcond & ~noncalmask,imagedata[:,c,0,:,:] - np.tile(minrms[:,c],ngrid*ngrid).reshape(len(data),ngrid,ngrid), -1)
+        tauaflux.extend(pair for pair in zip(np.nanmax(tauchanflux,axis=(1,2)),np.repeat(c,len(data))))
 
+    invalid = np.where( completemask )
+
+    for stokesno in [0,3]:
+        data[invalid[0],:,stokesno,invalid[1], invalid[2]] = np.nan
+
+    t2 = datetime.datetime.now()
     freq = lambda c: (int(hdrlist[0]['start_freq'])  + ((c+1)*int(hdrlist[0]['bandwidth'])/2))*1e-6
     allcorr = []
     for cyg,c in cygaflux:
@@ -136,9 +140,10 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         if tau!=0:
             allcorr.append((c,getcrab(freq(c))/tau))
     allcorr = np.array(allcorr,dtype=[('channel','i8'),('corrfac','f8')])
-    allcorr = allcorr[allcorr["corrfac"]>0]
+    allcorr = allcorr[(allcorr["corrfac"]>0) & ~np.isnan(allcorr['corrfac'])]
     calchans = np.unique(allcorr['channel'])
     removechan = []
+    t3 = datetime.datetime.now()
     for c in range(nchan):
         if c not in calchans:
             print("Channel",c,"not calibrated. Removing this channel.")
@@ -163,8 +168,13 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             print("Invalid corrflux for channel ",c)
             corrflux = 0
         corrfluxlist.append(corrflux)
-        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[i,c])*corrflux
+        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - np.tile(minrms[:,c],4*ngrid*ngrid).reshape(len(imagedata),4,ngrid,ngrid))*corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
+    t4 = datetime.datetime.now()
+    print((t1-t0),"t1 - t0")
+    print((t2-t1),"t2 - t1")
+    print((t3-t2),"t3 - t2")
+    print((t4-t3),"t4 - t3")
     return imagedata, data, corrfluxlist 
 
 def getmultistat(sRad, imagedata, ints, nchan, ngrid):

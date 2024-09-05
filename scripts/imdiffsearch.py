@@ -9,6 +9,7 @@ import argparse
 import sys
 from configparser import ConfigParser 
 from contextlib import closing
+from bifrost.device import set_device
 
 import matplotlib as mpl
 font = {'weight' : 'bold',
@@ -175,17 +176,17 @@ def main(filename,config,noplot=False,quiet=False):
         removechan = []
         outchannels=[]
         counter = 0
+        flaggedtimes = [] 
         for i,c in enumerate(corrfluxlist):
             if c<=0:
                 removechan.append(c)
+                for i in range(len(imagedata)):
+                    flaggedtimes.append((i,c))
             else:
                 outchannels.append(i)
              #    rmsdata[:,counter] = minrms[:,i]*c
                 counter+=1
-        outchannels = np.array(outchannels)
-        allchannels = np.arange(data.shape[1])
-        data  = np.copy(data[:,~np.isin(allchannels,removechan),:,:,:])
-        imagedata  = np.copy(imagedata[:,~np.isin(allchannels,removechan),:,:,:])
+
         t2 = datetime.datetime.now()
         print("un-pbcorr and remove bad channels:",t2-t1)
         nchan = imagedata.shape[1]
@@ -195,12 +196,16 @@ def main(filename,config,noplot=False,quiet=False):
         print("RE-compute RMS:",t2-t1)
         
         if not quiet:
-            medrms = np.median(rmsdata[1:])
-            maxrms = np.amax(rmsdata[1:])
-            print("min","max","median")
-            print(np.amin(rmsdata[1:]),maxrms,medrms)
-         
-        flaggedtimes, islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, nsigma=float(config['Quality Control']['nsigma']))
+            try:
+                medrms = np.median(rmsdata[1:])
+                maxrms = np.amax(rmsdata[1:])
+                print("min","max","median")
+                print(np.amin(rmsdata[1:]),maxrms,medrms)
+            except RuntimeWarning as e:
+                print(e)
+                print('could not compute median and max rms')
+
+        flaggedtimes, islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, flaggedtimes,nsigma=float(config['Quality Control']['nsigma']))
 
         maxDR=float(config['Quality Control']['DynamicRange'])
         for i in range(1,ints):
@@ -367,7 +372,7 @@ def main(filename,config,noplot=False,quiet=False):
                     if c3 or vlss  or negflux:
                         islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                     else:
-                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,outchannels[c],detchan))
+                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,c,detchan))
                     lastlabel = label
                     uniquesrcid += 1
             if not noplot:
@@ -388,9 +393,9 @@ def main(filename,config,noplot=False,quiet=False):
                     gaps="False"
                     fov=sRad*float(config['Quality Control']['pbpercent'])
                     obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov))
-        allimagedata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = imagedata
-        allrmsdata[start:final+1,~np.isin(allchannels,removechan)] =rmsdata 
-        allislanddata[start:final+1,~np.isin(allchannels,removechan),:,:,:] = islanddata
+        allimagedata[start:final+1,:,:,:,:] = imagedata
+        allrmsdata[start:final+1,:] =rmsdata 
+        allislanddata[start:final+1,:,:,:,:] = islanddata
         for i,c in flaggedtimes:
             allflaggedtimes.append((i+chunkt,c))
         chunkt = chunkt + chunksize 
@@ -426,6 +431,8 @@ def main(filename,config,noplot=False,quiet=False):
                 plotdata = []
                 zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
+                if curdettimechan.size <= 0:
+                    continue
                 for timeind in range(1,len(fullhdrlist)):
                     if timeind in dettimechan['index']:
                         measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
@@ -484,12 +491,15 @@ if __name__ == "__main__":
                         help="Flux correction multiplicative factor")
     parser.add_argument('--channel', type=int,
                         help="Only image this channel")
+    parser.add_argument('--device', type=int, default=0,
+                        help="Use this GPU device number")
     parser.add_argument('--noplot', action="store_true")
     parser.add_argument('-q','--quiet', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     args = parser.parse_args()
     config = ConfigParser()
+    set_device(args.device)
     if not os.path.isfile(args.configfile):
         print(f"{args.configfile} does not exist. Creating one and stopping.")
         with open(args.configfile,"w") as f:

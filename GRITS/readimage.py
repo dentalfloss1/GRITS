@@ -19,6 +19,9 @@ def matchfilepairs(station1,station2):
             if minfreq < 18e6:
                 print(f1,"has frequencies that are too low for good results. Skipping")
                 continue
+            if minfreq > 70e6:
+                print(f1,"has frequencies that are too high for good results. Skipping")
+                continue
             if file_start != 0.0:
                 f1times.append((f1,file_start, file_end))
             else:

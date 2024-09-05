@@ -199,7 +199,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         plt.savefig(plotfile)
         plt.close()
     else:
-        fig, axs = plt.subplots(nrows=nchan+2,ncols=2,figsize=(50,12*nchan))
+        fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(50,12*nchan))
         for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[:(2*nchan):2]):
             freq = plotdata['freq'][plotdata['c']==c][0]
             curdata = plotdata[plotdata['c']==c]
@@ -233,8 +233,9 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
                 ax.set_ylabel("Approx. Flux (Jy)")
             curdets = dettimechan[dettimechan['c']==c]
             for c in curdets:
-                detloc = plotdata['hrpst'][plotdata['index']==c['index']][0]
-                ax.axvline(detloc,alpha=0.5,color='black')
+                if c['index'] in plotdata['index']:
+                    detloc = plotdata['hrpst'][plotdata['index']==c['index']][0]
+                    ax.axvline(detloc,alpha=0.5,color='black')
         for c,ax in zip(np.unique(zoomplotdata['c']),axs.flatten()[1:(2*nchan):2]):
             freq = zoomplotdata['freq'][zoomplotdata['c']==c][0]
             curdata = zoomplotdata[zoomplotdata['c']==c]
@@ -261,8 +262,9 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
                 ax.set_ylabel("Approx. Flux (Jy)")
             curdets = dettimechan[dettimechan['c']==c]
             for c in curdets:
-                detloc = zoomplotdata['hrpst'][zoomplotdata['index']==c['index']][0]
-                ax.axvline(detloc,alpha=0.5,color='black')
+                if c['index'] in zoomplotdata['index']:
+                    detloc = zoomplotdata['hrpst'][zoomplotdata['index']==c['index']][0]
+                    ax.axvline(detloc,alpha=0.5,color='black')
         ax = axs.flatten()[-2]
         for d in np.unique(dettimechan['index']):
             curdata = plotdata[plotdata['index']==d]
@@ -284,10 +286,23 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
     #     Z[np.isnan(Z)] = 0
     #     # setvscale = 3*np.median(Z[Z>0])
     #     # setvscale = np.amax(np.abs(Z))
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',interpolation='nearest',aspect='auto')
+        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower')
         cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     #     cbar.set_label('Approx. Log10 Flux (Jy)')
         plt.subplots_adjust(hspace=0.3)
+        # locs,labels = plt.xticks()
+        # print(locs,labels)
+
+        detind =  np.unique(dettimechan['index'])[0]
+        dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
+
+       #  labels[detind].text = 'detection'
+        xticks = []
+        for t in np.sort(np.unique(zoomplotdata['hrpst'])):
+           xticks.append( t-dettime)
+        print(np.unique(zoomplotdata['hrpst']))
+        ax.set_xticks([t for t in range(len(np.unique(zoomplotdata['hrpst'])))])
+        ax.set_xlabel("hrs since detection")
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
         plt.close()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from lsl_toolkits.OrvilleImageDB import OrvilleImageDB
+from lsl_toolkits.OrvilleImage import OrvilleImageDB
 from GRITS.constants import CYG_A, CAS_A, TAU_A, VIRGO_A
 from GRITS.ateamtools import getcyga, getcasa, getcrab, getvira
 from GRITS.imagetools import hdrtopixmask,pbcorr,hdrtoworld
@@ -73,8 +73,8 @@ def setinfo(offset=0):
     return info
 if __name__=="__main__":
     filename = "stablesky.oims"
-    gaussiannoise =  rng.normal(loc=200,scale=10,size=(6,6,144,144))
-    symgaussiannoise =  rng.normal(loc=0,scale=10,size=(6,6,144,144))
+    gaussiannoise =  rng.normal(loc=200,scale=1e-3,size=(6,6,144,144))
+    symgaussiannoise =  rng.normal(loc=0,scale=1e-3,size=(6,6,144,144))
     station = lwasv.name
     with closing(OrvilleImageDB(filename, mode='w', station=lwasv.name)) as sdb:
         for ind,off in enumerate(range(0,6*5,5)):
@@ -126,6 +126,7 @@ if __name__=="__main__":
             for c in range(len(freq)):
                 XX, YY = pbcorr(info,data.shape[-1],c,info['pixel_size'],b'LWASV')
                 data[c,0,:,:]= data[c,0,:,:]*(XX+YY)/2
+            data[0]= 0
             tdb.add_image(info, data*1e-3)
         
             
