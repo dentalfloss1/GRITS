@@ -252,18 +252,12 @@ if __name__=="__main__":
                                                         completed1.append(hrstat1)
                                                         completed2.append(hrstat2)
 
-                    skipnext = False
                     for plotfile,plotdata,curdettimechan,udet,tdet,ra,dec,s,hdrlist in zip(plotfilelist,plotdatalist, curdettimechanlist,udetlist,tdetlist,ralist,declist,[s1,s2],[hdrlist1,hdrlist2]):
-                        if skipnext==True:
-                            continue
                         mintime = max(0,s['index']-12)
                         maxtime = min(len(hdrlist)-1, s['index']+12)
                         for f1,f2,freq1,freq2 in matchedsrc:
                             plotdata['statmatch'][((plotdata['flux']==f1) & (plotdata['freq']==freq1)) | ((plotdata['flux']==f2) & (plotdata['freq']==freq2))] = True
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
-                        if curdettimechan.size=0:
-                            skipnext = True
-                            continue
                         plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,udet,tdet,ra,dec)
                                             
                                     

@@ -293,11 +293,16 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         # locs,labels = plt.xticks()
         # print(locs,labels)
 
-       #  detind =  (np.unique(dettimechan['index']) - zoomplotdata['index'].min())[0]
+        detind =  np.unique(dettimechan['index'])[0]
+        dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
 
        #  labels[detind].text = 'detection'
+        xticks = []
+        for t in np.sort(np.unique(zoomplotdata['hrpst'])):
+           xticks.append( t-dettime)
         print(np.unique(zoomplotdata['hrpst']))
         ax.set_xticks([t for t in range(len(np.unique(zoomplotdata['hrpst'])))])
+        ax.set_xlabel("hrs since detection")
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
         plt.close()
