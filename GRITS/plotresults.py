@@ -300,8 +300,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         xticks = []
         for t in np.sort(np.unique(zoomplotdata['hrpst'])):
            xticks.append( t-dettime)
-        print(np.unique(zoomplotdata['hrpst']))
-        ax.set_xticks([t for t in range(len(np.unique(zoomplotdata['hrpst'])))])
+        ax.set_xticks(xticks)
         ax.set_xlabel("hrs since detection")
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
