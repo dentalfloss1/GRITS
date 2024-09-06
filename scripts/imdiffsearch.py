@@ -207,28 +207,6 @@ def main(filename,config,noplot=False,quiet=False):
 
         flaggedtimes, islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, flaggedtimes,nsigma=float(config['Quality Control']['nsigma']))
 
-        maxDR=float(config['Quality Control']['DynamicRange'])
-        for i in range(1,ints):
-            for j in range(nchan):
-                nomaskimdiff = imagedata[i,j,:,:,:] - imagedata[i-1,j,:,:,:]
-                if rmsdata[i,j] == 0:
-                    flaggedtimes.append((i,j))
-                    islanddata[i,j,:,:,:] = 0
-                else:
-                    # Take absolute value since extreme negative values can also cause problems. 
-                    s2n = np.amax(np.abs(nomaskimdiff))/rmsdata[i,j]
-                    maxstokesplane, maxyplane, maxxplane = np.where(np.abs(nomaskimdiff)==np.amax(np.abs(nomaskimdiff)))
-                    if s2n > maxDR:
-                        if np.any(islanddata[i,j,maxstokesplane,maxyplane,maxxplane]!=0):
-                            # In this case we have a bright non A-team source. We keep that source and get rid of all the
-                            # others. They are likely sidelobes
-                            for maxs,maxy,maxx in zip(maxstokesplane,maxyplane,maxxplane):
-                                islanddata[i,j,:,:,:][islanddata[i,j,:,:,:]!=islanddata[i,j,maxs,maxy,maxx]] = 0 
-                        else:
-                            # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
-                            flaggedtimes.append((i,j))
-                            islanddata[i,j,:,:,:] = 0
-
 
         islanddata = islanddata.copy("cuda")
     
@@ -289,8 +267,30 @@ def main(filename,config,noplot=False,quiet=False):
         if not quiet:
             print("Source Grouping Steps:",t2-t1)
         
-        islanddata = islanddata.copy('system')
+        islanddata = np.array(islanddata.copy('system'))
         rotateddata = rotateddata.copy('system')
+        maxDR=float(config['Quality Control']['DynamicRange'])
+        for i in range(1,ints):
+            for j in range(nchan):
+                nomaskimdiff = imagedata[i,j,:,:,:] - imagedata[i-1,j,:,:,:]
+                if rmsdata[i,j] == 0:
+                    flaggedtimes.append((i,j))
+                    islanddata[i,j,:,:,:] = 0
+                else:
+                    # Take absolute value since extreme negative values can also cause problems. 
+                    s2n = np.amax(np.abs(nomaskimdiff))/rmsdata[i,j]
+                    maxstokesplane, maxyplane, maxxplane = np.where(np.abs(nomaskimdiff)==np.amax(np.abs(nomaskimdiff)))
+                    if s2n > maxDR:
+                        if np.any(islanddata[i,j,maxstokesplane,maxyplane,maxxplane]!=0):
+                            # In this case we have a bright non A-team source. We keep that source and get rid of all the
+                            # others. They are likely sidelobes
+                            for maxs,maxy,maxx in zip(maxstokesplane,maxyplane,maxxplane):
+                                islanddata[i,j,:,:,:][islanddata[i,j,:,:,:]!=islanddata[i,j,maxs,maxy,maxx]] = 0 
+                        else:
+                            # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
+                            flaggedtimes.append((i,j))
+                            islanddata[i,j,:,:,:] = 0
+
 
 
         
