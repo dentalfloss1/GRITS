@@ -42,16 +42,17 @@ if __name__=="__main__":
                         help="Configuration file.")
     parser.add_argument('--device', type=int, default=0,
                         help="Use this GPU device number")
-    parser.add_argument('--station1', type=str, nargs='+',
-                        help="images from the first station",required=True)
-    parser.add_argument('--station2', type=str, nargs='+',
-                        help="images from the station we check anti-concidence with",
-                        required=True)
+   #  parser.add_argument('--station1', type=str, nargs='+',
+   #                      help="images from the first station",required=True)
+   #  parser.add_argument('--station2', type=str, nargs='+',
+   #                      help="images from the station we check anti-concidence with",
+   #                      required=True)
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
     parser.add_argument("--makefits",action="store_true", help="Make fits and region files")
     args = parser.parse_args()
+
     set_device(args.device)
     # Read config.ini or generate new one
     config1 = ConfigParser()
@@ -61,7 +62,8 @@ if __name__=="__main__":
             f.write(configfile)
         exit()
     else:
-        config1.read(args.configfile1)
+        # config1.read(args.configfile1)
+        config1.read("orvilleconfig.ini")
     config2 = ConfigParser()
     if not os.path.isfile(args.configfile2):
         print(f"{args.configfile2} does not exist. Creating one and stopping.")
@@ -69,11 +71,16 @@ if __name__=="__main__":
             f.write(configfile)
         exit()
     else:
-        config2.read(args.configfile2)
+        config2.read("pasiconfig.ini")
+        # config2.read(args.configfile2)
 
     # run main execution loop
     print("Let us match the files")
-    matchedfiles = matchfilepairs(args.station1,args.station2) 
+    import glob
+    station1 = glob.glob("/FileStore/Orville/*/*.oims")
+    station2 = glob.glob("/FileStore/PASI/*/*.pims")
+    # matchedfiles = matchfilepairs(args.station1,args.station2) 
+    matchedfiles = matchfilepairs(station1,station2)
     print(matchedfiles)
     lastfilename1 = ""
     lastfilename2 = ""
