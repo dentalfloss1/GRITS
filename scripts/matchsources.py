@@ -56,23 +56,23 @@ if __name__=="__main__":
     set_device(args.device)
     # Read config.ini or generate new one
     config1 = ConfigParser()
-    if not os.path.isfile(args.configfile1):
-        print(f"{args.configfile1} does not exist. Creating one and stopping.")
-        with open(args.configfile1,"w") as f:
-            f.write(configfile)
-        exit()
-    else:
-        # config1.read(args.configfile1)
-        config1.read("orvilleconfig.ini")
+   #  if not os.path.isfile(args.configfile1):
+   #      print(f"{args.configfile1} does not exist. Creating one and stopping.")
+   #      with open(args.configfile1,"w") as f:
+   #          f.write(configfile)
+   #      exit()
+   #  else:
+   #      # config1.read(args.configfile1)
+    config1.read("orvilleconfig.ini")
     config2 = ConfigParser()
-    if not os.path.isfile(args.configfile2):
-        print(f"{args.configfile2} does not exist. Creating one and stopping.")
-        with open(args.configfile2,"w") as f:
-            f.write(configfile)
-        exit()
-    else:
-        config2.read("pasiconfig.ini")
-        # config2.read(args.configfile2)
+    # if not os.path.isfile(args.configfile2):
+    #     print(f"{args.configfile2} does not exist. Creating one and stopping.")
+    #     with open(args.configfile2,"w") as f:
+    #         f.write(configfile)
+    #     exit()
+    # else:
+    config2.read("pasiconfig.ini")
+    # config2.read(args.configfile2)
 
     # run main execution loop
     print("Let us match the files")
