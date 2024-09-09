@@ -80,10 +80,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
         hdr,_ = db.read_image()
         intlen = hdr['int_len']
         if station not in [b'LWASV',b'LWANA']:
-           if "/Orville/" in filename:
-               station=b'LWASV'
-           if '/Orville-NA/' in filename:
-               station=b'LWANA'
+           station=b'LWASV'
         minfreq = (hdr['start_freq']  + (hdr['bandwidth']/2))
         if intlen > 1: # if larger than one, has to be in seconds
             intlen = intlen/24.0/60.0/60.0 # seconds to days
