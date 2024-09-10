@@ -213,7 +213,10 @@ if __name__=="__main__":
                                 if hasDETECT:
                                     flux = pbcorrallimage[int(y),int(x)]
                                 else:
-                                    flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
+                                    try:
+                                        flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
+                                    except RuntimeWarning:
+                                        flux = 0
                                 midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
                                 flagged = (timeind,c) in allflaggedtimes
                                 mjd = hdrlist[timeind]['start_time']
