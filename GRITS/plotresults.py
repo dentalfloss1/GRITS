@@ -113,7 +113,9 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             
             axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
             ytextloc-=0.15
-            measI, measQ, measU, measV = data[i,:,int(avy),int(avx)] 
+            XX,YY = pbcorr(hdr,ngrid,channel,hdr['psize'], station)
+            measI = data[i,0,int(avy),int(avx)]/( (XX+YY)/2)
+            measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
             axs[0,4].text(0,ytextloc,f"I:{measI:.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%")
             ytextloc-=0.15
             for anum in range(1,5,1):
