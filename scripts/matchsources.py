@@ -79,9 +79,13 @@ if __name__=="__main__":
     import glob
     station1 = glob.glob("/FileStore/Orville/*/*.oims")
     station2 = glob.glob("/FileStore/PASI/*/*.pims")
+    if os.path.exists("matchedfiles.npy"):
+        matchedfiles= np.load("matchedfiles.npy")
+    else:
     # matchedfiles = matchfilepairs(args.station1,args.station2) 
-    matchedfiles = matchfilepairs(station1,station2)
-    print(matchedfiles)
+        matchedfiles = matchfilepairs(station1,station2)
+        print(matchedfiles)
+        np.save("matchedfiles.npy",matchedfiles)
     lastfilename1 = ""
     lastfilename2 = ""
     results = []
