@@ -286,22 +286,18 @@ def main(filename,config,noplot=False,quiet=False):
                             if np.any(islanddata[i,j,k,maxyplane,maxxplane]!=0):
                                 # In this case we have a bright non A-team source. We keep that source and get rid of all the
                                 # others. They are likely sidelobes
-                                for maxy,maxx in zip(maxstokesplane,maxyplane,maxxplane):
+                                for maxy,maxx in zip(maxyplane,maxxplane):
                                     islanddata[i,j,k,:,:][islanddata[i,j,k,:,:]!=islanddata[i,j,k,maxy,maxx]] = 0 
                             else:
                                 # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
                                 flaggedtimes.append((i,j,k))
                                 islanddata[i,j,k,:,:] = 0
-
-
-
-        
         data = np.where(data==floatmax,np.nan,data)
         islandcopy = np.copy(islanddata)
         for i in range(ints):
             for c in range(nchan):
                 hdr = hdrlist[i]
-                for s in [0,3]:
+                for s in range(4):
                     for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
                         srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
                         avy, avx = np.average(srclocs+0.5,axis=0)
@@ -333,45 +329,45 @@ def main(filename,config,noplot=False,quiet=False):
             hdr = hdrlist[i]
             lastlabel=-1
             flagsrc = []
-                for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
-                    yloc, xloc = np.where(islanddata[i,c,s,:,:]==label)
-                    if yloc.size==0:
-                        continue
-                    for x,y in zip(xloc,yloc):
-                        if data[i,c,s,y,x]==np.amax(data[i,c,s,yloc,xloc]):
-                            avx = x
-                            avy = y 
-                    if label==lastlabel:
-                        continue
-                    negflux = False
-                    radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
-                    thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
-                    detchan = len(np.unique(otherchan))
+            for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
+                yloc, xloc = np.where(islanddata[i,c,s,:,:]==label)
+                if yloc.size==0:
+                    continue
+                for x,y in zip(xloc,yloc):
+                    if data[i,c,s,y,x]==np.amax(data[i,c,s,yloc,xloc]):
+                        avx = x
+                        avy = y 
+                if label==lastlabel:
+                    continue
+                negflux = False
+                radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
+                thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
+                detchan = len(np.unique(otherchan))
 
-                    mjd = int(hdr['start_time'])
-                    mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
-                    # determine if header is in seconds or days
-                    if round(hdr['int_len']) > 0:
-                        tInt = hdr['int_len']
-                    else:
-                        tInt = hdr['int_len']*86400.0
-                    dateObs = mjdmpm_to_datetime(mjd, mpm)
-                    if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
-                        vlss = True
-                    else:
-                        vlss = False
-                    if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
-                        c3 = True
-                    else:
-                        c3 = False
-                    detchan=1
-                    flagsrc.append(c3 or vlss or negflux) 
-                    if c3 or vlss  or negflux:
-                        islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
-                    else:
-                        srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,c,detchan,s))
-                    lastlabel = label
-                    uniquesrcid += 1
+                mjd = int(hdr['start_time'])
+                mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
+                # determine if header is in seconds or days
+                if round(hdr['int_len']) > 0:
+                    tInt = hdr['int_len']
+                else:
+                    tInt = hdr['int_len']*86400.0
+                dateObs = mjdmpm_to_datetime(mjd, mpm)
+                if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                    vlss = True
+                else:
+                    vlss = False
+                if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+                    c3 = True
+                else:
+                    c3 = False
+                detchan=1
+                flagsrc.append(c3 or vlss or negflux) 
+                if c3 or vlss  or negflux:
+                    islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
+                else:
+                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,c,detchan,s))
+                lastlabel = label
+                uniquesrcid += 1
             if not noplot:
                 if not np.all(flagsrc):
                     plotresults(i,c,filename,rmsdata[i,c,s],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),chunkt=startindex)
@@ -399,7 +395,7 @@ def main(filename,config,noplot=False,quiet=False):
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
     if not noplot:
-        uniquecoords = np.unique([(src[1],src[2],src[3]) for src in srclist] ,axis=0)
+        uniquecoords = np.unique([(src[1],src[2]) for src in srclist] ,axis=0)
         skiplist = []
         beamI = []
         prad = float(config['Quality Control']['statsep'])/psize
@@ -419,7 +415,7 @@ def main(filename,config,noplot=False,quiet=False):
                     skiplist.append((ra2,dec2))
             dettimechan = []
             timelist = []
-            for src_id,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan in srclist:
+            for src_id,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan,src_stokes in srclist:
                 if angsep(src_ra,src_dec,ra,dec) < float(config['Quality Control']['statsep']):
                     srcid = src_id # Grab a src id for a valid detection
                     dettimechan.append((src_index,src_channel,src_ra,src_dec))
@@ -469,7 +465,7 @@ def main(filename,config,noplot=False,quiet=False):
                 
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int)]), allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad, allflaggedtimes
+    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)]), allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad, allflaggedtimes
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

@@ -50,7 +50,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
                  rmsdat(time,chan,1,i,j) = %f; 
                  rmsdat(time,chan,2,i,j) = %f; 
                  rmsdat(time,chan,3,i,j) = %f; 
-                 }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,floatmax,),
+                 }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,floatmax,floatmax,floatmax,floatmax,),
                  {"dat":idata, "rmsdat":gpurmsdata},
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
     gpurmsdata = gpurmsdata.copy('system')

@@ -96,6 +96,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             if t==i:
                 axs[stokesno+1,timenum].set_title(f'{sname} diff')
             # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+    uniquelabel =1
     for s in [0,1,2,3]:
         for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
             yloc, xloc = np.where(islands[i,s,:,:]==label)
@@ -106,24 +107,22 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
                     avx = x
                     avy = y 
                     break
-            if label==lastlabel:
-                continue
             radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
 
-            
-            axs[0,4].text(0,ytextloc,f"{channel},{s},{label}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
+             
+            axs[0,4].text(0,ytextloc,f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
             ytextloc-=0.15
             XX,YY = pbcorr(hdr,ngrid,channel,hdr['psize'], station)
-            measI = data[i,0,int(avy),int(avx)]/( (XX+YY)/2)
+            pbdata = data[i,0,:,:]/((XX+YY)/2)
+            measI = pbdata[avy,avx]
             measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
             axs[0,4].text(0,ytextloc,f"I:{measI:.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%")
             ytextloc-=0.15
             for anum in range(1,5,1):
                 for imind in range(5):
-                    axs[anum,imind].annotate(str(label),(avx+5,avy+5),alpha=0.25)
+                    axs[anum,imind].annotate(str(uniquelabel),(avx+5,avy+5),alpha=0.25)
                     circle = plt.Circle((avx,avy),5,fill=False)
                     axs[anum,imind].add_artist(circle)
-            lastlabel = label
 
     axs[0,4].set_axis_off()
 
