@@ -19,14 +19,15 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
     idata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='system')
     idata[...] = imagedata
     idata= idata.copy('cuda')
-    gpurmsdata = BFArray(np.zeros((ints,nchan,ngrid,ngrid)),dtype='f32',space='cuda')
+    gpurmsdata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='cuda')
     rmsbox = 30 #2*int(round(ngrid/28.8))
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
              auto y = (float) j - center + 0.5 ;
-             auto intermediate = 0.0 ;
              auto intermediateI = 0.0;
+             auto intermediateQ = 0.0;
+             auto intermediateU = 0.0;
              auto intermediateV = 0.0;
              auto nx=%i;
              auto ny=%i;
@@ -34,15 +35,21 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
                  for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
                      for (auto offj=-(ny/2); offj<=(ny/2); offj++){
                          intermediateI+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
+                         intermediateQ+=dat(time,chan,1,i+offi,j+offj)*dat(time,chan,1,i+offi,j+offj);
+                         intermediateU+=dat(time,chan,2,i+offi,j+offj)*dat(time,chan,2,i+offi,j+offj);
                          intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
                      }
                  }
-                 intermediate = max(intermediateI,intermediateV);
-                 intermediate = intermediateI;
-                 rmsdat(time,chan,i,j) = sqrt(intermediate/((float) nx*ny)) ;
+                 rmsdat(time,chan,0,i,j) = sqrt(intermediateI/((float) nx*ny)) ;
+                 rmsdat(time,chan,1,i,j) = sqrt(intermediateQ/((float) nx*ny)) ;
+                 rmsdat(time,chan,2,i,j) = sqrt(intermediateU/((float) nx*ny)) ;
+                 rmsdat(time,chan,3,i,j) = sqrt(intermediateV/((float) nx*ny)) ;
              }
              else {
-                 rmsdat(time,chan,i,j) = %f; 
+                 rmsdat(time,chan,0,i,j) = %f; 
+                 rmsdat(time,chan,1,i,j) = %f; 
+                 rmsdat(time,chan,2,i,j) = %f; 
+                 rmsdat(time,chan,3,i,j) = %f; 
                  }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,floatmax,),
                  {"dat":idata, "rmsdat":gpurmsdata},
                  axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
@@ -138,7 +145,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                     tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[i,c],c))
         invalid = np.where( completemask[i] )
 
-        for stokesno in [0,3]:
+        for stokesno in range(4):
             data[i,:,stokesno,invalid[0], invalid[1]] = np.nan
 
     freq = lambda c: (int(hdrlist[0]['start_freq'])  + ((c+1)*int(hdrlist[0]['bandwidth'])/2))*1e-6

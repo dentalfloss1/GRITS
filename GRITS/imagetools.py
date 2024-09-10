@@ -205,29 +205,9 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxD
     flaggedtimes = []
     for i in range(1,ints):
         for j in range(nchan):
-            if (i,j) in flaggedtimes:
-                continue
-            linearsigma = maxDR
-            k = 1
-            islandcond = np.abs(data[i,j,k]) > (rmsdata[i,j]*linearsigma)
-            brightQ = np.sum(islandcond)
-            k = 2
-            islandcond = np.abs(data[i,j,k]) > (rmsdata[i,j]*linearsigma)
-            brightU = np.sum(islandcond)
-
-                # print(np.amax(data[i,j,k]),print(rmsdata[i,:].max()*3),i,j,k)
-
-            # If detected at 100 sigma in linear polarization, skip due to likely RFI/bright sun
-
-            if (brightQ==0) and (brightU==0):
-                k = 0 
-                islandcond = data[i,j,k] > (rmsdata[i,j]*nsigma)
+            for k in range(4):
+                islandcond = data[i,j,k] > (rmsdata[i,j,k]*nsigma)
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-                k = 3
-                islandcond = (data[i,j,k]) > (rmsdata[i,j]*nsigma)
-                islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-            else:
-                flaggedtimes.append((i,j))
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
     islanddata = BFArray(islandmasks, space='system', dtype='u16')

@@ -4,10 +4,11 @@ from astropy.coordinates import SkyCoord
 from GRITS.imagetools import hdrtoworld
 
 def restrictnumsrc(islanddata,ints,nchan,maxsrcs=2):
-    numsrcs = np.zeros((ints,nchan),dtype=int)
+    numsrcs = np.zeros((ints,nchan,4),dtype=int)
     for i in range(ints):
         for c in range(nchan):
-            numsrcs[i,c] = len(np.unique(islanddata[i,c,:,:,:]))
+            for s in range(4):
+                numsrcs[i,c,s] = len(np.unique(islanddata[i,c,s,:,:]))
     numsrccond = numsrcs <= maxsrcs
     return numsrccond
 
