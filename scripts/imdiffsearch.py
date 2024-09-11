@@ -365,7 +365,7 @@ def main(filename,config,noplot=False,quiet=False):
                 if c3 or vlss  or negflux:
                     islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                 else:
-                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,c,detchan,s))
+                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt,filename,c,detchan,s))
                 lastlabel = label
                 uniquesrcid += 1
             if not noplot:
