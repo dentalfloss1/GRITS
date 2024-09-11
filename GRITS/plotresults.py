@@ -79,7 +79,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     skip = False
     extent = SetExtent(sRad,data)
     chantoplot = 0
-    fig, axs = plt.subplots(ncols=5,nrows=6,figsize=(40,25))
+    fig, axs = plt.subplots(ncols=5,nrows=6,figsize=(40,35))
     ytextloc = 0.9
     lastlabel = -1
     mintime = max(1,i-2)
@@ -94,7 +94,11 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
                 currimage = np.abs(imagedata[t,stokesno,:,:])-np.abs(imagedata[t-1,stokesno,:,:])
             else:
                 currimage = imagedata[t,stokesno,:,:]-imagedata[t-1,stokesno,:,:]
-            axs[stokesno+2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
+            if stokesno>0:
+                cmap='coolwarm'
+            else:
+                cmap='viridis'
+            axs[stokesno+2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap=cmap)
             axs[stokesno+2,timenum].tick_params(axis='both',which='both',bottom=False,top=False,labelbottom=False)
             if t==i:
                 axs[stokesno+2,timenum].set_title(f'{sname} diff')

@@ -447,7 +447,7 @@ def main(filename,config,noplot=False,quiet=False):
                         if hasDETECT:
                             flux = pbcorrallimage[int(y),int(x)]
                         else:
-                            flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
+                            flux = np.nanmean(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
                         midfreq = round((fullhdrlist[timeind]['start_freq']  + (c*fullhdrlist[timeind]['bandwidth']) + (fullhdrlist[timeind]['bandwidth']/2))*1e-6,2)
                         flagged = (timeind,c) in allflaggedtimes
                         mjd = fullhdrlist[timeind]['start_time']

@@ -105,20 +105,25 @@ if __name__=="__main__":
             continue
         lastfilename1 = filename1
         lastfilename2 = filename2
-        for o1 in obslist1:
-            o1sens = o1[2]
-            o1t1 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-            o1t2 = datetime.datetime.strptime(o1[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-            for o2 in obslist2:
-                o2sens = o2[2]
-                o2t1 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-                o2t2 = datetime.datetime.strptime(o2[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-                if (np.abs((o1t1-o2t1).total_seconds()) < args.timedelta):
-                    start = max(o1t1,o2t1)
-                    stop = min(o1t2,o2t2)
-                    outsens = max(o1sens,o2sens)
-                    outfov = min(o1[-1],o2[-1])
-                    fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),(start+datetime.timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
+        obsfile1= filename1+"_obsfile.txt"
+        obsfile2= filename2+"_obsfile.txt"
+        np.save(obsfile1,obslist1)
+        np.save(obsfile2,obslist2)
+
+       #  for o1 in tqdm(obslist1):
+       #      o1sens = o1[2]
+       #      o1t1 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+       #      o1t2 = datetime.datetime.strptime(o1[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+       #      for o2 in obslist2:
+       #          o2sens = o2[2]
+       #          o2t1 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+       #          o2t2 = datetime.datetime.strptime(o2[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
+       #          if (np.abs((o1t1-o2t1).total_seconds()) < args.timedelta):
+       #              start = max(o1t1,o2t1)
+       #              stop = min(o1t2,o2t2)
+       #              outsens = max(o1sens,o2sens)
+       #              outfov = min(o1[-1],o2[-1])
+       #              fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),(start+datetime.timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
 
 
 
@@ -208,23 +213,26 @@ if __name__=="__main__":
                             if timeind in dettimechan['index']:
                                 measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
                                 measDec = dettimechan['dec'][dettimechan['index']==timeind][0]
-                                hasDETECT = True
                             else:
                                 measRA = ra
                                 measDec = dec
-                                hasDETECT= False
                             x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
                             for c in range(imagedata.shape[1]):
+                                if (timeind in dettimechan['index']) and (c in dettimechan['c']):
+                                    hasDETECT = True
+                                else:
+                                    hasDETECT = False
                                 if detstokes==0:
                                     corbeam = beamI[c]
+                                    pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
                                 else:
                                     corbeam = 1
-                                pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
+                                    pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
                                 if hasDETECT:
                                     flux = pbcorrallimage[int(y),int(x)]
                                 else:
                                     try:
-                                        flux = np.nanmax(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
+                                        flux = np.nanmean(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
                                     except RuntimeWarning:
                                         flux = 0
                                 midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
