@@ -167,13 +167,13 @@ if __name__=="__main__":
                     tdetlist = []
                     ralist = []
                     declist = []
-                    for filename, rmsdata, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd in zip([filename1,filename2], [minrms1,minrms2], [imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2]):        
+                    for filename, rmsdata, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd, detstokes in zip([filename1,filename2], [minrms1,minrms2], [imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2],[stokes1,stokes2]):        
                             # If within the specified localization, we will skip it when we get to it in the primary loop
                         print(filename,station)
                         if filename==filename1:
-                            plotfile = filename.replace(".oims","-station1.oims").replace('.pims','-station1.pims')
+                            plotfile = filename.replace(".oims",f"-stokes{detstokes}-station1.oims").replace('.pims',f'-stokes{detstokes}-station1.pims')
                         else:
-                            plotfile = filename.replace(".oims","-station2.oims").replace('.pims','-station2.pims')
+                            plotfile = filename.replace(".oims",f"-stokes{detstokes}-station2.oims").replace('.pims',f'-stokes{detstokes}-station2.pims')
                         
                             
                         ngrid = imagedata.shape[-1]
@@ -215,7 +215,11 @@ if __name__=="__main__":
                                 hasDETECT= False
                             x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
                             for c in range(imagedata.shape[1]):
-                                pbcorrallimage= (imagedata[timeind,c,0]/beamI[c]) - (imagedata[timeind-1,c,0]/beamI[c])
+                                if detstokes==0:
+                                    corbeam = beamI[c]
+                                else:
+                                    corbeam = 1
+                                pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
                                 if hasDETECT:
                                     flux = pbcorrallimage[int(y),int(x)]
                                 else:

@@ -390,8 +390,8 @@ def main(filename,config,noplot=False,quiet=False):
         allimagedata[start:final+1,:,:,:,:] = imagedata
         allrmsdata[start:final+1,:,:] =rmsdata 
         allislanddata[start:final+1,:,:,:,:] = islanddata
-        for i,c in flaggedtimes:
-            allflaggedtimes.append((i+chunkt,c))
+        for i,c,stokesno in flaggedtimes:
+            allflaggedtimes.append((i+chunkt,c,stokesno))
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
     if not noplot:
@@ -418,13 +418,14 @@ def main(filename,config,noplot=False,quiet=False):
             for src_id,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan,src_stokes in srclist:
                 if angsep(src_ra,src_dec,ra,dec) < float(config['Quality Control']['statsep']):
                     srcid = src_id # Grab a src id for a valid detection
-                    dettimechan.append((src_index,src_channel,src_ra,src_dec))
+                    dettimechan.append((src_index,src_channel,src_ra,src_dec,src_stokes))
                     timelist.append(str(src_index))
-            dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8')])
+            dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8'),('stokes',int)])
             for udet in np.unique(dettimechan['index']):
                 plotdata = []
                 zoomplotdata = []
                 curdettimechan = dettimechan[dettimechan['index']==udet]
+                detstokes = np.unique(curdettimechan['stokes'])[0]
                 if curdettimechan.size <= 0:
                     continue
                 for timeind in range(1,len(fullhdrlist)):
@@ -438,7 +439,11 @@ def main(filename,config,noplot=False,quiet=False):
                         hasDETECT= False
                     x,y = hdrtopixmask(fullhdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
                     for c in range(allimagedata.shape[1]):
-                        pbcorrallimage= (allimagedata[timeind,c,0]/beamI[c]) - (allimagedata[timeind-1,c,0]/beamI[c])
+                        if detstokes==0:
+                            corbeam = beamI[c]
+                        else:
+                            corbeam = 1
+                        pbcorrallimage= (allimagedata[timeind,c,detstokes]/corbeam) - (allimagedata[timeind-1,c,detstokes]/corbeam)
                         if hasDETECT:
                             flux = pbcorrallimage[int(y),int(x)]
                         else:
@@ -456,7 +461,7 @@ def main(filename,config,noplot=False,quiet=False):
                 zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                 tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :
-                    plotLC(src_filename, plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
+                    plotLC(src_filename.replace(".oims",f"stokes{detstokes}").replace(".pims",f"stokes{detstokes}"), plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
 
 
 

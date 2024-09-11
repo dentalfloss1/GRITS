@@ -79,7 +79,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
     skip = False
     extent = SetExtent(sRad,data)
     chantoplot = 0
-    fig, axs = plt.subplots(5,5,figsize=(40,25))
+    fig, axs = plt.subplots(ncols=5,nrows=6,figsize=(40,25))
     ytextloc = 0.9
     lastlabel = -1
     mintime = max(1,i-2)
@@ -90,11 +90,14 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[maxtime+1,stokesno,:,:]
             # else:
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[mintime-1,stokesno,:,:]
-            currimage = imagedata[t,stokesno,:,:]-imagedata[t-1,stokesno,:,:]
-            axs[stokesno+1,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
-            axs[stokesno+1,timenum].tick_params(axis='both',which='both',bottom=False,top=False,labelbottom=False)
+            if stokesno>0:
+                currimage = np.abs(imagedata[t,stokesno,:,:])-np.abs(imagedata[t-1,stokesno,:,:])
+            else:
+                currimage = imagedata[t,stokesno,:,:]-imagedata[t-1,stokesno,:,:]
+            axs[stokesno+2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower')
+            axs[stokesno+2,timenum].tick_params(axis='both',which='both',bottom=False,top=False,labelbottom=False)
             if t==i:
-                axs[stokesno+1,timenum].set_title(f'{sname} diff')
+                axs[stokesno+2,timenum].set_title(f'{sname} diff')
             # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     uniquelabel =1
     for s in [0,1,2,3]:
@@ -109,29 +112,34 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
                     break
             radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
 
-             
-            axs[0,4].text(0,ytextloc,f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))}")
-            ytextloc-=0.15
             XX,YY = pbcorr(hdr,ngrid,channel,hdr['psize'], station)
             pbdata = data[i,0,:,:]/((XX+YY)/2)
             measI = pbdata[avy,avx]
             measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
-            axs[0,4].text(0,ytextloc,f"I:{measI:.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%")
+            resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} I:{np.nan_to_num(measI):.2e},Q:{int(round(100*measQ/measI))}%,U:{int(round(100*measU/measI))}%,V:{int(round(100*measV/measI))}%"
+            axs[0,2].text(0,ytextloc,resulttext)
             ytextloc-=0.15
-            for anum in range(1,5,1):
+            for anum in range(2,6,1):
                 for imind in range(5):
                     axs[anum,imind].annotate(str(uniquelabel),(avx+5,avy+5),alpha=0.25)
                     circle = plt.Circle((avx,avy),5,fill=False)
                     axs[anum,imind].add_artist(circle)
-
-    axs[0,4].set_axis_off()
+            uniquelabel+=1
+    for axnum in range(2,5):
+        axs[0,axnum].set_axis_off()
 
     islandplot = islands[i,0,:,:]
-    axs[0,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[0,2].set_title('I src')
+    axs[1,0].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+    axs[1,0].set_title('I src')
+    islandplot = islands[i,1,:,:]
+    axs[1,1].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+    axs[1,1].set_title('Q src')
+    islandplot = islands[i,2,:,:]
+    axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+    axs[1,2].set_title('U src')
     islandplot = islands[i,3,:,:]
-    axs[0,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[0,3].set_title('V src')
+    axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+    axs[1,3].set_title('V src')
     currimage = imagedata[i,0,:,:]
     axs[0,0].imshow(currimage,origin='lower',extent=extent)
     #axs[0,0].imshow(currimage,vmin=0,vmax=vmax*5,origin='lower',extent=extent)
