@@ -72,7 +72,7 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     
 
     
-def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0):
+def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0):
     vmax = rms*3
     ints = data.shape[0]
     ngrid = data.shape[-1]
@@ -159,7 +159,7 @@ def plotresults(i,channel,filename, rms,islands,imagedata,data,hdr,sRad,station,
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     nomaskimdiff = imagedata[i] - imagedata[i-1]
-    s2n = np.amax(np.abs(nomaskimdiff))/rms
+    s2n = np.amax(np.abs(nomaskimdiff[detstokes]))/rms
     fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
     plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-t{i+chunkt}.png").replace(':','-')
     plt.savefig(plotfile)

@@ -370,7 +370,7 @@ def main(filename,config,noplot=False,quiet=False):
                 uniquesrcid += 1
             if not noplot:
                 if not np.all(flagsrc):
-                    plotresults(i,c,filename,rmsdata[i,c,s],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),chunkt=startindex)
+                    plotresults(i,c,s,filename,rmsdata[i,c,s],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),chunkt=startindex)
         for t in range(ints):
             for c in range(nchan):
                 for s in range(nstokes):
