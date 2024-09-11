@@ -77,11 +77,13 @@ if __name__=="__main__":
     # run main execution loop
     print("Let us match the files")
     import glob
-    station1 = glob.glob("/FileStore/Orville/*/*.oims")
-    station2 = glob.glob("/FileStore/PASI/*/*.pims")
+   #  station1 = glob.glob("/FileStore/Orville/*/*.oims")
+   #  station2 = glob.glob("/FileStore/PASI/*/*.pims")
     if os.path.exists("matchedfiles.npy"):
         matchedfiles= np.load("matchedfiles.npy")
     else:
+        station1 = glob.glob("/FileStore/Orville/*/*.oims")
+        station2 = glob.glob("/FileStore/PASI/*/*.pims")
     # matchedfiles = matchfilepairs(args.station1,args.station2) 
         matchedfiles = matchfilepairs(station1,station2)
         print(matchedfiles)
@@ -105,8 +107,8 @@ if __name__=="__main__":
             continue
         lastfilename1 = filename1
         lastfilename2 = filename2
-        obsfile1= filename1+"_obsfile.txt"
-        obsfile2= filename2+"_obsfile.txt"
+        obsfile1= filename1.split('/')[-1]+"_obsfile.txt"
+        obsfile2= filename2.split('/')[-1]+"_obsfile.txt"
         np.save(obsfile1,obslist1)
         np.save(obsfile2,obslist2)
 
