@@ -93,7 +93,6 @@ if __name__=="__main__":
     results = []
     fullobslist = []
     fullsrclist = []
-    uniqueid=0
     for filename1,filename2 in matchedfiles:
         if lastfilename1!=filename1:
             dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True)
@@ -147,6 +146,7 @@ if __name__=="__main__":
                         if (s1['nchan'] < 2) and (s2['nchan'] < 2):
                             print("not multi channel")
                             continue
+                    uniqueid=index1
                     fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
                     index1 = s1['index']
                     filename1 = str(s1['filename'])
