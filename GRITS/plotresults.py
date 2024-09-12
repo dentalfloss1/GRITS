@@ -161,7 +161,15 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     nomaskimdiff = imagedata[i] - imagedata[i-1]
     s2n = np.amax(np.abs(nomaskimdiff[detstokes]))/rms
     fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
-    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-t{i+chunkt}.png").replace(':','-')
+    if detstokes==0:
+        imtype="continuum"
+    elif detstokes==1:
+        imtype="linear"
+    elif detstokes==2:
+        imtype="circular"
+    elif detstokes==3:
+        imtype="totalpol"
+    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}-{imtype}.png").replace(".pims",f"-t{i+chunkt}-{imtype}.png").replace(':','-')
     plt.savefig(plotfile)
     plt.close()
 
@@ -305,19 +313,21 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         plt.subplots_adjust(hspace=0.3)
         # locs,labels = plt.xticks()
         # print(locs,labels)
+        try:
+            detind =  np.unique(dettimechan['index'])[0]
+            dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
 
-        detind =  np.unique(dettimechan['index'])[0]
-        dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
-
-       #  labels[detind].text = 'detection'
-        labels = []
-        locs = []
-        for tnum,t in enumerate(np.sort(np.unique(zoomplotdata['hrpst']))):
-           if (tnum%4==0) or ((t-dettime)==0):
-               locs.append(tnum)
-               labels.append( f'{(t-dettime)*3600:5.0f}')
-        ax.set_xticks(locs,labels)
-        ax.set_xlabel("seconds since detection")
+           #  labels[detind].text = 'detection'
+            labels = []
+            locs = []
+            for tnum,t in enumerate(np.sort(np.unique(zoomplotdata['hrpst']))):
+               if (tnum%4==0) or ((t-dettime)==0):
+                   locs.append(tnum)
+                   labels.append( f'{(t-dettime)*3600:5.0f}')
+            ax.set_xticks(locs,labels)
+            ax.set_xlabel("seconds since detection")
+        except Exception:
+            print(e)
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
         plt.close()

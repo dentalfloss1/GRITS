@@ -97,9 +97,16 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
                 data[i] = np.asarray(alldata.data)
             imagedata = np.copy(data)
             # first image is not a diff, we'll mask it later
-            data[1:,:,0,:,:] = data[1:,:,0,:,:] - data[:-1:,:,0,:,:]# PB Correct before masking
-            for stokesno in range(1,4):
-                data[1:,:,stokesno,:,:] = data[1:,:,stokesno,:,:] - data[:-1:,:,stokesno,:,:]# PB Correct before masking
+            Idata = data[:,:,0,:,:]
+            Qdata = data[:,:,1,:,:]
+            Udata = data[:,:,2,:,:]
+            Vdata = np.abs(data[:,:,3,:,:])
+            Ldata = np.sqrt(Qdata**2 + Udata**2)
+            Pdata = np.sqrt(Qdata**2 + Udata**2 + Vdata**2)
+            data[1:,:,0,:,:] = Idata[1:] - Idata[:-1]
+            data[1:,:,1,:,:] = Ldata[1:] - Ldata[:-1]
+            data[1:,:,2,:,:] = Vdata[1:] - Vdata[:-1]
+            data[1:,:,3,:,:] = Pdata[1:] - Pdata[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
         else:
             return file_start,file_end,minfreq
@@ -138,10 +145,17 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
                 thisdata = alldata.data
                 data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))
             imagedata = np.copy(data)
-            #  first image is not a diff, we'll mask it later
-            data[1:,:,0,:,:] = data[1:,:,0,:,:] - data[:-1:,:,0,:,:]# PB Correct before masking
-            for stokesno in range(1,4):
-                data[1:,:,stokesno,:,:] = data[1:,:,stokesno,:,:] - data[:-1:,:,stokesno,:,:]# PB Correct before masking
+            # first image is not a diff, we'll mask it later
+            Idata = data[:,:,0,:,:]
+            Qdata = data[:,:,1,:,:]
+            Udata = data[:,:,2,:,:]
+            Vdata = np.abs(data[:,:,3,:,:])
+            Ldata = np.sqrt(Qdata**2 + Udata**2)
+            Pdata = np.sqrt(Qdata**2 + Udata**2 + Vdata**2)
+            data[1:,:,0,:,:] = Idata[1:] - Idata[:-1]
+            data[1:,:,1,:,:] = Ldata[1:] - Ldata[:-1]
+            data[1:,:,2,:,:] = Vdata[1:] - Vdata[:-1]
+            data[1:,:,3,:,:] = Pdata[1:] - Pdata[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
         else:
             
