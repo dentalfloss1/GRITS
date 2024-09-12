@@ -161,7 +161,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     nomaskimdiff = imagedata[i] - imagedata[i-1]
     s2n = np.amax(np.abs(nomaskimdiff[detstokes]))/rms
     fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
-    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}.png").replace(".pims",f"-t{i+chunkt}.png").replace(':','-')
+    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}-stokes{detstokes}.png").replace(".pims",f"-t{i+chunkt}-stokes{detstokes}.png").replace(':','-')
     plt.savefig(plotfile)
     plt.close()
 
