@@ -305,19 +305,21 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         plt.subplots_adjust(hspace=0.3)
         # locs,labels = plt.xticks()
         # print(locs,labels)
+        try:
+            detind =  np.unique(dettimechan['index'])[0]
+            dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
 
-        detind =  np.unique(dettimechan['index'])[0]
-        dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
-
-       #  labels[detind].text = 'detection'
-        labels = []
-        locs = []
-        for tnum,t in enumerate(np.sort(np.unique(zoomplotdata['hrpst']))):
-           if (tnum%4==0) or ((t-dettime)==0):
-               locs.append(tnum)
-               labels.append( f'{(t-dettime)*3600:5.0f}')
-        ax.set_xticks(locs,labels)
-        ax.set_xlabel("seconds since detection")
+           #  labels[detind].text = 'detection'
+            labels = []
+            locs = []
+            for tnum,t in enumerate(np.sort(np.unique(zoomplotdata['hrpst']))):
+               if (tnum%4==0) or ((t-dettime)==0):
+                   locs.append(tnum)
+                   labels.append( f'{(t-dettime)*3600:5.0f}')
+            ax.set_xticks(locs,labels)
+            ax.set_xlabel("seconds since detection")
+        except Exception as e:
+            print(e) 
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
         plt.close()

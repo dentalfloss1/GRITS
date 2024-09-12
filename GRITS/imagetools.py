@@ -209,7 +209,7 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxD
             islandcond = data[i,j,k] > (rmsdata[i,j,k]*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
             for k in range(1,4):
-                islandcond = np.abs(data[i,j,k]) > (rmsdata[i,j,k]*nsigma)
+                islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (data[i,j,k] < 0))
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     sumisland = np.sum(islandmasks,axis=1) 
     sumisland = BFArray(sumisland,space='cuda',dtype='f32')
