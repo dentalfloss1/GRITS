@@ -290,8 +290,10 @@ def main(filename,config,noplot=False,quiet=False):
                                     islanddata[i,j,k,:,:][islanddata[i,j,k,:,:]!=islanddata[i,j,k,maxy,maxx]] = 0 
                             else:
                                 # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
-                                flaggedtimes.append((i,j,k))
-                                islanddata[i,j,k,:,:] = 0
+                                # We can't really trust the other polarizations either
+                                for l in range(4):
+                                    flaggedtimes.append((i,j,l))
+                                    islanddata[i,j,l,:,:] = 0
         data = np.where(data==floatmax,np.nan,data)
         islandcopy = np.copy(islanddata)
         for i in range(ints):

@@ -146,15 +146,15 @@ if __name__=="__main__":
                         if (s1['nchan'] < 2) and (s2['nchan'] < 2):
                             print("not multi channel")
                             continue
+                    index1 = s1['index']
                     uniqueid=index1
                     fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
-                    index1 = s1['index']
                     filename1 = str(s1['filename'])
                     ra1 = s1['ra']
                     dec1 = s1['dec']
                     c1 = s1['channel']
                     stokes1 = s1['stokes']
-                    plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}.png").replace(':','-').split('/')[-1]
+                    plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(':','-').split('/')[-1]
                     index2 = s2['index']
                     filename2 = str(s2['filename'])
                     ra2 = s2['ra']
@@ -164,7 +164,7 @@ if __name__=="__main__":
                     if stokes1!=stokes2:
                         print("detection stokes does not match")
                         continue
-                    plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(':','-').split('/')[-1]
+                    plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(':','-').split('/')[-1]
                     print(index1,index2)
                     plotresults(index1,c1,stokes1,plotfile1,minrms1[index1,c1,stokes1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1)
                     plotresults(index2,c2,stokes2,plotfile2,minrms2[index2,c2,stokes2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,station2)
@@ -307,7 +307,6 @@ if __name__=="__main__":
                             oimsfitsout(imagedata2, diffdata2[:,c2,:,:,:], index2, hdrlist2, station2, plotfile2.replace(".png",".fits"), c2)
                         exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf"))
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
-            uniqueid+=1
 
 
     outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
