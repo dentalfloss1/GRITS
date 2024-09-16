@@ -47,7 +47,6 @@ from GRITS.plotresults import plotresults, plotLC
 from GRITS.qc import restrictnumsrc,restrictangvel
 from GRITS.readimage import readoims,readpims
 from GRITS.fitGaussian import fitGaussian
-from tqdm import tqdm
 
 from lsl_toolkits.OrvilleImage import OrvilleImageDB
 from lsl_toolkits.PasiImage import PasiImageDB
@@ -123,12 +122,13 @@ def main(filename,config,noplot=False,quiet=False):
         start = max(chunkt - overlaptime,0)
         final = min(fullsize-1,chunkt + chunksize -1)
         if ".oims" in filename:
-            print("Read oims")
             ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startind=start,stopind=final)
         elif ".pims" in filename:
             ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename,startind=start,stopind=final)
-
-        fullhdrlist.extend(hdrlist[:len(hdrlist)-overlaptime])
+        if start==0:
+            fullhdrlist.extend(hdrlist)
+        else:
+            fullhdrlist.extend(hdrlist[overlaptime:])
             
         if not quiet:
             print(chunkno,"out of",numchunks,"chunks")
@@ -147,7 +147,8 @@ def main(filename,config,noplot=False,quiet=False):
         # I could attempt to adapt that code to the GPU
         sunpos, juppos = getsunjup(file_start, file_end, ints)
         t2 = datetime.datetime.now()
-        print("Get sun/jup:",t2-t1)
+        if not quiet:
+            print("Get sun/jup:",t2-t1)
 
         t1 = datetime.datetime.now()
         # Get a mask for the horizon, initially search the whole image, restrict later
@@ -156,17 +157,20 @@ def main(filename,config,noplot=False,quiet=False):
         for s in range(nstokes):
             data[:,:,s,invalid[0], invalid[1]] = np.nan
         t2 = datetime.datetime.now()
-        print("Mask Horizon:",t2-t1)
+        if not quiet:
+            print("Mask Horizon:",t2-t1)
         
         t1 = datetime.datetime.now()
         minrms = getminrms(sRad, imagedata,ints,nchan,ngrid,station)
         t2 = datetime.datetime.now()
-        print("Compute RMS:",t2-t1)
+        if not quiet:
+            print("Compute RMS:",t2-t1)
         t1 = datetime.datetime.now()
         # Flux calibrate data and mask off A-Team
         imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station)
         t2 = datetime.datetime.now()
-        print("calibrate:",t2-t1)
+        if not quiet:
+            print("calibrate:",t2-t1)
         # UN pbcorrect diff ims for a flat sky. We measure fluxes using the image data, so we keep that as pb corrected
         t1 = datetime.datetime.now()
         for c in range(nchan):
@@ -189,12 +193,14 @@ def main(filename,config,noplot=False,quiet=False):
                 counter+=1
 
         t2 = datetime.datetime.now()
-        print("un-pbcorr and remove bad channels:",t2-t1)
+        if not quiet:
+            print("un-pbcorr and remove bad channels:",t2-t1)
         nchan = imagedata.shape[1]
         t1 = datetime.datetime.now()
         rmsdata = getminrms(sRad, data,ints,nchan,ngrid,station)
         t2 = datetime.datetime.now()
-        print("RE-compute RMS:",t2-t1)
+        if not quiet:
+            print("RE-compute RMS:",t2-t1)
         
         if not quiet:
             try:
@@ -323,8 +329,9 @@ def main(filename,config,noplot=False,quiet=False):
         islandfloat[...] = islanddata
        # islandfloat[:,:,:,circle[0],circle[1]] = np.nan
        #  imagedata[:,:,:,circle[0],circle[1]] = np.nan
-        print("Iterating over sources")
-        for ind in tqdm(range(len(whereislands[0]))):
+        if not quiet:
+            print("Iterating over sources")
+        for ind in range(len(whereislands[0])):
             i = whereislands[0][ind]
             c = whereislands[1][ind]
             s = whereislands[2][ind]
@@ -367,6 +374,8 @@ def main(filename,config,noplot=False,quiet=False):
                 if c3 or vlss  or negflux:
                     islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                 else:
+                    if not quiet:
+                        print(i,chunkt,radec[0][0],radec[0][1],i+chunkt)
                     srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt,filename,c,detchan,s))
                 lastlabel = label
                 uniquesrcid += 1
@@ -391,7 +400,14 @@ def main(filename,config,noplot=False,quiet=False):
                         obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov,s))
         allimagedata[start:final+1,:,:,:,:] = imagedata
         allrmsdata[start:final+1,:,:] =rmsdata 
-        allislanddata[start:final+1,:,:,:,:] = islanddata
+        if start==0:
+            allislanddata[start:final+1,:,:,:,:] = islanddata
+        else:
+            # I absolutely lost my mind over an off-by-one error here. 
+            for tmpind in range(start+overlaptime,final+1):
+                zerobased = tmpind - start -overlaptime
+                if zerobased>1:
+                    allislanddata[tmpind] = islanddata[zerobased]
         for i,c,stokesno in flaggedtimes:
             allflaggedtimes.append((i+chunkt,c,stokesno))
         chunkt = chunkt + chunksize 
@@ -408,7 +424,8 @@ def main(filename,config,noplot=False,quiet=False):
             XX,YY = pbcorr(fullhdrlist[0],ngrid,c,psize,station)
             beamI.append((XX+YY)/2)
         for i,(ra,dec) in enumerate(uniquecoords):
-            print(i+1,"out of",(len(uniquecoords)),end="\r")
+            if not quiet:
+                print(i+1,"out of",(len(uniquecoords)),end="\r")
             if (ra,dec) in skiplist:
                 continue
             for ra2,dec2 in uniquecoords[(i+1):]:
@@ -537,6 +554,8 @@ if __name__ == "__main__":
         with open(outobsfile,"w") as f:
             for o in fullobslist:
                 f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]},{o[7]}\n")
-        print("date","nchans")
+        if not quiet:
+            print("date","nchans")
         for o in outsrc:
-            print(*o)
+            if not quiet:
+                print(*o)

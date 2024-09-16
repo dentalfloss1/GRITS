@@ -74,7 +74,6 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
             ints = db.nint # number of integrations
             startind = 0
             stopind = ints-1
-        print("about to read",ints,"imagecubes into memory")
         sRad   = 360.0/psize/np.pi / 2
         db.seek(stopind)
         hdr,_ = db.read_image()
@@ -89,7 +88,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
             # Collect header and data from the whole file
             hdrlist = []
             data = np.zeros((ints,nchan,4,ngrid,ngrid))
-            for i in tqdm(range(ints)):
+            for i in range(ints):
                 db.seek(i+startind)
                 hdr,alldata = db.read_image()
                 hdr['psize'] = psize
@@ -111,7 +110,6 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
         psize = db.header['xPixelSize']
         nchan = 1 
         sRad = 360.0/psize/np.pi / 2
-        print(startind,stopind)
         if (startind!=None) and (stopind!=None):
             ints = stopind - startind + 1
         else:
