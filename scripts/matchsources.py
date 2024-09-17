@@ -122,7 +122,7 @@ if __name__=="__main__":
                 dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2,allflaggedtimes2 = imdiffsearch.main(filename2,config2,noplot=True,quiet=True)
                 diffdata2 = np.copy(imagedata2)
                 diffdata2[1:]  = diffdata2[1:] - diffdata2[:-1]
-        except Exception:
+        except Exception as e:
             print(e)
             continue
         if (dat1 is None) or (dat2 is None):
