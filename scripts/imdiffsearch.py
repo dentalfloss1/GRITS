@@ -480,7 +480,7 @@ def main(filename,config,noplot=False,quiet=False):
                 zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                 tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :
-                    plotLC(src_filename.replace(".oims",f"stokes{detstokes}").replace(".pims",f"stokes{detstokes}"), plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
+                    plotLC(src_filename.replace(".oims",f"stokes{detstokes}.oims").replace(".pims",f"stokes{detstokes}.pims"), plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
 
 
 
@@ -515,6 +515,8 @@ if __name__ == "__main__":
     parser.add_argument('-q','--quiet', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
+    parser.add_argument("--targetsource", type=float, nargs=2,
+                        help='Look for source at this ra dec')
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -550,12 +552,16 @@ if __name__ == "__main__":
                     outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
                     srcleft = srcleft[~np.isin(srcleft,matching2)]
                     nsrcleft = srcleft.size
+            if args.targetsource:
+                for s in srcarr:
+                    if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['catsep']):
+                        print(s)
         outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
         with open(outobsfile,"w") as f:
             for o in fullobslist:
                 f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]},{o[7]}\n")
         if not quiet:
             print("date","nchans")
-        for o in outsrc:
-            if not quiet:
-                print(*o)
+      #   for o in outsrc:
+      #       if not quiet:
+                # print(*o)
