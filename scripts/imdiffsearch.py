@@ -402,12 +402,16 @@ def main(filename,config,noplot=False,quiet=False):
         allrmsdata[start:final+1,:,:] =rmsdata 
         if start==0:
             allislanddata[start:final+1,:,:,:,:] = islanddata
+            allimagedata[start:final+1,:,:,:,:] = imagedata
+            allrmsdata[start:final+1,:,:] =rmsdata 
         else:
             # I absolutely lost my mind over an off-by-one error here. 
             for tmpind in range(start+overlaptime,final+1):
                 zerobased = tmpind - start -overlaptime
                 if zerobased>1:
                     allislanddata[tmpind] = islanddata[zerobased]
+                    allimagedata[tmpind] = imagedata[zerobased]
+                    allrmsdata[tmpind] =rmsdata[zerobased]
         for i,c,stokesno in flaggedtimes:
             allflaggedtimes.append((i+chunkt,c,stokesno))
         chunkt = chunkt + chunksize 
