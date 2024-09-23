@@ -120,7 +120,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             pbdata = data[i,0,:,:]/((XX+YY)/2)
             measI = pbdata[avy,avx]
             measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
-            resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} I:{np.nan_to_num(measI):.2e},Q:{{np.nan_to_num(measQ):.2e}},U:{np.nan_to_num(measU):.2e},V:{{np.nan_to_num(measV):.2e}"
+            resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} I:{np.nan_to_num(measI):.2e},Q:{np.nan_to_num(measQ):.2e},U:{np.nan_to_num(measU):.2e},V:{np.nan_to_num(measV):.2e}"
             axs[0,2].text(0,ytextloc,resulttext)
             ytextloc-=0.15
             for anum in range(2,6,1):
