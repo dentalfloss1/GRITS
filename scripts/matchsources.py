@@ -17,7 +17,7 @@ from GRITS.plotresults import plotresults,plotsource,plotLC
 from GRITS.readimage import matchfilepairs
 from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask, angsep
 from GRITS.fitGaussian import fitGaussian
-
+import glob
 def makeZoomCoords(rad, circular = True):
     grid = np.mgrid[-rad : rad+1, -rad : rad+1].reshape((2, (rad*2+1)**2))
     if circular:
