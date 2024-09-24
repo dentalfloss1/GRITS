@@ -27,7 +27,7 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename) 
     else:
         print("Unknown filetype")
-        exit()
+        return
     mycorr = corrfluxlist[channel] 
     imagedata = imagedata[:,channel,:,:,:]
     data = data[:,channel,:,:,:]
