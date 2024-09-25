@@ -177,7 +177,7 @@ if __name__=="__main__":
                     dec1 = s1['dec']
                     c1 = s1['channel']
                     stokes1 = s1['stokes']
-                    plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}.png").replace(':','-').split('/')[-1]
+                    plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(':','-').split('/')[-1]
                     index2 = s2['index']
                     filename2 = str(s2['filename'])
                     ra2 = s2['ra']
@@ -187,7 +187,7 @@ if __name__=="__main__":
                     if stokes1!=stokes2:
                         # print("detection stokes does not match")
                         continue
-                    plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}.png").replace(':','-').split('/')[-1]
+                    plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(':','-').split('/')[-1]
                     plotresults(index1,c1,stokes1,plotfile1,minrms1[index1,c1,stokes1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1)
                     plotresults(index2,c2,stokes2,plotfile2,minrms2[index2,c2,stokes2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,station2)
                     # plotsource(index1, plotfile1, filename1, ra1, dec1, minrms1, corrfluxlist1, c1, vmax=args.vmax1)

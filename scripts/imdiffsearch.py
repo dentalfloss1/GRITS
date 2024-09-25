@@ -564,7 +564,7 @@ if __name__ == "__main__":
         with open(outobsfile,"w") as f:
             for o in fullobslist:
                 f.write(f"{o[0]},{o[1]},{o[2]},{o[3]},{o[4]},{o[5]},{o[6]},{o[7]}\n")
-        if not quiet:
+        if not args.quiet:
             print("date","nchans")
       #   for o in outsrc:
       #       if not quiet:
