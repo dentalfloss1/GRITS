@@ -95,12 +95,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
                 hdrlist.append(hdr)
                 data[i] = np.asarray(alldata.data)
             imagedata = np.copy(data)
-            imagedata[imagedata==0] = np.nan
-            # data[1:] = data[1:] - data[:-1]
-            avgno = 5
-            for i in range(ints-avgno):
-                # First four are not diffs, we'll mask it later
-                data[i+avgno] = imagedata[i+avgno] -  np.nanmedian(imagedata[i:(i+avgno)],axis=0)# PB Correct before masking
+            data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
         else:
             return file_start,file_end,minfreq
@@ -140,10 +135,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
                 thisdata = alldata.data
                 data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))
             imagedata = np.copy(data)
-            avgno = 5
-            imagedata[imagedata==0] = np.nan
-            for i in range(ints-avgno):
-                data[i+avgno] = imagedata[i+avgno] - np.nanmedian(imagedata[i:(i+avgno)],axis=0)
+            data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
         else:
             

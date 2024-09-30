@@ -225,8 +225,6 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=pblimit)
         islanddata[:,:,:,invalid[0], invalid[1]] = 0
          
-        # # flag diffs with excess galactic emission
-        # flaggedtimes, islanddata = checkgalactic(islanddata, flaggedtimes, hdrlist, sRad, station, float(config['Quality Control']['galpercent']))
 
         
         x = np.arange(ngrid) + 0.5
@@ -236,9 +234,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         islanddata = BFArray(islanddata, space='system', dtype='u16')
         
 
-        # skipping the first few 
-        for imno in range(5):
-            islanddata[imno,:,:,:,:] = 0
+        # skipping the first one
+        islanddata[0,:,:,:,:] = 0
         for c in range(nchan):
             for s in range(4):
                 flaggedtimes.append((0,c,s))

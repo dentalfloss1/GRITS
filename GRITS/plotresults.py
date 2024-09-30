@@ -87,8 +87,9 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     avgno = 5
     imagedata[imagedata==0] = np.nan
     unmasked = np.copy(imagedata)
-    for imno in range(ints-avgno):
-        unmasked[imno+avgno] = imagedata[imno+avgno] - np.nanmedian(imagedata[imno:(imno+avgno)],axis=0)
+    unmasked[1:] = unmasked[1:] - unmasked[:-1]
+   #  for imno in range(ints-avgno):
+   #      unmasked[imno+avgno] = imagedata[imno+avgno] - np.nanmedian(imagedata[imno:(imno+avgno)],axis=0)
     for stokesno,sname in enumerate(['I','Q','U','V']):
         for timenum, t in enumerate(range(mintime,maxtime+1)):
             # if (i==mintime):
