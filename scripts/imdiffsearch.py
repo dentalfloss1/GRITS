@@ -225,8 +225,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=pblimit)
         islanddata[:,:,:,invalid[0], invalid[1]] = 0
          
-        # flag diffs with excess galactic emission
-        flaggedtimes, islanddata = checkgalactic(islanddata, flaggedtimes, hdrlist, sRad, station, float(config['Quality Control']['galpercent']))
+        # # flag diffs with excess galactic emission
+        # flaggedtimes, islanddata = checkgalactic(islanddata, flaggedtimes, hdrlist, sRad, station, float(config['Quality Control']['galpercent']))
 
         
         x = np.arange(ngrid) + 0.5

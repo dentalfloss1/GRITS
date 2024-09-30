@@ -12,7 +12,12 @@ def checkgalactic(islanddata,flaggedtimes, hdrlist,sRad,station,galpercent=0.33)
     dec = galinecliptic.dec.deg
     for i in range(len(islanddata)):
         pixcrd = hdrtopixmask(hdrlist[i], islanddata.shape[-1], sRad, ra,dec,station)
-        pixcrd = np.unique(np.round(pixcrd,0),axis=0).astype(int)
+        upix = np.unique(np.round(pixcrd,0),axis=0)
+        pixcrd = []
+        for u in upix:
+            if np.nan not in upix:
+                pixcrd.append(upix)
+        pixcrd = np.array(pixcrd,dtype=int)
         for c in range(islanddata.shape[1]):
             for s in range(islanddata.shape[2]):
                 detpix = np.sum(islanddata[i,c,s,pixcrd[:,1],pixcrd[:,0]])

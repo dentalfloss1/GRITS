@@ -116,18 +116,23 @@ if __name__=="__main__":
         if args.resume:
             if os.path.exists(obsfile1+'.npy') and os.path.exists(obsfile2+'.npy'):
                 continue
-        try:
-            if lastfilename1!=filename1:
-                dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
-                diffdata1 = np.copy(imagedata1)
-                diffdata1[1:]  = diffdata1[1:] - diffdata1[:-1]
-            if lastfilename2!=filename2:
-                dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2,allflaggedtimes2 = imdiffsearch.main(filename2,config2,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
-                diffdata2 = np.copy(imagedata2)
-                diffdata2[1:]  = diffdata2[1:] - diffdata2[:-1]
-        except Exception as e:
-            print(e)
-            continue
+        if lastfilename1!=filename1:
+            dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
+            diffdata1 = np.copy(imagedata1)
+            imagedata1[imagedata1==0] = np.nan
+            # data[1:] = data[1:] - data[:-1]
+            avgno = 5
+            for i in range(diffdata1.shape[-1]-avgno):
+                # First four are not diffs, we'll mask it later
+                diffdata1[i+avgno] = imagedata1[i+avgno] -  np.nanmedian(imagedata1[i:(i+avgno)],axis=0)# PB Correct before masking
+        if lastfilename2!=filename2:
+            dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2,allflaggedtimes2 = imdiffsearch.main(filename2,config2,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
+            diffdata2 = np.copy(imagedata2)
+            imagedata2[imagedata2==0] = np.nan
+            avgno = 5
+            for i in range(diffdata2.shape[-1]-avgno):
+                # First four are not diffs, we'll mask it later
+                diffdata2[i+avgno] = imagedata2[i+avgno] -  np.nanmedian(imagedata2[i:(i+avgno)],axis=0)# PB Correct before masking
         if (dat1 is None) or (dat2 is None):
             continue
         lastfilename1 = filename1

@@ -84,16 +84,18 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     lastlabel = -1
     mintime = max(1,i-2)
     maxtime = min(ints-1,mintime+4)
+    avgno = 5
+    imagedata[imagedata==0] = np.nan
+    unmasked = np.copy(imagedata)
+    for imno in range(ints-avgno):
+        unmasked[imno+avgno] = imagedata[imno+avgno] - np.nanmedian(imagedata[imno:(imno+avgno)],axis=0)
     for stokesno,sname in enumerate(['I','Q','U','V']):
         for timenum, t in enumerate(range(mintime,maxtime+1)):
             # if (i==mintime):
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[maxtime+1,stokesno,:,:]
             # else:
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[mintime-1,stokesno,:,:]
-            if stokesno>0:
-                currimage = np.abs(imagedata[t,stokesno,:,:])-np.abs(imagedata[t-1,stokesno,:,:])
-            else:
-                currimage = imagedata[t,stokesno,:,:]-imagedata[t-1,stokesno,:,:]
+            currimage = unmasked[t,stokesno,:,:]
             if stokesno>0:
                 cmap='coolwarm'
             else:
