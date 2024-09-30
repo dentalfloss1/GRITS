@@ -13,6 +13,8 @@ DynamicRange = 1e16
 minangvel = 1e-6
 ; Detection sigma 
 nsigma=5
+; Acceptable percentage of bright galactic plane to be detected
+galpercent=0.10
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
 rtol = 0.2
 ; Maximum separation from catalog for reporting
@@ -22,9 +24,9 @@ statsep = 5
 ; Minimum source width
 minwid = 0
 ; Fraction of PB to include, must be less than 0.95
-pbpercent = 0.667
+pbpercent = 0.94
 [Batch Control]
 ; Number of Orville files to process at time. PASI files do this numberX4.
 chunktime = 400
 ; Overlap in time between chunks. Helps catch moving objects.
-overlaptime = 0"""
+overlaptime = 1"""

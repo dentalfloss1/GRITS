@@ -129,6 +129,10 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
                     circle = plt.Circle((avx,avy),5,fill=False)
                     axs[anum,imind].add_artist(circle)
             uniquelabel+=1
+    for anum in range(2,6,1):
+        for imind in range(5):
+            circle = plt.Circle((ngrid/2,ngrid/2),sRad*0.95,fill=False)
+            axs[anum,imind].add_artist(circle)
     for axnum in range(2,5):
         axs[0,axnum].set_axis_off()
 

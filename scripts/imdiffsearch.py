@@ -44,7 +44,7 @@ from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups
 from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
 from GRITS.plotresults import plotresults, plotLC
-from GRITS.qc import restrictnumsrc,restrictangvel
+from GRITS.qc import restrictnumsrc,restrictangvel, checkgalactic
 from GRITS.readimage import readoims,readpims
 from GRITS.fitGaussian import fitGaussian
 
@@ -67,9 +67,12 @@ def makeZoomCoords(rad, circular = True):
         return grid, iEdge
 
 def plotislands(islanddata):
-    islanddata = islanddata.copy('system')
+    try:
+        islanddata = islanddata.copy('system')
+    except:
+        pass
     fig = plt.figure()
-    subdat = islanddata[2,0,0,55:75,65:85]
+    subdat = islanddata[1,0,0,45:60,5:20]
     plt.imshow(subdat, cmap='coolwarm', vmin=0,vmax=1, origin='upper')
     for label in np.unique(subdat):
         ypix,xpix = np.where(subdat==label)
@@ -78,7 +81,7 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None):
     uniquesrcid=0
     srclist = []
     obslist = []
@@ -104,6 +107,8 @@ def main(filename,config,noplot=False,quiet=False):
         print("unrecognized filename")
         exit()
     final = 0
+    if endearly is None:
+        endearly = fullsize+1
     overlaptime = int(config['Batch Control']['overlaptime'])
     chunkt = 0
     chunkno = 1
@@ -121,6 +126,7 @@ def main(filename,config,noplot=False,quiet=False):
     while final<(fullsize-1):
         start = max(chunkt - overlaptime,0)
         final = min(fullsize-1,chunkt + chunksize -1)
+            
         if ".oims" in filename:
             ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startind=start,stopind=final)
         elif ".pims" in filename:
@@ -156,6 +162,8 @@ def main(filename,config,noplot=False,quiet=False):
         invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=0.95)
         for s in range(nstokes):
             data[:,:,s,invalid[0], invalid[1]] = np.nan
+
+
         t2 = datetime.datetime.now()
         if not quiet:
             print("Mask Horizon:",t2-t1)
@@ -213,11 +221,51 @@ def main(filename,config,noplot=False,quiet=False):
                 print('could not compute median and max rms')
 
         flaggedtimes, islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, flaggedtimes,nsigma=float(config['Quality Control']['nsigma']))
+        pblimit = float(config['Quality Control']['pbpercent'])
+        invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=pblimit)
+        islanddata[:,:,:,invalid[0], invalid[1]] = 0
+         
+        # flag diffs with excess galactic emission
+        flaggedtimes, islanddata = checkgalactic(islanddata, flaggedtimes, hdrlist, sRad, station, float(config['Quality Control']['galpercent']))
 
+        
+        x = np.arange(ngrid) + 0.5
+        y = np.arange(ngrid) + 0.5
+        x,y = np.meshgrid(x,y)
+        islanddata = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((pblimit*sRad)**2) ,0,islanddata)
+        islanddata = BFArray(islanddata, space='system', dtype='u16')
+        
+
+        # skipping the first few 
+        for imno in range(5):
+            islanddata[imno,:,:,:,:] = 0
+        for c in range(nchan):
+            for s in range(4):
+                flaggedtimes.append((0,c,s))
+        for ind in range(ints): 
+            if ((ind+chunkt) < skip):
+                islanddata[ind,:,:,:,:] = 0
+                for c in range(nchan):
+                    for s in range(4):
+                        flaggedtimes.append((ind,c,s))
+            if ((ind+chunkt) > endearly):
+                islanddata[ind,:,:,:,:] = 0
+                for c in range(nchan):
+                    for s in range(4):
+                        flaggedtimes.append((ind,c,s))
+        if maskstokes is not None:
+            for m in maskstokes:
+                islanddata[:,:,m,:,:] = 0
+                for i in range(ints):
+                    for c in range(nchan):
+                        flaggedtimes.append((i,c,m))
+
+
+             
 
         islanddata = islanddata.copy("cuda")
     
-
+       
 
 
         t1 = datetime.datetime.now()
@@ -301,19 +349,6 @@ def main(filename,config,noplot=False,quiet=False):
                                     flaggedtimes.append((i,j,l))
                                     islanddata[i,j,l,:,:] = 0
         data = np.where(data==floatmax,np.nan,data)
-        islandcopy = np.copy(islanddata)
-        for i in range(ints):
-            for c in range(nchan):
-                hdr = hdrlist[i]
-                for s in range(4):
-                    for label in np.unique(islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]>0]):
-                        srclocs = np.argwhere(islanddata[i,c,s,:,:]==label)
-                        avy, avx = np.average(srclocs+0.5,axis=0)
-                        radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
-                        # impose restrictions on conditions 
-                        if (angsep(radec[0][0],radec[0][1],hdrlist[i]['center_ra'],hdrlist[i]['center_dec']) > float(config['Quality Control']['pbpercent'])*sRad):
-                            islandcopy[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
-        islanddata = np.copy(islandcopy)
         rmscond  = rmsdata < float(config['Quality Control']['maxrms'])
 
         numsrccond = restrictnumsrc(islanddata,ints,nchan,maxsrcs=int(config['Quality Control']['maxsrcs']))
@@ -350,8 +385,7 @@ def main(filename,config,noplot=False,quiet=False):
                     continue
                 negflux = False
                 radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
-                thesepix,otherchan,otherstokes = np.where(islanddata[i,:,:,srclocs[:,0],srclocs[:,1]]>0)
-                detchan = len(np.unique(otherchan))
+                detchan = c
 
                 mjd = int(hdr['start_time'])
                 mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
@@ -485,15 +519,27 @@ def main(filename,config,noplot=False,quiet=False):
                 tdet = Time(fullhdrlist[udet]['start_time'],format='mjd',scale='utc')
                 if plotdata.size>0 :
                     plotLC(src_filename.replace(".oims",f"stokes{detstokes}.oims").replace(".pims",f"stokes{detstokes}.pims"), plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
+    
 
 
 
 
 
-                
+    srcarray =  np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)])           
+    for udate in np.unique(srcarray['mjd']):
+        cursrc = srcarray[srcarray['mjd']==udate]
+        if len(cursrc) > 1:
+            completedsrc = []
+            for src1 in cursrc:
+                if src1 not in completedsrc:
+                    for src2 in cursrc:
+                        if src1!=src2:
+                            if (angsep(src1['ra'],src1['dec'],src2['ra'],src2['dec']) < float(config['Quality Control']['catsep'])) and (src1['channel']!=src2['channel']):
+                                srcarray['nchan'][(srcarray['mjd']==udate) & (srcarray['ra']==src1['ra']) & (srcarray['dec']==src1['dec'])]+=1
+                                completedsrc.append(src2)
     if not quiet: 
         print("-------------------")
-    return np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)]), allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad, allflaggedtimes
+    return srcarray, allrmsdata, corrfluxlist, allimagedata, allislanddata, fullhdrlist, station, obslist, sRad, allflaggedtimes
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -517,10 +563,13 @@ if __name__ == "__main__":
                         help="Use this GPU device number")
     parser.add_argument('--noplot', action="store_true")
     parser.add_argument('-q','--quiet', action='store_true')
+    parser.add_argument('--skip',type=int,default=0)
+    parser.add_argument('--endearly',type=int,default=None)
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose during the conversion')
     parser.add_argument("--targetsource", type=float, nargs=2,
                         help='Look for source at this ra dec')
+    parser.add_argument("--maskstokes",nargs="+",type=int, default=None)
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -535,7 +584,7 @@ if __name__ == "__main__":
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())

@@ -51,13 +51,16 @@ if __name__=="__main__":
                         required=True)
     parser.add_argument("--bigrun", action="store_true",
                         help="search all PASI and Orville files")
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='be verbose during the conversion')
     parser.add_argument("--timedelta",default=5,type=float, help="Time in seconds between source appearing in the two source lists")
     parser.add_argument("--makefits",action="store_true", help="Make fits and region files")
     parser.add_argument("--resume",action="store_true", help="Resume previous run by checking for obsfiles")
+    parser.add_argument("--verbose",action="store_true")
+    parser.add_argument("--maskstokes",nargs="+",type=int, default=None)
     args = parser.parse_args()
-
+    if args.verbose:
+        quiet = False
+    else:
+        quiet = True
     set_device(args.device)
     config1 = ConfigParser()
     config2 = ConfigParser()
@@ -115,11 +118,11 @@ if __name__=="__main__":
                 continue
         try:
             if lastfilename1!=filename1:
-                dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True,quiet=True)
+                dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
                 diffdata1 = np.copy(imagedata1)
                 diffdata1[1:]  = diffdata1[1:] - diffdata1[:-1]
             if lastfilename2!=filename2:
-                dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2,allflaggedtimes2 = imdiffsearch.main(filename2,config2,noplot=True,quiet=True)
+                dat2,minrms2,corrfluxlist2,imagedata2,islands2,hdrlist2,station2, obslist2,sRad2,allflaggedtimes2 = imdiffsearch.main(filename2,config2,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
                 diffdata2 = np.copy(imagedata2)
                 diffdata2[1:]  = diffdata2[1:] - diffdata2[:-1]
         except Exception as e:
@@ -134,27 +137,8 @@ if __name__=="__main__":
         np.save(obsfile1,obslist1)
         np.save(obsfile2,obslist2)
 
-       #  for o1 in tqdm(obslist1):
-       #      o1sens = o1[2]
-       #      o1t1 = datetime.datetime.strptime(o1[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-       #      o1t2 = datetime.datetime.strptime(o1[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-       #      for o2 in obslist2:
-       #          o2sens = o2[2]
-       #          o2t1 = datetime.datetime.strptime(o2[0],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-       #          o2t2 = datetime.datetime.strptime(o2[1],"%Y-%m-%dT%H:%M:%S.%f+00:00")
-       #          if (np.abs((o1t1-o2t1).total_seconds()) < args.timedelta):
-       #              start = max(o1t1,o2t1)
-       #              stop = min(o1t2,o2t2)
-       #              outsens = max(o1sens,o2sens)
-       #              outfov = min(o1[-1],o2[-1])
-       #              fullobslist.append((start.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),(start+datetime.timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),outsens,o1[3],o1[4],o1[5],outfov))
 
 
-
-       #  if args.keepcatmatch:
-       #  keepdat1 = dat1
-       #  keepdat2 = dat2
-       #  else:
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
         keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
         plottedlc = []
@@ -163,11 +147,13 @@ if __name__=="__main__":
             if np.sum(simul) > 0:
                 matching2 = keepdat2[simul]
                 for s2 in matching2:
-                    # print(s1,s2)
+                    if args.verbose:
+                        print(s1,s2)
                     sourcesep =  angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec'])
                     if sourcesep > float(config1['Quality Control']['catsep']):
                         if (s1['nchan'] < 2) and (s2['nchan'] < 2):
-                            # print("not multi channel")
+                            if args.verbose:
+                                print("not multi channel")
                             continue
                     index1 = s1['index']
                     uniqueid = index1

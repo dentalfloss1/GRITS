@@ -1,7 +1,28 @@
 from math import isclose
 import numpy as np
 from astropy.coordinates import SkyCoord
-from GRITS.imagetools import hdrtoworld
+from GRITS.imagetools import hdrtoworld, hdrtopixmask
+
+def checkgalactic(islanddata,flaggedtimes, hdrlist,sRad,station,galpercent=0.33):
+    gallat = np.linspace(-10,10,num=100)
+    gallon = np.linspace(-10,60,num=100)
+    sc = SkyCoord(l=gallon,b=gallat, frame='galactic',unit='deg')
+    galinecliptic = sc.transform_to('fk5')
+    ra = galinecliptic.ra.deg
+    dec = galinecliptic.dec.deg
+    for i in range(len(islanddata)):
+        pixcrd = hdrtopixmask(hdrlist[i], islanddata.shape[-1], sRad, ra,dec,station)
+        pixcrd = np.unique(np.round(pixcrd,0),axis=0).astype(int)
+        for c in range(islanddata.shape[1]):
+            for s in range(islanddata.shape[2]):
+                detpix = np.sum(islanddata[i,c,s,pixcrd[:,1],pixcrd[:,0]])
+                totpix = len(pixcrd)
+                if ((detpix/totpix) > galpercent):
+                    flaggedtimes.append((i,c,s))
+                    islanddata[i,c,s] = 0 
+    return flaggedtimes, islanddata
+
+    
 
 def restrictnumsrc(islanddata,ints,nchan,maxsrcs=2):
     numsrcs = np.zeros((ints,nchan,4),dtype=int)
