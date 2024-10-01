@@ -218,7 +218,7 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
         plt.tight_layout()
         plt.savefig(plotfile)
         plt.close()
-    else:
+    elif (nchan < 10):
         fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(50,12*nchan))
         for c,ax in zip(np.unique(plotdata['c']),axs.flatten()[:(2*nchan):2]):
             freq = plotdata['freq'][plotdata['c']==c][0]
@@ -329,6 +329,88 @@ def plotLC(filename,plotdata,zoomplotdata,dettimechan,srcid,timeind,tdet,ra,dec)
             print(e) 
         fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
+        plt.close()
+    else:
+        for chan in range(nchan):
+            chandata = plotdata[plotdata['c']==chan]
+            zoomchandata = zoomplotdata[zoomplotdata['c']==chan]
+            fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(50,16))
+            unflag = chandata[chandata['flagged']==False]
+            flagged = chandata[chandata['flagged']==True]
+            statmatched = chandata[(chandata['statmatch']==True)]
+            axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
+            axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
+            if statmatched.size >0:
+                unflag = statmatched[statmatched['flagged']==False]
+                flagged = statmatched[statmatched['flagged']==True]
+                axs[0].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
+                axs[0].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
+            axs[0].legend()
+            if unflag['flux'].size > 0:
+                ymin = unflag['flux'].min()
+                ymax = unflag['flux'].max()
+            else:
+                ymin = chandata['flux'].min()
+                ymax = chandata['flux'].max()
+            axs[0].set_ylim(ymin,ymax)
+            statmatched = zoomchandata[(zoomchandata['statmatch']==True) ]
+            unflag = zoomchandata[zoomchandata['flagged']==False]
+            flagged = zoomchandata[zoomchandata['flagged']==True]
+            axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='s')
+            axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='.',label="flagged",alpha=0.25)
+            if statmatched.size >0:
+                unflag = statmatched[statmatched['flagged']==False]
+                flagged = statmatched[statmatched['flagged']==True]
+                axs[1].scatter(unflag['hrpst'],unflag['flux'],color='black',marker='*',label='Matching measurement',s=100)
+                axs[1].scatter(flagged['hrpst'],flagged['flux'],color='black',marker='*',label='Matching measurement',s=100,alpha=0.25)
+            axs[1].legend()
+            for ax in axs:
+                for d in dettimechan:
+                    detloc = chandata['hrpst'][chandata['index']==d['index']][0]
+                    ax.axvline(detloc,alpha=0.5,color='black')
+            axs[0].set_xlabel("Hours past midnight")
+            axs[1].set_xlabel("Hours past midnight")
+            axs[0].set_ylabel("Approximate Flux (Jy)")
+            fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
+            plt.tight_layout()
+            plt.savefig(plotfile.replace(".png",f"-c{chan}.png"))
+            plt.close()
+        fig = plt.figure(figsize=(50,16))
+        ax = plt.gca()
+        Z = np.zeros((len(np.unique(zoomplotdata['hrpst'])),nchan))
+        sortuhrpsts = np.sort(np.unique(zoomplotdata['hrpst']))
+        for i,d in enumerate(sortuhrpsts):
+            for c in np.unique(zoomplotdata['c']):
+                Z[i,c] = zoomplotdata['flux'][(zoomplotdata['hrpst']==d) & (zoomplotdata['c']==c)][0]
+    #             try:
+    #                 Z[i,c] = np.log10(thisZ) # - np.nanmedian(thisZ)
+    #             except RuntimeWarning:
+    #                 continue
+    #     Z[np.isnan(Z)] = 0
+    #     # setvscale = 3*np.median(Z[Z>0])
+    #     # setvscale = np.amax(np.abs(Z))
+        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect="auto")
+        cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
+    #     cbar.set_label('Approx. Log10 Flux (Jy)')
+        plt.subplots_adjust(hspace=0.3)
+        # locs,labels = plt.xticks()
+        # print(locs,labels)
+        try:
+            detind =  np.unique(dettimechan['index'])[0]
+            dettime =  zoomplotdata['hrpst'][zoomplotdata['index']==detind][0]
+
+           #  labels[detind].text = 'detection'
+            labels = []
+            locs = []
+            for tnum,t in enumerate(np.sort(np.unique(zoomplotdata['hrpst']))):
+               if (tnum%4==0) or ((t-dettime)==0):
+                   locs.append(tnum)
+                   labels.append( f'{(t-dettime)*3600:5.0f}')
+            ax.set_xticks(locs,labels)
+            ax.set_xlabel("seconds since detection")
+        except Exception as e:
+            print(e) 
+        plt.savefig(plotfile.replace(".png","-waterfall.png"))
         plt.close()
      
 
