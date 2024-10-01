@@ -138,6 +138,10 @@ if __name__=="__main__":
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
         keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
         plottedlc = []
+        srcfile1= filename1.split('/')[-1]+"_srcfile.txt"
+        srcfile2= filename2.split('/')[-1]+"_srcfile.txt"
+        srclist1 = []
+        srclist2 = []
         for s1 in keepdat1:
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
             if np.sum(simul) > 0:
@@ -183,6 +187,8 @@ if __name__=="__main__":
                     tdetlist = []
                     ralist = []
                     declist = []
+                    srclist1.append(s1)
+                    srclist2.append(s2)
                     for filename, rmsdata, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd, detstokes in zip([filename1,filename2], [minrms1,minrms2], [imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2],[stokes1,stokes2]):        
                             # If within the specified localization, we will skip it when we get to it in the primary loop
                         # print(filename,station)
@@ -316,6 +322,9 @@ if __name__=="__main__":
                         exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf"))
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
             uniqueid+=1
+        np.save(srcfile1,srclist1)
+        np.save(srcfile2,srclist2)
+
 
 
     outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
