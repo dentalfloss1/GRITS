@@ -405,7 +405,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 if c3 or vlss  or negflux:
                     islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
                 else:
-                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+chunkt-overlaptime,filename,c,detchan,s))
+                    srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i+startindex,filename,c,detchan,s))
                 lastlabel = label
                 uniquesrcid += 1
             if not noplot:
@@ -442,7 +442,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     allimagedata[tmpind] = imagedata[zerobased]
                     allrmsdata[tmpind] =rmsdata[zerobased]
         for i,c,stokesno in flaggedtimes:
-            allflaggedtimes.append((i+chunkt-overlaptime,c,stokesno))
+            allflaggedtimes.append((i+startindex,c,stokesno))
         chunkt = chunkt + chunksize 
         startindex = chunkt - overlaptime
     if not noplot:
