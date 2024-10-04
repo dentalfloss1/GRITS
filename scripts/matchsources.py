@@ -322,8 +322,9 @@ if __name__=="__main__":
                         exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf"))
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
             uniqueid+=1
-        np.save(srcfile1,srclist1)
-        np.save(srcfile2,srclist2)
+        if srclist1:
+            np.save(srcfile1,srclist1)
+            np.save(srcfile2,srclist2)
 
 
 

@@ -12,51 +12,60 @@ import datetime
 # Set up center region for minrms calculation
 # We want a box in the center that does not go beyond the horizon. Also 
 # We need to account for the extra one pixel perimeter in the computations.
-def getminrms(sRad, imagedata, ints, nchan, ngrid, station):
+def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
     fltmax = np.finfo('f4').max
     imagedata[np.isnan(imagedata)] = fltmax
-    idata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='system')
-    idata[...] = imagedata
-    idata= idata.copy('cuda')
-    gpurmsdata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='cuda')
-    rmsbox = 30 #2*int(round(ngrid/28.8))
-    BFMap("""auto boxhalflen = %f;
-             auto center = %f/2;
-             auto x = (float) i - center + 0.5 ;
-             auto y = (float) j - center + 0.5 ;
-             auto intermediateI = 0.0;
-             auto intermediateQ = 0.0;
-             auto intermediateU = 0.0;
-             auto intermediateV = 0.0;
-             auto nx=%i;
-             auto ny=%i;
-             if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
-                 for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
-                     for (auto offj=-(ny/2); offj<=(ny/2); offj++){
-                         intermediateI+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
-                         intermediateQ+=dat(time,chan,1,i+offi,j+offj)*dat(time,chan,1,i+offi,j+offj);
-                         intermediateU+=dat(time,chan,2,i+offi,j+offj)*dat(time,chan,2,i+offi,j+offj);
-                         intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
+    minrms = np.zeros((ints,nchan,4))
+    for chunk in range(int(np.ceil(ints/chunking))):
+        if chunk==0:
+            start = 0
+            end = min(chunking,ints)
+        else:
+            start=chunk*chunking 
+            end=min(chunk*chunking + chunking ,ints)
+        subints = end-start
+        print(subints,chunk, end,start,ints)
+        idata = BFArray(np.zeros((subints,nchan,4,ngrid,ngrid)),dtype='f32',space='system')
+        idata[...] = imagedata[start:end]
+        idata= idata.copy('cuda')
+        gpurmsdata = BFArray(np.zeros((subints,nchan,4,ngrid,ngrid)),dtype='f32',space='cuda')
+        rmsbox = 30 #2*int(round(ngrid/28.8))
+        BFMap("""auto boxhalflen = %f;
+                 auto center = %f/2;
+                 auto x = (float) i - center + 0.5 ;
+                 auto y = (float) j - center + 0.5 ;
+                 auto intermediateI = 0.0;
+                 auto intermediateQ = 0.0;
+                 auto intermediateU = 0.0;
+                 auto intermediateV = 0.0;
+                 auto nx=%i;
+                 auto ny=%i;
+                 if ((x > -boxhalflen) && (x < boxhalflen) && (y > -boxhalflen) && (y < boxhalflen)){
+                     for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
+                         for (auto offj=-(ny/2); offj<=(ny/2); offj++){
+                             intermediateI+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
+                             intermediateQ+=dat(time,chan,1,i+offi,j+offj)*dat(time,chan,1,i+offi,j+offj);
+                             intermediateU+=dat(time,chan,2,i+offi,j+offj)*dat(time,chan,2,i+offi,j+offj);
+                             intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
+                         }
                      }
+                     rmsdat(time,chan,0,i,j) = sqrt(intermediateI/((float) nx*ny)) ;
+                     rmsdat(time,chan,1,i,j) = sqrt(intermediateQ/((float) nx*ny)) ;
+                     rmsdat(time,chan,2,i,j) = sqrt(intermediateU/((float) nx*ny)) ;
+                     rmsdat(time,chan,3,i,j) = sqrt(intermediateV/((float) nx*ny)) ;
                  }
-                 rmsdat(time,chan,0,i,j) = sqrt(intermediateI/((float) nx*ny)) ;
-                 rmsdat(time,chan,1,i,j) = sqrt(intermediateQ/((float) nx*ny)) ;
-                 rmsdat(time,chan,2,i,j) = sqrt(intermediateU/((float) nx*ny)) ;
-                 rmsdat(time,chan,3,i,j) = sqrt(intermediateV/((float) nx*ny)) ;
-             }
-             else {
-                 rmsdat(time,chan,0,i,j) = %f; 
-                 rmsdat(time,chan,1,i,j) = %f; 
-                 rmsdat(time,chan,2,i,j) = %f; 
-                 rmsdat(time,chan,3,i,j) = %f; 
-                 }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,floatmax,floatmax,floatmax,floatmax,),
-                 {"dat":idata, "rmsdat":gpurmsdata},
-                 axis_names=('time','chan','i','j'), shape=(ints,nchan,ngrid,ngrid))
-    gpurmsdata = gpurmsdata.copy('system')
-    # minrmsfreq = np.zeros((nchan))A
-    gpurmsdata[gpurmsdata==0] = floatmax
-    minrms = gpurmsdata.min(axis=(-1,-2))
+                 else {
+                     rmsdat(time,chan,0,i,j) = %f; 
+                     rmsdat(time,chan,1,i,j) = %f; 
+                     rmsdat(time,chan,2,i,j) = %f; 
+                     rmsdat(time,chan,3,i,j) = %f; 
+                     }""" % (boxhalflen,float(ngrid),rmsbox,rmsbox,floatmax,floatmax,floatmax,floatmax,),
+                     {"dat":idata, "rmsdat":gpurmsdata},
+                     axis_names=('time','chan','i','j'), shape=(subints,nchan,ngrid,ngrid))
+        gpurmsdata = gpurmsdata.copy('system')
+        gpurmsdata[gpurmsdata==0] = floatmax
+        minrms[start:end] = gpurmsdata.min(axis=(-1,-2))
     imagedata[imagedata==fltmax] = np.nan
     return  minrms
 def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station):

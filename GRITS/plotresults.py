@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from lsl.common.mcs import mjdmpm_to_datetime
-from GRITS.catalogs import cat3c,VLSSr50jy
+from GRITS.catalogs import cat3c,VLSSr50jy,atnf
 from GRITS.imagetools import angsep, hdrtoworld,hdrtopixmask,pbcorr
 from GRITS.readimage import readoims, readpims
 import matplotlib.colors as colors
@@ -107,6 +107,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
                 axs[stokesno+2,timenum].set_title(f'{sname} diff')
             # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
     uniquelabel =1
+    ytextloc2 = ytextloc
     for s in [0,1,2,3]:
         for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
             yloc, xloc = np.where(islands[i,s,:,:]==label)
@@ -124,6 +125,14 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             measI = pbdata[avy,avx]
             measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
             resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} I:{np.nan_to_num(measI):.2e},Q:{np.nan_to_num(measQ):.2e},U:{np.nan_to_num(measU):.2e},V:{np.nan_to_num(measV):.2e}"
+            atnfmatches = (angsep(radec[0][0],radec[0][1],atnf['ra'],atnf['dec']) < catsep)
+            
+            if np.sum(atnfmatches) > 0:
+                for amatch in atnf[atnfmatches]:
+                    aresult = f"{amatch['name']},{amatch['ra']},{amatch['dec']}"
+                    axs[1,4].text(0,ytextloc2, aresult)
+                    ytextloc2-=0.15
+                
             axs[0,2].text(0,ytextloc,resulttext)
             ytextloc-=0.15
             for anum in range(2,6,1):
@@ -138,6 +147,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             axs[anum,imind].add_artist(circle)
     for axnum in range(2,5):
         axs[0,axnum].set_axis_off()
+    axs[1,4].set_axis_off()
 
     islandplot = islands[i,0,:,:]
     axs[1,0].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
