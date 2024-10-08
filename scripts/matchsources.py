@@ -156,7 +156,6 @@ if __name__=="__main__":
                         print("----separation----")
                         print(sourcesep,s1,s2)
                         print("--------")
-                    input("presskey")
                     index1 = s1['index']
                     uniqueid = index1
                     fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
