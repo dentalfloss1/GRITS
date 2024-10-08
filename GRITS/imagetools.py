@@ -80,10 +80,7 @@ def calcbeamprops(az,alt,header,freq):
 
 def pbcorr(header,imSize,chan,pScale,station):
     sRad   = 360.0/pScale/np.pi / 2
-    if (station==b'LWASV') and ("startTime" not in header):
-        w = getSVwcs(header, imSize)
-    else:
-        w = getGENERICwcs(header, imSize)
+    w = getGENERICwcs(header, imSize)
     x = np.arange(imSize) - 0.5
     y = np.arange(imSize) - 0.5
     x,y = np.meshgrid(x,y)
@@ -122,9 +119,7 @@ def pbcorr(header,imSize,chan,pScale,station):
     return XX,YY
 
 def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
-    if (station==b'LWASV') and ("startTime" not in hdr):
-        w = getSVwcs(hdr, imSize)
-    elif ('startTime' in hdr) :
+    if ('startTime' in hdr) :
     # elif ('startTime' in hdr) and (station==b"LWA1"):
         cdelt = hdr['psize']
         w = WCS(naxis=2)
@@ -161,9 +156,7 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     return w.wcs_world2pix(pixcrd, 0)
 
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
-    if (station==b'LWASV') and ("startTime" not in hdr):
-        w = getSVwcs(hdr, imSize)
-    elif ('startTime' in hdr) :
+    if ('startTime' in hdr) :
     # elif ('startTime' in hdr) and (station==b"LWA1"):
         cdelt = hdr['psize']
         w = WCS(naxis=2)

@@ -150,13 +150,13 @@ if __name__=="__main__":
                     if args.verbose:
                         print(s1,s2)
                     sourcesep =  angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec'])
-
                     if sourcesep > float(config1['Quality Control']['catsep']):
-                        
-                       #  if (s1['nchan'] < 2) and (s2['nchan'] < 2):
-                       #      if args.verbose:
-                       #          print("not multi channel")
                         continue
+                    if args.verbose:
+                        print("----separation----")
+                        print(sourcesep,s1,s2)
+                        print("--------")
+                    input("presskey")
                     index1 = s1['index']
                     uniqueid = index1
                     fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
@@ -263,49 +263,7 @@ if __name__=="__main__":
                         plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('statmatch',bool),('hrpst','f8')])
                         zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
                         tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
-                        plotfilelist.append(plotfile)
-                        plotdatalist.append(plotdata)
-                        curdettimechanlist.append(curdettimechan)
-                        udetlist.append(str(udet))
-                        tdetlist.append(tdet.isot)
-                        ralist.append(ra)
-                        declist.append(dec)
-                        plottedlc.append((ra,dec,station,udet))
-                    completed1 = []
-                    completed2 = []
-                    matchedsrc = []
-                    for hrstat1 in plotdatalist[0][plotdatalist[0]['flagged']==False]['hrpst']:
-                        if hrstat1 in completed1:
-                            continue
-                        for hrstat2 in plotdatalist[1][plotdatalist[1]['flagged']==False]['hrpst']:
-                            if hrstat2 in completed2:
-                                continue
-                            if np.abs(hrstat2-hrstat1)*3600 < args.timedelta:
-                                matchtime1 = plotdatalist[0]['hrpst']==hrstat1
-                                matchtime2 = plotdatalist[1]['hrpst']==hrstat2
-                                simulplot1 = plotdatalist[0][matchtime1]
-                                simulplot2 = plotdatalist[1][matchtime2]
-                                for freq1 in np.unique(simulplot1['freq']):
-                                    for freq2 in np.unique(simulplot2['freq']):
-                                        if round(freq1,0)==round(freq2,0):
-                                            curflux1 = simulplot1[simulplot1['freq']==freq1]['flux']
-                                            curflux2 = simulplot2[simulplot2['freq']==freq2]['flux']
-                                            for f1  in curflux1:
-                                                for f2 in curflux2:
-                                                    if isclose(f1,f2,rel_tol=0.2):
-                                                        matchedsrc.append((f1,f2,freq1,freq2))
-                                                        plotdatalist[0][plotdatalist[0]['hrpst']==hrstat1]['flagged'] = False
-                                                        plotdatalist[1][plotdatalist[1]['hrpst']==hrstat2]['flagged'] = False
-                                                        completed1.append(hrstat1)
-                                                        completed2.append(hrstat2)
-
-                    for plotfile,plotdata,curdettimechan,udet,tdet,ra,dec,s,hdrlist in zip(plotfilelist,plotdatalist, curdettimechanlist,udetlist,tdetlist,ralist,declist,[s1,s2],[hdrlist1,hdrlist2]):
-                        mintime = max(0,s['index']-12)
-                        maxtime = min(len(hdrlist)-1, s['index']+12)
-                        for f1,f2,freq1,freq2 in matchedsrc:
-                            plotdata['statmatch'][((plotdata['flux']==f1) & (plotdata['freq']==freq1)) | ((plotdata['flux']==f2) & (plotdata['freq']==freq2))] = True
-                        zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
-                        plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,udet,tdet,ra,dec)
+                        plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,udet,tdet.isot,ra,dec)
                                             
                                     
 
