@@ -2,24 +2,21 @@ from GRITS.constants import MJD_TO_DJD
 import array
 import numpy as np 
 import ephem
+from astropy.time import Time
+from astropy.coordinates import get_sun,get_body
 
 def getsunjup(file_start, file_end, ints):
-    djd_start = file_start + MJD_TO_DJD
-    duration = int(round((file_end - file_start)*24*3600)) # in seconds
-    sunra = array.array('f')
-    sundec = array.array('f')
-    jupra = array.array('f')
-    jupdec = array.array('f')
-    for i,t in enumerate(range(0,duration*(ints),duration)):
-        date = djd_start + (t/24/3600) - (duration/2/24/3600) # in days 
-        sun = ephem.Sun(date)
-        sunra.append(sun.ra*180/np.pi)
-        sundec.append(sun.dec*180/np.pi)
-        jup = ephem.Jupiter(date)
-        jupra.append(jup.ra*180/np.pi)
-        jupdec.append(jup.dec*180/np.pi)
-    juppos = np.array([(ra,dec) for ra,dec in zip(jupra,jupdec)])
-    sunpos = np.array([(ra,dec) for ra,dec in zip(sunra,sundec)])
+    t = Time(np.linspace(file_start,file_end, ints),format='mjd')
+    sunSC =  get_sun(t)
+    jupSC = get_body("jupiter",t)
+    sun = []
+    for sc in sunSC:
+        sun.append((sc.ra.deg,sc.dec.deg))
+    jup = [] 
+    for sc in jupSC:
+        jup.append((sc.ra.deg,sc.dec.deg))
+    juppos = np.array(jup)
+    sunpos = np.array(sun)
     return sunpos, juppos
 
 

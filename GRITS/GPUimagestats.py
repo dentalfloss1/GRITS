@@ -25,7 +25,6 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
             start=chunk*chunking 
             end=min(chunk*chunking + chunking ,ints)
         subints = end-start
-        print(subints,chunk, end,start,ints)
         idata = BFArray(np.zeros((subints,nchan,4,ngrid,ngrid)),dtype='f32',space='system')
         idata[...] = imagedata[start:end]
         idata= idata.copy('cuda')

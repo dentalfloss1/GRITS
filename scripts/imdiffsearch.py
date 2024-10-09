@@ -173,7 +173,6 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     t2 = datetime.datetime.now()
     if not quiet:
         print("RE-compute RMS:",t2-t1)
-    
     if not quiet:
         try:
             medrms = np.median(rmsdata[1:])
@@ -441,7 +440,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                         else:
                             flux = np.nanmean(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
                         midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                        flagged = (timeind,c) in allflaggedtimes
+                        flagged = (timeind,c) in flaggedtimes
                         mjd = hdrlist[timeind]['start_time']
                         hourspastmid = (mjd - np.floor(mjd))*24
                         plotdata.append((timeind,flux,c,midfreq,flagged,False,hourspastmid))
