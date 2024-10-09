@@ -67,7 +67,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
         minrms[start:end] = gpurmsdata.min(axis=(-1,-2))
     imagedata[imagedata==fltmax] = np.nan
     return  minrms
-def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station):
+def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station, filename, positioncheck=False):
     # we can calibrate off of cyg a, cas a, virgo a, or tau a for now
     # We do all the masking of regions we don't want to detect transients from here
     # Also we are getting the max flux from the aforementioned a team sources for 
@@ -106,6 +106,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
+    casaposerr = []
     for i in range(len(data)):
         ateammask = np.zeros((ngrid,ngrid),dtype=bool)
         pixcoord = allpixcoord[i]
@@ -114,25 +115,62 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 completemask[i] = completemask[i] | currcond
                 ateammask = ateammask | currcond
+        if positioncheck:
+            ctrx, ctry  = ngrid/2, ngrid/2
+            p = allcygacoord[i]
+            if ~np.isnan(p[0]): 
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
+                pixdist = np.sqrt( (p[0] - ctrx)**2 + (p[1] - ctry)**2)
+                distratio = pixdist/sRad
+                if (np.sum(currcond) > 0) and (distratio < 0.8):
+                    for c in range(nchan):
+                        dety, detx = np.where(imagedata[i,c,0,:,:]==imagedata[i,c,0][currcond].max())
+                        poserr = np.sqrt((p[0] - detx)**2 + (p[1] - dety)**2)
+                        with open("cygoffsets.csv","a") as posfile:
+                            posfile.write(f"{filename},{distratio},{poserr[0]}\n")
 
-        p = allcygacoord[i]
-        if ~np.isnan(p[0]): 
-            currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-            ateammask = ateammask | currcond
-            completemask[i] = completemask[i] | currcond
-            cygmask = np.where(currcond)
-            if np.sum(currcond) >0:
-                for c in range(nchan):
-                    cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[i,c],c))
-        p = allcasacoord[i]
-        if ~np.isnan(p[0]): 
-            currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-            ateammask = ateammask | currcond
-            completemask[i] = completemask[i] | currcond
-            casmask = np.where(currcond)
-            if np.sum(currcond) >0:
-                for c in range(nchan):
-                    casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[i,c],c))
+                ateammask = ateammask | currcond
+                completemask[i] = completemask[i] | currcond
+                cygmask = np.where(currcond)
+                if np.sum(currcond) >0:
+                    for c in range(nchan):
+                        cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[i,c],c))
+            p = allcasacoord[i]
+            if ~np.isnan(p[0]): 
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
+                pixdist = np.sqrt( (p[0] - ctrx)**2 + (p[1] - ctry)**2)
+                distratio = pixdist/sRad
+                if (np.sum(currcond) > 0) and (distratio < 0.8):
+                    for c in range(nchan):
+                        dety, detx = np.where(imagedata[i,c,0,:,:]==imagedata[i,c,0][currcond].max())
+                        poserr = np.sqrt((p[0] - detx)**2 + (p[1] - dety)**2)
+                        with open("casoffsets.csv","a") as posfile:
+                            posfile.write(f"{filename},{distratio},{poserr[0]}\n")
+                ateammask = ateammask | currcond
+                completemask[i] = completemask[i] | currcond
+                casmask = np.where(currcond)
+                if np.sum(currcond) >0:
+                    for c in range(nchan):
+                        casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[i,c],c))
+        else:
+            p = allcygacoord[i]
+            if ~np.isnan(p[0]): 
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
+                ateammask = ateammask | currcond
+                completemask[i] = completemask[i] | currcond
+                cygmask = np.where(currcond)
+                if np.sum(currcond) >0:
+                    for c in range(nchan):
+                        cygaflux.append((imagedata[i,c,0,cygmask[0],cygmask[1]].max() - minrms[i,c],c))
+            p = allcasacoord[i]
+            if ~np.isnan(p[0]): 
+                currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
+                ateammask = ateammask | currcond
+                completemask[i] = completemask[i] | currcond
+                casmask = np.where(currcond)
+                if np.sum(currcond) >0:
+                    for c in range(nchan):
+                        casaflux.append((imagedata[i,c,0,casmask[0],casmask[1]].max() - minrms[i,c],c))
         p =allviracoord[i]
         if ~np.isnan(p[0]): 
             currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)

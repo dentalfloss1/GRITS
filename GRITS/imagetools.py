@@ -120,27 +120,25 @@ def pbcorr(header,imSize,chan,pScale,station):
 
 def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     if ('startTime' in hdr) :
-    # elif ('startTime' in hdr) and (station==b"LWA1"):
         cdelt = hdr['psize']
         w = WCS(naxis=2)
         ngrid = imSize
         # 130 degrees is what is visible to the dipoles
         HA = 0
         if station==b'LWASV':
-            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 0.5]
+            w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
             x,y,z = lsllwasv.geocentric_location
             stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
-            corcdelt = cdelt
+            w.wcs.cdelt = np.array([-1.0155,1.018]) 
         elif station==b'LWA1':
             w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
             stationLOC = EarthLocation.of_site('lwa1')
             corcdelt = cdelt*1.0023384615384616 
+            w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
         t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
         LST = t_obs.sidereal_time('apparent').degree
         center_RA = LST-HA
         center_dec = stationLOC.lat.degree
-        corcdelt = cdelt*1.0023384615384616 
-        w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
         w.wcs.crval = [center_RA,center_dec]
         w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
         w.wcs.radesys = 'FK5'
@@ -149,6 +147,19 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
         
     else:
         w = getGENERICwcs(hdr, imSize)
+        if station==b"LWASV":
+            ngrid = imSize
+            cdelt = hdr['psize']
+            w.wcs.crpix = [ngrid/2 + 1.422,ngrid/2  + 0.5]
+            w.wcs.cdelt = np.array([-1.015,1.018])
+            x,y,z = lsllwasv.geocentric_location
+            stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+            t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
+            LST = t_obs.sidereal_time('apparent').degree
+            HA = 358.25
+            center_RA = LST-HA
+            center_dec = 33.35763888888889
+            w.wcs.crval = [center_RA,center_dec]
     try: 
         pixcrd = [(r,d) for r,d in zip(ra,dec)]
     except TypeError:
@@ -164,10 +175,10 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
         # 130 degrees is what is visible to the dipoles
         HA = 0
         if station==b'LWASV':
-            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 0.5]
-            geotuple = lsllwasv.geocentric_location
-            stationLOC = EarthLocation.from_geocentric(x=geotuple[0],y=geotuple[1],z=geotuple[2],unit='m')
-            corcdelt = cdelt
+            w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
+            x,y,z = lsllwasv.geocentric_location
+            stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+            w.wcs.cdelt = np.array([-1.0155,1.018]) 
         elif station==b'LWA1':
             w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
             stationLOC = EarthLocation.of_site('lwa1')
@@ -176,7 +187,6 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
         LST = t_obs.sidereal_time('apparent').degree
         center_RA = LST-HA
         center_dec = stationLOC.lat.degree
-        w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
         w.wcs.crval = [center_RA,center_dec]
         w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
         w.wcs.radesys = 'FK5'
@@ -185,6 +195,19 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
         
     else:
         w = getGENERICwcs(hdr, imSize)
+        if station==b"LWASV":
+            ngrid = imSize
+            cdelt = hdr['psize']
+            w.wcs.crpix = [ngrid/2 + 1.422,ngrid/2  + 0.5]
+            w.wcs.cdelt = np.array([-1.015,1.018])
+            x,y,z = lsllwasv.geocentric_location
+            stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+            t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
+            LST = t_obs.sidereal_time('apparent').degree
+            HA = 358.25
+            center_RA = LST-HA
+            center_dec = 33.35763888888889
+            w.wcs.crval = [center_RA,center_dec]
     try:
         pixcrd = [(xp,yp) for xp,yp in zip(x,y)]
     except TypeError:

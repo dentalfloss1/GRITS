@@ -81,7 +81,7 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False):
     uniquesrcid=0
     srclist = []
     obslist = []
@@ -139,7 +139,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print("Compute RMS:",t2-t1)
     t1 = datetime.datetime.now()
     # Flux calibrate data and mask off A-Team
-    imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station)
+    imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station, filename, positioncheck=positioncheck)
     t2 = datetime.datetime.now()
     if not quiet:
         print("calibrate:",t2-t1)
@@ -184,13 +184,6 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             print('could not compute median and max rms')
 
     flaggedtimes, islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, flaggedtimes,nsigma=float(config['Quality Control']['nsigma']))
-    pblimit = float(config['Quality Control']['pbpercent'])
-    invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=pblimit)
-    islanddata[:,:,:,invalid[0], invalid[1]] = 0
-    x = np.arange(ngrid) + 0.5
-    y = np.arange(ngrid) + 0.5
-    x,y = np.meshgrid(x,y)
-    islanddata = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((pblimit*sRad)**2) ,0,islanddata)
     
 
     # skipping the first one
@@ -305,6 +298,13 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                             for l in range(4):
                                 flaggedtimes.append((i,j,l))
                                 islanddata[i,j,l,:,:] = 0
+    pblimit = float(config['Quality Control']['pbpercent'])
+    invalid, circle = maskhorizon(data,hdrlist,ngrid,sRad,pbpercent=pblimit)
+    islanddata[:,:,:,invalid[0], invalid[1]] = 0
+    x = np.arange(ngrid) + 0.5
+    y = np.arange(ngrid) + 0.5
+    x,y = np.meshgrid(x,y)
+    islanddata = np.where( ((x-ngrid/2.0)**2 + (y-ngrid/2.0)**2) > ((pblimit*sRad)**2) ,0,islanddata)
     data = np.where(data==floatmax,np.nan,data)
     rmscond  = rmsdata < float(config['Quality Control']['maxrms'])
 
@@ -504,6 +504,7 @@ if __name__ == "__main__":
     parser.add_argument("--targetsource", type=float, nargs=2,
                         help='Look for source at this ra dec')
     parser.add_argument("--maskstokes",nargs="+",type=int, default=None)
+    parser.add_argument("--positioncheck",action="store_true")
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -515,10 +516,14 @@ if __name__ == "__main__":
         config.read(args.configfile)
         fullobslist = []
         outsrc = []
+        if args.positioncheck:
+            for posfile in ["casoffsets.csv","cygoffsets.csv"]:
+                if os.path.exists(posfile):
+                    os.remove(posfile)
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
