@@ -160,7 +160,6 @@ if __name__=="__main__":
                     if args.verbose:
                         print("----separation----")
                         print(s1['x'],x1f2,s1['y'],y1f2,s2['x'],x2f1,s2['y'],y2f1,sourcesep1,sourcesep2,s1,s2,sourcesep,angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec']))
-                        input("presskey")
                         print("--------")
                     index1 = s1['index']
                     uniqueid = index1
