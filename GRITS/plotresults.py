@@ -125,10 +125,13 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             measI = pbdata[avy,avx]
             measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
             resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} I:{np.nan_to_num(measI):.2e},Q:{np.nan_to_num(measQ):.2e},U:{np.nan_to_num(measU):.2e},V:{np.nan_to_num(measV):.2e}"
-            atnfmatches = (angsep(radec[0][0],radec[0][1],atnf['ra'],atnf['dec']) < catsep)
+            atnfinFOV = atnf[angsep(atnf['ra'],atnf['dec'],hdr['center_ra'],hdr['center_dec']) < 85]
+            atnfpixcoords = np.array(hdrtopixmask(hdr, ngrid, sRad, atnfinFOV['ra'], atnfinFOV['dec'], station))
+            pixdist = np.sqrt((atnfpixcoords[:,0]-avx)**2 + (atnfpixcoords[:,1]-avy)**2)
+            atnfmatches = (pixdist < catsep)
             
             if np.sum(atnfmatches) > 0:
-                for amatch in atnf[atnfmatches]:
+                for amatch in atnfinFOV[atnfmatches]:
                     aresult = f"{amatch['name']},{amatch['ra']},{amatch['dec']}"
                     axs[1,4].text(0,ytextloc2, aresult)
                     ytextloc2-=0.15

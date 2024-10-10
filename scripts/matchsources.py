@@ -137,7 +137,6 @@ if __name__=="__main__":
 
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
         keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
-        plottedlc = []
         srcfile1= filename1.split('/')[-1]+"_srcfile.txt"
         srcfile2= filename2.split('/')[-1]+"_srcfile.txt"
         srclist1 = []
@@ -149,12 +148,19 @@ if __name__=="__main__":
                 for s2 in matching2:
                     if args.verbose:
                         print(s1,s2)
-                    sourcesep =  angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec'])
-                    if sourcesep > float(config1['Quality Control']['catsep']):
+
+                    # x and y pixel in image 2 from position in ra,dec image 1
+                    x2f1, y2f1 = hdrtopixmask(hdrlist2[s2['index']], imagedata2.shape[-1],sRad2, s1['ra'], s1['dec'],station2)[0]
+                    x1f2, y1f2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s2['ra'], s2['dec'],station1)[0]
+                    sourcesep1 =  np.sqrt((s1['x']-x1f2)**2 + (s1['y']-y1f2)**2)
+                    sourcesep2 =  np.sqrt((s2['x']-x2f1)**2 + (s2['y']-y2f1)**2)
+                    sourcesep = min(sourcesep1,sourcesep2)
+                    if sourcesep > float(config1['Quality Control']['statsep']):
                         continue
                     if args.verbose:
                         print("----separation----")
-                        print(sourcesep,s1,s2)
+                        print(s1['x'],x1f2,s1['y'],y1f2,s2['x'],x2f1,s2['y'],y2f1,sourcesep1,sourcesep2,s1,s2,sourcesep,angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec']))
+                        input("presskey")
                         print("--------")
                     index1 = s1['index']
                     uniqueid = index1
@@ -204,6 +210,8 @@ if __name__=="__main__":
                         zoomplotdata = []
                         ra = s['ra']
                         dec = s['dec']
+                        u_x = s['x']
+                        u_y = s['y']
                         psize = hdrlist[0]['psize']
                         udet = s['index']
                         dettimechan = []
@@ -211,15 +219,12 @@ if __name__=="__main__":
                         ycoord = np.arange(ngrid)
                         xcoord,ycoord = np.meshgrid(xcoord, ycoord)
                         for keeprow in kd:
-                            if angsep(ra,dec,keeprow['ra'],keeprow['dec']) < float(config1['Quality Control']['statsep']):
+                            pixdist = np.sqrt( (u_x - keeprow['x'])**2 + (u_y - keeprow['y'])**2)
+                            if pixdist < float(config1['Quality Control']['statsep']):
                                 dettimechan.append((keeprow['index'],keeprow['channel'],keeprow['ra'],keeprow['dec']))
                             
                         dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8')])
                         curdettimechan = dettimechan[dettimechan['index']==udet]
-                        for pra,pdec,pstation,pindex in plottedlc:
-                            if (pstation==station) and (udet==pindex):
-                                if angsep(pra,pdec,ra,dec) < float(config1['Quality Control']['statsep']):
-                                    continue
                         prad = float(config1['Quality Control']['statsep'])/psize
                         beamI = []
                         for c in range(imagedata.shape[1]):

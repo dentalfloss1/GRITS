@@ -72,7 +72,7 @@ def plotislands(islanddata):
     except:
         pass
     fig = plt.figure()
-    subdat = islanddata[1,0,0,45:60,5:20]
+    subdat = islanddata[1,0,0,:,:]
     plt.imshow(subdat, cmap='coolwarm', vmin=0,vmax=1, origin='upper')
     for label in np.unique(subdat):
         ypix,xpix = np.where(subdat==label)
@@ -274,6 +274,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             print("Source Grouping Steps:",t2-t1)
         
         islanddata[start:end] = islandcuda.copy('system')
+    islanddata = np.array(np.copy(islanddata))
     maxDR=float(config['Quality Control']['DynamicRange'])
     for i in range(1,ints):
         for j in range(nchan):
@@ -338,7 +339,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             if label==lastlabel:
                 continue
             negflux = False
-            radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
+            pixdistfromctr = np.sqrt((avx-(ngrid/2))**2 + (avy-(ngrid/2))**2)
             detchan = c
 
             mjd = int(hdr['start_time'])
@@ -349,11 +350,17 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             else:
                 tInt = hdr['int_len']*86400.0
             dateObs = mjdmpm_to_datetime(mjd, mpm)
-            if (angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+            VLSSrinFOV = VLSSr50jy[angsep(VLSSr50jy['ra'],VLSSr50jy['dec'],hdr['center_ra'],hdr['center_dec']) < 85]
+            vlssrpixcoords = np.array(hdrtopixmask(hdr, ngrid, sRad, VLSSrinFOV['ra'], VLSSrinFOV['dec'], station))
+            pixdist = np.sqrt((vlssrpixcoords[:,0]-avx)**2 + (vlssrpixcoords[:,1]-avy)**2)
+            if (pixdist < float(config['Quality Control']['catsep'])).any():
                 vlss = True
             else:
                 vlss = False
-            if (angsep(cat3c['ra'],cat3c['dec'],radec[0][0],radec[0][1]) < float(config['Quality Control']['catsep'])).any():
+            cat3cinFOV = cat3c[angsep(cat3c['ra'],cat3c['dec'],hdr['center_ra'],hdr['center_dec']) < 85]
+            cat3cpixcoords = np.array(hdrtopixmask(hdr, ngrid, sRad, cat3cinFOV['ra'], cat3cinFOV['dec'], station))
+            pixdist = np.sqrt((cat3cpixcoords[:,0]-avx)**2 + (cat3cpixcoords[:,1]-avy)**2)
+            if (pixdist < float(config['Quality Control']['catsep'])).any():
                 c3 = True
             else:
                 c3 = False
@@ -362,7 +369,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             if c3 or vlss  or negflux:
                 islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
             else:
-                srclist.append((i, radec[0][0], radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s))
+                radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
+                srclist.append((i, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s))
             lastlabel = label
             uniquesrcid += 1
         if not noplot:
@@ -385,7 +393,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     fov=sRad*float(config['Quality Control']['pbpercent'])
                     obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov,s))
     if not noplot:
-        uniquecoords = np.unique([(src[1],src[2]) for src in srclist] ,axis=0)
+        uniquecoords = np.unique([(src[3],src[4]) for src in srclist] ,axis=0)
+        coordarray = np.array([(src[1],src[2],src[3],src[4]) for src in srclist])
         skiplist = []
         beamI = []
         prad = float(config['Quality Control']['statsep'])/psize
@@ -396,18 +405,24 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
             beamI.append((XX+YY)/2)
         for i,(ra,dec) in enumerate(uniquecoords):
+            u_x = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),0][0]
+            u_y = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),1][0]
             if not quiet:
                 print(i+1,"out of",(len(uniquecoords)),end="\r")
             if (ra,dec) in skiplist:
                 continue
             for ra2,dec2 in uniquecoords[(i+1):]:
+                u_x2 = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),0][0]
+                u_y2 = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),1][0]
+                pixdist = np.sqrt( (u_x - u_x2)**2 + (u_y - u_y2)**2)
                 # If within the specified localization, we will skip it when we get to it in the primary loop
-                if angsep(ra,dec,ra2,dec2) < float(config['Quality Control']['statsep']):
+                if pixdist < float(config['Quality Control']['statsep']):
                     skiplist.append((ra2,dec2))
             dettimechan = []
             timelist = []
-            for src_id,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan,src_stokes in srclist:
-                if angsep(src_ra,src_dec,ra,dec) < float(config['Quality Control']['statsep']):
+            for src_id,src_x,src_y,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan,src_stokes in srclist:
+                pixdist = np.sqrt( (u_x - src_x)**2 + (u_y - src_y)**2)
+                if pixdist < float(config['Quality Control']['statsep']):
                     srcid = src_id # Grab a src id for a valid detection
                     dettimechan.append((src_index,src_channel,src_ra,src_dec,src_stokes))
                     timelist.append(str(src_index))
@@ -459,7 +474,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
 
 
 
-    srcarray =  np.array(srclist,dtype=[('id','i8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)])           
+    srcarray =  np.array(srclist,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)])           
     for udate in np.unique(srcarray['mjd']):
         cursrc = srcarray[srcarray['mjd']==udate]
         if len(cursrc) > 1:
@@ -468,7 +483,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 if src1 not in completedsrc:
                     for src2 in cursrc:
                         if src1!=src2:
-                            if (angsep(src1['ra'],src1['dec'],src2['ra'],src2['dec']) < float(config['Quality Control']['catsep'])) and (src1['channel']!=src2['channel']):
+                            pixdist = np.sqrt( (src1['x']-src2['x'])**2 + (src1['y'] - src2['y'])**2)
+                            if (pixdist < float(config['Quality Control']['catsep'])) and (src1['channel']!=src2['channel']):
                                 srcarray['nchan'][(srcarray['mjd']==udate) & (srcarray['ra']==src1['ra']) & (srcarray['dec']==src1['dec'])]+=1
                                 completedsrc.append(src2)
     if not quiet: 
@@ -539,7 +555,8 @@ if __name__ == "__main__":
                         if s==s1:
                             seps[j]=True
                         else:  
-                            seps[j] = angsep(s1['ra'],s1['dec'],s['ra'],s['dec']) < float(config['Quality Control']['catsep'])
+                            pixdist = np.sqrt( (s1['x']-s['x'])**2 + (s1['y'] - s['y'])**2)
+                            seps[j] = pixdist < float(config['Quality Control']['catsep'])
                     matching2 = src[seps]
                     outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
                     srcleft = srcleft[~np.isin(srcleft,matching2)]

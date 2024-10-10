@@ -17,10 +17,10 @@ nsigma=5
 galpercent=0.10
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
 rtol = 0.2
-; Maximum separation from catalog for reporting
-catsep = 3
-; Maximum separation between sources detected at the same time in different stations
-statsep = 3
+; Maximum separation in pixel coordinates from catalog for reporting
+catsep = 1.5
+; Maximum separation between sources in pixel coordinates detected at the same time in different stations
+statsep = 1.5
 ; Minimum source width
 minwid = 0
 ; Fraction of PB to include, must be less than 0.95
