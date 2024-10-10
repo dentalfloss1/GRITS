@@ -129,7 +129,7 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
             w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
             x,y,z = lsllwasv.geocentric_location
             stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
-            w.wcs.cdelt = np.array([-1.0155,1.018]) 
+            w.wcs.cdelt = np.array([-cdelt,corcdelt]) 
         elif station==b'LWA1':
             w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
             stationLOC = EarthLocation.of_site('lwa1')
@@ -156,7 +156,7 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
             t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
             LST = t_obs.sidereal_time('apparent').degree
             HA = 358.25
-            center_RA = LST-HA
+            center_RA = (LST-HA) % 360
             center_dec = 33.35763888888889
             w.wcs.crval = [center_RA,center_dec]
     try: 
@@ -177,17 +177,20 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
             w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
             x,y,z = lsllwasv.geocentric_location
             stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
-            w.wcs.cdelt = np.array([-1.0155,1.018]) 
+            corcdelt = cdelt*1.0023384615384616 
+            w.wcs.cdelt = np.array([-cdelt,corcdelt]) 
         elif station==b'LWA1':
             w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
             stationLOC = EarthLocation.of_site('lwa1')
             corcdelt = cdelt*1.0023384615384616 
+            w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
         t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
         LST = t_obs.sidereal_time('apparent').degree
         center_RA = LST-HA
         center_dec = stationLOC.lat.degree
         w.wcs.crval = [center_RA,center_dec]
         w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+        w.wcs.cdelt = np.array([-cdelt,corcdelt]) 
         w.wcs.radesys = 'FK5'
         w.wcs.specsys = 'TOPOCENT'
         w.wcs.equinox = t_obs.jyear
@@ -203,7 +206,7 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
             t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
             LST = t_obs.sidereal_time('apparent').degree
             HA = 358.25
-            center_RA = LST-HA
+            center_RA = (LST-HA) %360
             center_dec = 33.35763888888889
             w.wcs.crval = [center_RA,center_dec]
     try:

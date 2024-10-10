@@ -339,6 +339,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 continue
             negflux = False
             radec = hdrtoworld(hdrlist[i],ngrid,sRad,avx,avy,station)
+            print(radec)
             detchan = c
 
             mjd = int(hdr['start_time'])
