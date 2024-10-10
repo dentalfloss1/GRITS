@@ -18,9 +18,9 @@ galpercent=0.10
 ; Relative tolerance for position angle between sources. For determining if it's a plane.
 rtol = 0.2
 ; Maximum separation from catalog for reporting
-catsep = 3
+catsep = 2
 ; Maximum separation between sources detected at the same time in different stations
-statsep = 3
+statsep = 2
 ; Minimum source width
 minwid = 0
 ; Fraction of PB to include, must be less than 0.95

@@ -151,7 +151,6 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
             ngrid = imSize
             cdelt = hdr['psize']
             w.wcs.crpix = [ngrid/2 + 1.422,ngrid/2  + 0.5]
-            w.wcs.cdelt = np.array([-1.015,1.018])
             x,y,z = lsllwasv.geocentric_location
             stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
             t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
@@ -199,7 +198,6 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
             ngrid = imSize
             cdelt = hdr['psize']
             w.wcs.crpix = [ngrid/2 + 1.422,ngrid/2  + 0.5]
-            w.wcs.cdelt = np.array([-1.015,1.018])
             x,y,z = lsllwasv.geocentric_location
             stationLOC = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
             t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
