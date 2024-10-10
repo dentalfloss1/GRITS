@@ -95,15 +95,15 @@ def pbcorr(header,imSize,chan,pScale,station):
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     time = Time(dateObs.strftime("%Y-%m-%dT%H:%M:%S"),format="isot")
     if station==b'LWASV':
-        x,y,z = lsllwasv.geocentric_location
-        lwasv = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+        GEOx,GEOy,GEOz = lsllwasv.geocentric_location
+        lwasv = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
         aa = AltAz(location=lwasv, obstime=time)
     elif station==b'LWA1':
         lwa1 = EarthLocation.of_site('lwa1')
         aa = AltAz(location=lwa1, obstime=time)
     elif station==b'LWANA':
-        x,y,z = lsllwana.geocentric_location
-        lwana = EarthLocation.from_geocentric(x=x,y=y,z=z,unit='m')
+        GEOx,GEOy,GEOz = lsllwana.geocentric_location
+        lwana = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
         aa = AltAz(location=lwana, obstime=time)
     else:
         print(station,"unrecognized")
@@ -120,47 +120,15 @@ def pbcorr(header,imSize,chan,pScale,station):
 
 
 def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
-    if ('startTime' in hdr) :
-        cdelt = hdr['psize']
-        w = WCS(naxis=2)
-        ngrid = imSize
-        # 130 degrees is what is visible to the dipoles
-        HA = 0
-        if station==b'LWASV':
-            w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
-            GEOx,GEOy,GEOz = lsllwasv.geocentric_location
-            stationLOC = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
-            w.wcs.cdelt = np.array([-1.0155,1.018]) 
-        elif station==b'LWA1':
-            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
-            stationLOC = EarthLocation.of_site('lwa1')
-            corcdelt = cdelt*1.0023384615384616 
-            w.wcs.cdelt = np.array([-corcdelt,corcdelt]) 
-        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
-        LST = t_obs.sidereal_time('apparent').degree
-        center_RA = LST-HA
-        center_dec = stationLOC.lat.degree
-        w.wcs.crval = [center_RA,center_dec]
-        w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
-        w.wcs.radesys = 'FK5'
-        w.wcs.specsys = 'TOPOCENT'
-        w.wcs.equinox = t_obs.jyear
-        
-    else:
-        w = getGENERICwcs(hdr, imSize)
-        if station==b"LWASV":
-            ngrid = imSize
-            cdelt = hdr['psize']
-            w.wcs.crpix = [ngrid/2 + 1.422,ngrid/2  + 0.5]
-          #   w.wcs.cdelt = np.array([-1.015,1.018])
-            GEOx,GEOy,GEOz = lsllwasv.geocentric_location
-            stationLOC = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
-            t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
-            LST = t_obs.sidereal_time('apparent').degree
-            HA = 358.25
-            center_RA = LST-HA
-            center_dec = 33.35763888888889
-            w.wcs.crval = [center_RA,center_dec]
+    cdelt = hdr['psize']
+    w = WCS(naxis=2)
+    ngrid = imSize
+    w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+    w.wcs.cdelt = np.array([-cdelt,cdelt]) 
+    w.wcs.crval = [hdr['center_ra'],hdr['center_dec']]
+    w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+    w.wcs.radesys = 'FK5'
+    w.wcs.specsys = 'TOPOCENT'
     try: 
         pixcrd = [(r,d) for r,d in zip(ra,dec)]
     except TypeError:
@@ -168,52 +136,23 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     return w.wcs_world2pix(pixcrd, 0)
 
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
-    if ('startTime' in hdr) :
-    # elif ('startTime' in hdr) and (station==b"LWA1"):
-        cdelt = hdr['psize']
-        w = WCS(naxis=2)
-        ngrid = imSize
-        # 130 degrees is what is visible to the dipoles
-        HA = 0
-        if station==b'LWASV':
-            w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
-            GEOx,GEOy,GEOz = lsllwasv.geocentric_location
-            stationLOC = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
-            w.wcs.cdelt = np.array([-1.0155,1.018]) 
-        elif station==b'LWA1':
-            w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
-            stationLOC = EarthLocation.of_site('lwa1')
-            corcdelt = cdelt*1.0023384615384616 
-        t_obs = Time(hdr['startTime'],format='mjd',scale='utc',location=stationLOC)
-        LST = t_obs.sidereal_time('apparent').degree
-        center_RA = (LST-HA) % 360
-        center_dec = stationLOC.lat.degree
-        w.wcs.crval = [center_RA,center_dec]
-        w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
-        w.wcs.radesys = 'FK5'
-        w.wcs.specsys = 'TOPOCENT'
-        w.wcs.equinox = t_obs.jyear
-        
-    else:
-        w = getGENERICwcs(hdr, imSize)
-        if station==b"LWASV":
-            ngrid = imSize
-            cdelt = hdr['psize']
-            w.wcs.crpix = [ngrid/2 + 1.422,ngrid/2  + 0.5]
-           #  w.wcs.cdelt = np.array([-1.015,1.018])
-            GEOx,GEOy,GEOz = lsllwasv.geocentric_location
-            stationLOC = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
-            t_obs = Time(hdr['start_time'],format='mjd',scale='utc',location=stationLOC)
-            LST = t_obs.sidereal_time('apparent').degree
-            HA = 358.25
-            center_RA = (LST-HA) % 360
-            center_dec = 33.35763888888889
-            w.wcs.crval = [center_RA,center_dec]
+    cdelt = hdr['psize']
+    w = WCS(naxis=2)
+    ngrid = imSize
+    w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+    w.wcs.cdelt = np.array([-cdelt,cdelt]) 
+    w.wcs.crval = [hdr['center_ra'],hdr['center_dec']]
+    w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
+    w.wcs.radesys = 'FK5'
+    w.wcs.specsys = 'TOPOCENT'
     try:
         pixcrd = [(xp,yp) for xp,yp in zip(x,y)]
     except TypeError:
         pixcrd = [(x,y)]
-    return w.wcs_pix2world(pixcrd, 0)
+    radec = w.wcs_pix2world(pixcrd, 0)
+    if np.isnan(radec[0][0]):
+        raise Exception(f"Invalid transform: {x},{y},{w},{station}")
+    return radec
 
 def maskislands(data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxDR=300):
     dataislands = np.copy(data)
