@@ -123,8 +123,24 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     cdelt = hdr['psize']
     w = WCS(naxis=2)
     ngrid = imSize
-    w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
-    w.wcs.cdelt = np.array([-cdelt,cdelt]) 
+    if (station==b"LWA1") and ("startTime" in hdr):     
+        w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+        w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+    elif (station==b"LWASV") and ("startTime" in hdr):
+        w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
+        w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+    elif (station==b"LWASV") and ("startTime" not in hdr):
+        w.wcs.crpix = [ngrid/2 + 1.422, ngrid/2  + 0.5]
+        w.wcs.cdelt = np.array([-cdelt*(1.013/(130/128)),cdelt*(1.018/(130/128))]) 
+        ha=358.25
+        centerDec=33.35763888888889
+        SV = ac.EarthLocation(lat=34.348358*u.deg, lon=-106.885783*u.deg, height=1477.8*u.m)
+        t_obs = Time(obstime, format='mjd', scale='utc',location=SV)
+        centerRA = (LST - HA) %360
+        print(hdr['center_ra'],centerRA, hdr['center_dec'],centerDec)
+    else:
+        w.wcs.crpix = [ngrid/2 + 0.5, ngrid/2 + 0.5]
+        w.wcs.cdellt = np.array([-cdelt,cdelt])
     w.wcs.crval = [hdr['center_ra'],hdr['center_dec']]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     w.wcs.radesys = 'FK5'
@@ -139,8 +155,24 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
     cdelt = hdr['psize']
     w = WCS(naxis=2)
     ngrid = imSize
-    w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
-    w.wcs.cdelt = np.array([-cdelt,cdelt]) 
+    if (station==b"LWA1") and ("startTime" in hdr):     
+        w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
+        w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+    elif (station==b"LWASV") and ("startTime" in hdr):
+        w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
+        w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+    elif (station==b"LWASV") and ("startTime" not in hdr):
+        w.wcs.crpix = [ngrid/2 + 1.422, ngrid/2  + 0.5]
+        w.wcs.cdelt = np.array([-cdelt*(1.013/(130/128)),cdelt*(1.018/(130/128))]) 
+        ha=358.25
+        centerDec=33.35763888888889
+        SV = ac.EarthLocation(lat=34.348358*u.deg, lon=-106.885783*u.deg, height=1477.8*u.m)
+        t_obs = Time(obstime, format='mjd', scale='utc',location=SV)
+        centerRA = (LST - HA) %360
+        print(hdr['center_ra'],centerRA, hdr['center_dec'],centerDec)
+    else:
+        w.wcs.crpix = [ngrid/2 + 0.5, ngrid/2 + 0.5]
+        w.wcs.cdellt = np.array([-cdelt,cdelt])
     w.wcs.crval = [hdr['center_ra'],hdr['center_dec']]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     w.wcs.radesys = 'FK5'
