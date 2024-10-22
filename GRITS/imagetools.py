@@ -16,6 +16,7 @@ from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.time import Time
 from astropy.io import fits as astrofits
+import astropy.units as u
 
 from lsl_toolkits.OrvilleImage.wcs import getSVwcs, getGENERICwcs
 
@@ -134,14 +135,15 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
         w.wcs.cdelt = np.array([-cdelt*(1.013/(130/128)),cdelt*(1.018/(130/128))]) 
         ha=358.25
         centerDec=33.35763888888889
-        SV = ac.EarthLocation(lat=34.348358*u.deg, lon=-106.885783*u.deg, height=1477.8*u.m)
-        t_obs = Time(obstime, format='mjd', scale='utc',location=SV)
-        centerRA = (LST - HA) %360
-        print(hdr['center_ra'],centerRA, hdr['center_dec'],centerDec)
+        SV = EarthLocation(lat=34.348358*u.deg, lon=-106.885783*u.deg, height=1477.8*u.m)
+        t_obs = Time(hdr['start_time'], format='mjd', scale='utc',location=SV)
+        LST = t_obs.sidereal_time("apparent").degree
+        centerRA = (LST - ha) %360
+        # print(hdr['center_ra'],centerRA, hdr['center_dec'],centerDec)
     else:
         w.wcs.crpix = [ngrid/2 + 0.5, ngrid/2 + 0.5]
-        w.wcs.cdellt = np.array([-cdelt,cdelt])
-    w.wcs.crval = [hdr['center_ra'],hdr['center_dec']]
+        w.wcs.cdelt = np.array([-cdelt,cdelt])
+    w.wcs.crval = [centerRA,centerDec]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     w.wcs.radesys = 'FK5'
     w.wcs.specsys = 'TOPOCENT'
@@ -166,14 +168,15 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
         w.wcs.cdelt = np.array([-cdelt*(1.013/(130/128)),cdelt*(1.018/(130/128))]) 
         ha=358.25
         centerDec=33.35763888888889
-        SV = ac.EarthLocation(lat=34.348358*u.deg, lon=-106.885783*u.deg, height=1477.8*u.m)
-        t_obs = Time(obstime, format='mjd', scale='utc',location=SV)
-        centerRA = (LST - HA) %360
-        print(hdr['center_ra'],centerRA, hdr['center_dec'],centerDec)
+        SV = EarthLocation(lat=34.348358*u.deg, lon=-106.885783*u.deg, height=1477.8*u.m)
+        t_obs = Time(hdr['start_time'], format='mjd', scale='utc',location=SV)
+        LST = t_obs.sidereal_time("apparent").degree
+        centerRA = (LST - ha) %360
+        # print(hdr['center_ra'],centerRA, hdr['center_dec'],centerDec)
     else:
         w.wcs.crpix = [ngrid/2 + 0.5, ngrid/2 + 0.5]
-        w.wcs.cdellt = np.array([-cdelt,cdelt])
-    w.wcs.crval = [hdr['center_ra'],hdr['center_dec']]
+        w.wcs.cdelt = np.array([-cdelt,cdelt])
+    w.wcs.crval = [centerRA,centerDec]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     w.wcs.radesys = 'FK5'
     w.wcs.specsys = 'TOPOCENT'
