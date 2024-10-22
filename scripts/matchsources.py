@@ -128,10 +128,14 @@ if __name__=="__main__":
             continue
         lastfilename1 = filename1
         lastfilename2 = filename2
-        obsfile1= filename1.split('/')[-1]+"_obsfile.txt"
-        obsfile2= filename2.split('/')[-1]+"_obsfile.txt"
+        obsfile1= filename1.split('/')[-1]+"_obsfile.npy"
+        obsfile2= filename2.split('/')[-1]+"_obsfile.npy"
         np.save(obsfile1,obslist1)
         np.save(obsfile2,obslist2)
+        rmsfile1= filename1.split('/')[-1]+"_rmsfile.npy"
+        rmsfile2= filename2.split('/')[-1]+"_rmsfile.npy"
+        np.save(rmsfile1,minrms1)
+        np.save(rmsfile2,minrms2)
 
 
 

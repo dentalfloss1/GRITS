@@ -209,6 +209,9 @@ def main(src,config,quiet=False,skip=0,endearly=None,maskstokes=None,positionche
     xarr = np.linspace(0,data.shape[-1]-1,data.shape[-1])
     yarr = np.linspace(0, data.shape[-1]-1,data.shape[-1])
     x, y = np.meshgrid(xarr, yarr)
+    subxarr = np.linspace(0,10,11)
+    subyarr = np.linspace(0, 10,11)
+    subx, suby = np.meshgrid(subxarr, subyarr)
     data[1:] = np.where(np.isnan(data[1:]),imagedata[1:] - imagedata[:-1],data[1:])
     print(filename,src['index'])
     for i in tqdm(range(ints)):
@@ -232,23 +235,25 @@ def main(src,config,quiet=False,skip=0,endearly=None,maskstokes=None,positionche
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                 # Fit image data
                 f0 = imagedata[i,j,k,int(round(avy)),int(round(avx))]
-                x0 = avx
-                y0 = avy
-                initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi,0.1*f0]
+                x0 = avx - round(avx) + 5
+                y0 = avy - round(avy) + 5
+                initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi]
                 if k==0:
                     if f0<0:
                         continue
-                    initbounds = [(f0*0.1,f0*10),(x0-1.5,x0+1.5),(y0-1.5,y0+1.5),(1.5,6),(1.5,6),(0,2*np.pi),(0,f0*0.5)]
+                    initbounds = [(f0*0.1,f0*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2)),(1.5,6),(1.5,6),(0,2*np.pi)]
                 else:
-                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-1.5,x0+1.5),(y0-1.5,y0+1.5),(1.5,6),(1.5,6),(0,2*np.pi),(-np.abs(f0)*0.5,np.abs(f0)*0.5)]
+                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2)),(1.5,6),(1.5,6),(0,2*np.pi)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(imagedata[i,j,k]).ravel()
+                fitdata = np.transpose(imagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
                 try:
-                    popt, pcov = curve_fit(gaussian_backgound, (x, y), fitdata, p0=initial_guess,bounds=bounds)
+                    popt, pcov = curve_fit(gaussian_nobackgound, (subx, suby), fitdata, p0=initial_guess,bounds=bounds)
+                    xOUT = popt[1] + round(avx) - 5
+                    yOUT = popt[2] + round(avy) - 5
                     raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,popt[1],popt[2],station)[0]
-                    param_name = ["f0","x0","y0","sigma_x","sigma_y","theta","offset"]
+                    param_name = ["f0","x0","y0","sigma_x","sigma_y","theta"]
                     row = []
                     for pind in range(len(popt)):
                         pname = param_name[pind]
@@ -268,19 +273,14 @@ def main(src,config,quiet=False,skip=0,endearly=None,maskstokes=None,positionche
 
                 # fit diff data
                 f0 = data[i,j,k,int(round(avy)),int(round(avx))]
-                x0 = avx
-                y0 = avy
+                x0 = avx - round(avx) + 5
+                y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi]
-                if k==0:
-                    if f0<0:
-                        continue
-                    initbounds = [(f0*0.1,f0*10),(x0-1.5,x0+1.5),(y0-1.5,y0+1.5),(1.5,6),(1.5,6),(0,2*np.pi)]
-                else:
-                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-1.5,x0+1.5),(y0-1.5,y0+1.5),(1.5,6),(1.5,6),(0,2*np.pi)]
+                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2)),(1.5,6),(1.5,6),(0,2*np.pi)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(data[i,j,k]).ravel()
+                fitdata = np.transpose(data[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
                 try:
                     popt, pcov = curve_fit(gaussian_nobackgound, (x, y), fitdata, p0=initial_guess,bounds=bounds)
                     raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,popt[1],popt[2],station)[0]
