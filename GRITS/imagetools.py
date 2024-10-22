@@ -127,9 +127,13 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     if (station==b"LWA1") and ("startTime" in hdr):     
         w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
         w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+        centerRA = hdr['center_ra']
+        centerDec = hdr['center_dec']
     elif (station==b"LWASV") and ("startTime" in hdr):
         w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
         w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+        centerRA = hdr['center_ra']
+        centerDec = hdr['center_dec']
     elif (station==b"LWASV") and ("startTime" not in hdr):
         w.wcs.crpix = [ngrid/2 + 1.422, ngrid/2  + 0.5]
         w.wcs.cdelt = np.array([-cdelt*(1.013/(130/128)),cdelt*(1.018/(130/128))]) 
@@ -160,9 +164,13 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
     if (station==b"LWA1") and ("startTime" in hdr):     
         w.wcs.crpix = [ngrid/2 + 0.5,ngrid/2  + 1.809]
         w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+        centerRA = hdr['center_ra']
+        centerDec = hdr['center_dec']
     elif (station==b"LWASV") and ("startTime" in hdr):
         w.wcs.crpix = [ngrid/2 + 0.8663,ngrid/2  + 1.343]
         w.wcs.cdelt = np.array([-cdelt*(1.0154771519556305/(130/128)),cdelt*(1.018/(130/128))]) 
+        centerRA = hdr['center_ra']
+        centerDec = hdr['center_dec']
     elif (station==b"LWASV") and ("startTime" not in hdr):
         w.wcs.crpix = [ngrid/2 + 1.422, ngrid/2  + 0.5]
         w.wcs.cdelt = np.array([-cdelt*(1.013/(130/128)),cdelt*(1.018/(130/128))]) 
