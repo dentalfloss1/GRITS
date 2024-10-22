@@ -56,10 +56,13 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter("error",category=RuntimeWarning)
 
-def gaussian_nobackgound(xy, amplitude, xo, yo, sigma_x, sigma_y, theta):
+
+def gaussian_nobackground(xy, amplitude, xo, yo, sigma, theta):
     x, y = xy
     xo = float(xo)
     yo = float(yo)
+    sigma_x = sigma
+    sigma_y = sigma
     a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
     b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
     c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
@@ -233,74 +236,84 @@ def main(src,config,quiet=False,skip=0,endearly=None,maskstokes=None,positionche
                 except KeyError:
                     midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] + (hdr['bandwidth']/2))
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
+                fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                 # Fit image data
                 f0 = imagedata[i,j,k,int(round(avy)),int(round(avx))]
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
-                initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi]
+                initial_guess = [f0,x0,y0]
                 if k==0:
                     if f0<0:
                         continue
-                    initbounds = [(f0*0.1,f0*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2)),(1.5,6),(1.5,6),(0,2*np.pi)]
+                    initbounds = [(f0*0.1,f0*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
                 else:
-                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2)),(1.5,6),(1.5,6),(0,2*np.pi)]
+                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
                 fitdata = np.transpose(imagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
                 try:
-                    popt, pcov = curve_fit(gaussian_nobackgound, (subx, suby), fitdata, p0=initial_guess,bounds=bounds)
+                    
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
                     xOUT = popt[1] + round(avx) - 5
                     yOUT = popt[2] + round(avy) - 5
-                    raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,popt[1],popt[2],station)[0]
-                    param_name = ["f0","x0","y0","sigma_x","sigma_y","theta"]
-                    row = []
-                    for pind in range(len(popt)):
-                        pname = param_name[pind]
-                        param = popt[pind]
-                        perr = np.absolute(pcov[pind][pind])**0.5
-                        row.append(pname)
-                        row.append(param)
-                        row.append(perr)
-                    row.append(hdrlist[i]['start_time'])
-                    row.append(midfreq/1e6)
-                    row.append(k)
-                    row.append(raOUT)
-                    row.append(decOUT)
-                    imagefit.append(tuple(row))
+                    # TIGHT position restrictions
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < float(config['Quality Control']['statsep']):
+                        raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
+                        param_name = ["f0","x0","y0","sigma","theta"]
+                        row = []
+                        for pind in range(len(popt)):
+                            pname = param_name[pind]
+                            param = popt[pind]
+                            perr = np.absolute(pcov[pind][pind])**0.5
+                            row.append(pname)
+                            row.append(param)
+                            row.append(perr)
+                        row.append(hdrlist[i]['start_time'])
+                        row.append(midfreq/1e6)
+                        row.append(k)
+                        row.append(raOUT)
+                        row.append(decOUT)
+                        imagefit.append(tuple(row))
                 except Exception as e:
                     print(e)
+                    print(popt,pcov,infodict,mesg,ier)
 
                 # fit diff data
                 f0 = data[i,j,k,int(round(avy)),int(round(avx))]
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
-                initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi]
-                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2)),(1.5,6),(1.5,6),(0,2*np.pi)]
+                initial_guess = [f0,x0,y0]
+                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
                 fitdata = np.transpose(data[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
                 try:
-                    popt, pcov = curve_fit(gaussian_nobackgound, (x, y), fitdata, p0=initial_guess,bounds=bounds)
-                    raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,popt[1],popt[2],station)[0]
-                    param_name = ["f0","x0","y0","sigma_x","sigma_y","theta"]
-                    row = []
-                    for pind in range(len(popt)):
-                        pname = param_name[pind]
-                        param = popt[pind]
-                        perr = np.absolute(pcov[pind][pind])**0.5
-                        row.append(pname)
-                        row.append(param)
-                        row.append(perr)
-                    row.append(hdrlist[i]['start_time'])
-                    row.append(midfreq/1e6)
-                    row.append(k)
-                    row.append(raOUT)
-                    row.append(decOUT)
-                    diffFIT.append(tuple(row))
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
+                    xOUT = popt[1] + round(avx) - 5
+                    yOUT = popt[2] + round(avy) - 5
+                    # TIGHT position restrictions
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < float(config['Quality Control']['statsep']):
+                        raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
+                        param_name = ["f0","x0","y0","sigma_x","theta"]
+                        row = []
+                        for pind in range(len(popt)):
+                            pname = param_name[pind]
+                            param = popt[pind]
+                            perr = np.absolute(pcov[pind][pind])**0.5
+                            row.append(pname)
+                            row.append(param)
+                            row.append(perr)
+                        row.append(hdrlist[i]['start_time'])
+                        row.append(midfreq/1e6)
+                        row.append(k)
+                        row.append(raOUT)
+                        row.append(decOUT)
+                        diffFIT.append(tuple(row))
                 except Exception as e:
                     print(e)
+                    print(popt,pcov,infodict,mesg,ier)
                     
     print(imagefit)
     print(diffFIT)
