@@ -20,6 +20,19 @@ import astropy.units as u
 
 from lsl_toolkits.OrvilleImage.wcs import getSVwcs, getGENERICwcs
 
+def gaussian_nobackground(xy, amplitude, xo, yo, sigma, theta):
+    x, y = xy
+    xo = float(xo)
+    yo = float(yo)
+    sigma_x = sigma
+    sigma_y = sigma
+    a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
+    b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
+    c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
+    g = amplitude*np.exp( - (a*((x-xo)**2) + 2*b*(x-xo)*(y-yo)
+                            + c*((y-yo)**2)))
+    return g.ravel()
+
 def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra1 = ra1deg*np.pi/180
     dec1 = dec1deg*np.pi/180
@@ -363,3 +376,118 @@ def exportcrtf(ra,dec,outfile):
 circle [[{ra}deg, {dec}deg], 15775.2806arcsec] coord=ICRS, corr=[I, Q, U, V], linewidth=2, linestyle=-, symsize=1, symthick=1, color=2ee6d6, font=Helvetica, fontsize=10, fontstyle=bold, usetex=false"""
     with open(outfile,'w') as f:
         f.write(contents)
+
+
+def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex):
+    ngrid = data.shape[-1]
+    nstokes = data.shape[2]
+    nchan = data.shape[1]
+    ints = data.shape[0]
+    imagefit = []
+    diffFIT = []
+    # Source fit the images
+    xarr = np.linspace(0,data.shape[-1]-1,data.shape[-1])
+    yarr = np.linspace(0, data.shape[-1]-1,data.shape[-1])
+    x, y = np.meshgrid(xarr, yarr)
+    subxarr = np.linspace(0,10,11)
+    subyarr = np.linspace(0, 10,11)
+    subx, suby = np.meshgrid(subxarr, subyarr)
+    data[1:] = np.where(np.isnan(data[1:]),imagedata[1:] - imagedata[:-1],data[1:])
+    for i in tqdm(range(ints)):
+        targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
+        xloc = x[np.sqrt((targetx-x)**2 + (targety-y)**2) < float(config['Quality Control']['statsep'])].astype(int)
+        yloc = y[np.sqrt((targetx-x)**2 + (targety-y)**2) < float(config['Quality Control']['statsep'])].astype(int)
+        for xpix,ypix in zip(xloc,yloc):
+            pixflux = data[i,j,k,ypix,xpix]
+            if pixflux==np.amax(data[i,j,k,np.round(yloc).astype(int),np.round(xloc).astype(int)]):
+                avx = xpix
+                avy = ypix
+        for j in range(nchan):
+            for k in range(nstokes):
+                if (i,j,k) in flaggedtimes:
+                    continue
+                hdr = hdrlist[i]
+                try:
+                    midfreq = (hdr['freq']  + j*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                except KeyError:
+                    midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
+                fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
+                # Fit image data
+                f0 = imagedata[i,j,k,int(round(avy)),int(round(avx))]
+                x0 = avx - round(avx) + 5
+                y0 = avy - round(avy) + 5
+                initial_guess = [f0,x0,y0]
+                if k==0:
+                    if f0<0:
+                        continue
+                    initbounds = [(f0*0.1,f0*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                else:
+                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                bounds0 = tuple([b[0] for b in initbounds])
+                bounds1 = tuple([b[1] for b in initbounds])
+                bounds = [bounds0,bounds1]
+                fitdata = np.transpose(imagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                try:
+                    
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
+                    xOUT = popt[1] + round(avx) - 5
+                    yOUT = popt[2] + round(avy) - 5
+                    # TIGHT position restrictions
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < float(config['Quality Control']['statsep']):
+                        raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
+                        row = []
+                        for pind in range(len(popt)):
+                            param = popt[pind]
+                            perr = np.absolute(pcov[pind][pind])**0.5
+                            row.append(param)
+                            row.append(perr)
+                        row.append(hdrlist[i]['start_time'])
+                        row.append(midfreq/1e6)
+                        row.append(k)
+                        row.append(raOUT)
+                        row.append(decOUT)
+                        imagefit.append(tuple(row))
+                except Exception as e:
+                    print(e)
+                    print(popt,pcov,infodict,mesg,ier)
+
+                # fit diff data
+                f0 = data[i,j,k,int(round(avy)),int(round(avx))]
+                x0 = avx - round(avx) + 5
+                y0 = avy - round(avy) + 5
+                initial_guess = [f0,x0,y0]
+                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                bounds0 = tuple([b[0] for b in initbounds])
+                bounds1 = tuple([b[1] for b in initbounds])
+                bounds = [bounds0,bounds1]
+                fitdata = np.transpose(data[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                try:
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
+                    xOUT = popt[1] + round(avx) - 5
+                    yOUT = popt[2] + round(avy) - 5
+                    # TIGHT position restrictions
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < float(config['Quality Control']['statsep']):
+                        raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
+                        row = []
+                        for pind in range(len(popt)):
+                            param = popt[pind]
+                            perr = np.absolute(pcov[pind][pind])**0.5
+                            row.append(param)
+                            row.append(perr)
+                        row.append(hdrlist[i]['start_time'])
+                        row.append(midfreq/1e6)
+                        row.append(k)
+                        row.append(raOUT)
+                        row.append(decOUT)
+                        diffFIT.append(tuple(row))
+                except Exception as e:
+                    print(e)
+                    print(popt,pcov,infodict,mesg,ier)
+                    if i==targetindex:
+                        return [],[],[],[]
+    colnames = ["f0","f0err","x0","x0err","y0","y0err","mjd","freq","stokes","ra","dec"]
+    coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
+    return imagefit,diffFIT,colnames,coldtypes
+
+

@@ -93,17 +93,8 @@ if __name__=="__main__":
             config2.read(args.configfile2)
 
         # run main execution loop
-        print("Let us match the files")
         import glob
-        # station1 = glob.glob("/FileStore/Orville/*/*.oims")
-        # station2 = glob.glob("/FileStore/PASI/*/*.pims")
-       #  if os.path.exists("matchedfiles.npy"):
-       #      matchedfiles= np.load("matchedfiles.npy")
-       #  else:
         matchedfiles = matchfilepairs(args.station1,args.station2) 
-        #     matchedfiles = matchfilepairs(station1,station2)
-        #     print(matchedfiles)
-        #     np.save("matchedfiles.npy",matchedfiles)
     lastfilename1 = ""
     lastfilename2 = ""
     results = []
@@ -132,143 +123,104 @@ if __name__=="__main__":
         obsfile2= filename2.split('/')[-1]+"_obsfile.npy"
         np.save(obsfile1,obslist1)
         np.save(obsfile2,obslist2)
-        rmsfile1= filename1.split('/')[-1]+"_rmsfile.npy"
-        rmsfile2= filename2.split('/')[-1]+"_rmsfile.npy"
-        np.save(rmsfile1,minrms1)
-        np.save(rmsfile2,minrms2)
-
-
-
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
         keepdat2 = dat2[(dat2['3c']=="False") & (dat2['VLSSr50']=="False")]
         plottedlc = []
-        srcfile1= filename1.split('/')[-1]+"_srcfile.txt"
-        srcfile2= filename2.split('/')[-1]+"_srcfile.txt"
-        srclist1 = []
-        srclist2 = []
+        srcfile1= filename1.split('/')[-1]+"_srcfile"
+        allmatch = []
         for s1 in keepdat1:
+            currentmatch = [(s1,station1)]
+            for m in allmatch:
+                if s1 in m:
+                    continue
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
             if np.sum(simul) > 0:
                 matching2 = keepdat2[simul]
                 for s2 in matching2:
-                    if args.verbose:
-                        print(s1,s2)
-                    sourcesep =  angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec'])
-                    if sourcesep > float(config1['Quality Control']['catsep']):
-                        continue
-                    if args.verbose:
-                        print("----separation----")
-                        print(sourcesep,s1,s2)
-                        print("--------")
-                    index1 = s1['index']
-                    uniqueid = index1
-                    fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
-                    filename1 = str(s1['filename'])
-                    ra1 = s1['ra']
-                    dec1 = s1['dec']
-                    c1 = s1['channel']
-                    stokes1 = s1['stokes']
-                    plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(':','-').split('/')[-1]
-                    index2 = s2['index']
-                    filename2 = str(s2['filename'])
-                    ra2 = s2['ra']
-                    dec2 = s2['dec']
-                    c2 = s2['channel']
-                    stokes2 = s2['stokes']
-                    if stokes1!=stokes2:
-                        # print("detection stokes does not match")
-                        continue
-                    plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(':','-').split('/')[-1]
+                     # x and y pixel in image 2 from position in ra,dec image 1
+                    x2f1, y2f1 = hdrtopixmask(hdrlist2[s2['index']], imagedata2.shape[-1],sRad2, s1['ra'], s1['dec'],station2)[0]
+                    x1f2, y1f2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s2['ra'], s2['dec'],station1)[0]
+                    sourcesep1 =  np.sqrt((s1['x']-x1f2)**2 + (s1['y']-y1f2)**2)
+                    sourcesep2 =  np.sqrt((s2['x']-x2f1)**2 + (s2['y']-y2f1)**2)
+                    sourcesep = min(sourcesep1,sourcesep2)
+                    if sourcesep < float(config1['Quality Control']['statsep']):
+                        currentmatch.append((s2,station2))
+                        if args.verbose:
+                            print("----separation----")
+                            print(s1['x'],x1f2,s1['y'],y1f2,s2['x'],x2f1,s2['y'],y2f1,sourcesep1,sourcesep2,s1,s2,sourcesep,angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec']))
+                            print("--------")
+            simul = np.abs(s1['mjd'] - keepdat1['mjd'])*24.0*60.0*60.0 < args.timedelta
+            if np.sum(simul) > 0:
+                matching1 = keepdat1[simul]
+                for s1_2 in matching1:
+                    if s1_2!=s1:
+                         # x and y pixel in image 2 from position in ra,dec image 1
+                        x1_2f1, y1_2f1 = hdrtopixmask(hdrlist1[s1_2['index']], imagedata1.shape[-1],sRad1, s1['ra'], s1['dec'],station1)[0]
+                        x1f1_2, y1f1_2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s1_2['ra'], s1_2['dec'],station1)[0]
+                        sourcesep1 =  np.sqrt((s1['x']-x1f1_2)**2 + (s1['y']-y1f1_2)**2)
+                        sourcesep1_2 =  np.sqrt((s1_2['x']-x1_2f1)**2 + (s1_2['y']-y1_2f1)**2)
+                        sourcesep = min(sourcesep1,sourcesep1_2)
+                        if sourcesep < float(config1['Quality Control']['statsep']):
+                            currentmatch.append((s1_2,station1))
+        allmatch.append(tuple(currentmatch))
+        stat1srcs = []
+        stat2srcs = []
+        for m in allmatch:
+            for matchrow in m:
+                if matchrow[1]==station1:
+                    s1 = matchrow[0]
+                    stat1srcs.append(s1)
+                elif matchrow[1]==station2:
+                    s2 = matchrow[0]
+                    stat2srcs.append(s2)
+
+            # Set some convenient variables for each station source
+            s1 = stat1srcs[0]
+            s2 = stat2srcs[0]
+            index1 = s1['index']
+            fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
+            filename1 = str(s1['filename'])
+            ra1 = s1['ra']
+            dec1 = s1['dec']
+            c1 = s1['channel']
+            stokes1 = s1['stokes']
+            plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(':','-').split('/')[-1]
+            index2 = s2['index']
+            filename2 = str(s2['filename'])
+            ra2 = s2['ra']
+            dec2 = s2['dec']
+            c2 = s2['channel']
+            stokes2 = s2['stokes']
+            plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(':','-').split('/')[-1]
+
+            if stokes1!=stokes2:
+                # print("detection stokes does not match")
+                continue
+            # Measure fluxes, serves as another QC step. The detection must fit as a guassian
+            imagefit1, diffFIT1, colnames1, coldtypes1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1)
+            if not diffFIT1:
+                continue
+            imagefit2, diffFIT2, colnames2,coldtypes2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2)
+            if not diffFIT2:
+                continue
+                
+            imageflux1 = np.array(imagefit1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
+            diffFLUX1 = np.array(imagefit1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
+            imageflux2 = np.array(imagefit2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
+            diffFLUX2 = np.array(imagefit2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
+
+            np.savez(filename1.replace(filename1[-4:],f"src{uniqueid}_fluxfile"),imageflux1=imageflux1,
+                     diffFLUX1=diffFLUX1,
+                     minrms1=minrms1,
+                     imageflux2=imageflux2,
+                     diffFLUX2=diffFLUX2,
+                     minrms2=minrms2)
+            for s1 in stat1srcs:
+                for s2 in stat2srcs:
+                 
+                    # Make plots showing sources in diff images
                     plotresults(index1,c1,stokes1,plotfile1,minrms1[index1,c1,stokes1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1)
                     plotresults(index2,c2,stokes2,plotfile2,minrms2[index2,c2,stokes2],islands2[:,c2,:,:,:],imagedata2[:,c2,:,:,:],diffdata2[:,c2,:,:,:],hdrlist2[index2],sRad2,station2)
-                    # plotsource(index1, plotfile1, filename1, ra1, dec1, minrms1, corrfluxlist1, c1, vmax=args.vmax1)
-                    # plotsource(index2, plotfile2, filename2, ra2, dec2, minrms2, corrfluxlist2, c2, vmax=args.vmax2)
-                    plotfilelist = []
-                    plotdatalist = []
-                    curdettimechanlist = []
-                    udetlist = []
-                    tdetlist = []
-                    ralist = []
-                    declist = []
-                    srclist1.append(s1)
-                    srclist2.append(s2)
-                    for filename, rmsdata, imagedata, diffdata, s, hdrlist, sRad,station,allflaggedtimes, kd, detstokes in zip([filename1,filename2], [minrms1,minrms2], [imagedata1,imagedata2],[diffdata1,diffdata2],[s1,s2],[hdrlist1,hdrlist2],[sRad1,sRad2],[station1,station2],[allflaggedtimes1,allflaggedtimes2],[keepdat1,keepdat2],[stokes1,stokes2]):        
-                            # If within the specified localization, we will skip it when we get to it in the primary loop
-                        # print(filename,station)
-                        if filename==filename1:
-                            plotfile = filename.replace(".oims",f"-stokes{detstokes}-station1.oims").replace('.pims',f'-stokes{detstokes}-station1.pims')
-                        else:
-                            plotfile = filename.replace(".oims",f"-stokes{detstokes}-station2.oims").replace('.pims',f'-stokes{detstokes}-station2.pims')
-                        
-                            
-                        ngrid = imagedata.shape[-1]
-                        mintime = max(0,s['index']-12)
-                        maxtime = min(len(hdrlist)-1, s['index']+12)
-                        plotdata = []
-                        zoomplotdata = []
-                        ra = s['ra']
-                        dec = s['dec']
-                        psize = hdrlist[0]['psize']
-                        udet = s['index']
-                        dettimechan = []
-                        xcoord = np.arange(ngrid)
-                        ycoord = np.arange(ngrid)
-                        xcoord,ycoord = np.meshgrid(xcoord, ycoord)
-                        for keeprow in kd:
-                            if angsep(ra,dec,keeprow['ra'],keeprow['dec']) < float(config1['Quality Control']['statsep']):
-                                dettimechan.append((keeprow['index'],keeprow['channel'],keeprow['ra'],keeprow['dec']))
-                            
-                        dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8')])
-                        curdettimechan = dettimechan[dettimechan['index']==udet]
-                        for pra,pdec,pstation,pindex in plottedlc:
-                            if (pstation==station) and (udet==pindex):
-                                if angsep(pra,pdec,ra,dec) < float(config1['Quality Control']['statsep']):
-                                    continue
-                        prad = float(config1['Quality Control']['statsep'])/psize
-                        beamI = []
-                        for c in range(imagedata.shape[1]):
-                            XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
-                            beamI.append((XX+YY)/2)
-                        # print(imagedata.shape, len(hdrlist))
-
-                        for timeind in range(1,len(hdrlist)):
-                            if timeind in dettimechan['index']:
-                                measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
-                                measDec = dettimechan['dec'][dettimechan['index']==timeind][0]
-                            else:
-                                measRA = ra
-                                measDec = dec
-                            x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
-                            for c in range(imagedata.shape[1]):
-                                if (timeind in dettimechan['index']) and (c in dettimechan['c']):
-                                    hasDETECT = True
-                                else:
-                                    hasDETECT = False
-                                if detstokes==0:
-                                    corbeam = beamI[c]
-                                    pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
-                                else:
-                                    corbeam = 1
-                                    pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
-                                if hasDETECT:
-                                    flux = pbcorrallimage[int(y),int(x)]
-                                else:
-                                    try:
-                                        flux = np.nanmean(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
-                                    except RuntimeWarning:
-                                        flux = 0
-                                midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                                flagged = (timeind,c) in allflaggedtimes
-                                mjd = hdrlist[timeind]['start_time']
-                                hourspastmid = (mjd - np.floor(mjd))*24
-                                plotdata.append((timeind,flux,c,midfreq,flagged,False,hourspastmid))
-
-                        plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('statmatch',bool),('hrpst','f8')])
-                        zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
-                        tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
-                        plotLC(plotfile, plotdata, zoomplotdata,curdettimechan,uniqueid,udet,tdet.isot,ra,dec)
-                                            
-                                    
 
 
                     if args.makefits:
@@ -284,8 +236,7 @@ if __name__=="__main__":
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
             uniqueid+=1
         if srclist1:
-            np.save(srcfile1,srclist1)
-            np.save(srcfile2,srclist2)
+            np.save(srcfile1,allmatch)
 
 
 
