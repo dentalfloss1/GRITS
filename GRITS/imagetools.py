@@ -397,15 +397,10 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     data[1:] = np.where(np.isnan(data[1:]),imagedata[1:] - imagedata[:-1],data[1:])
     for i in range(ints):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
-        xloc = x[np.sqrt((targetx-x)**2 + (targety-y)**2) < statsep].astype(int)
-        yloc = y[np.sqrt((targetx-x)**2 + (targety-y)**2) < statsep].astype(int)
+        avx = targetx
+        avy = targety
         for j in range(nchan):
             for k in range(nstokes):
-                for xpix,ypix in zip(xloc,yloc):
-                    pixflux = data[i,j,k,ypix,xpix]
-                    if pixflux==np.amax(data[i,j,k,np.round(yloc).astype(int),np.round(xloc).astype(int)]):
-                        avx = xpix
-                        avy = ypix
                 if (i,j,k) in flaggedtimes:
                     continue
                 hdr = hdrlist[i]
@@ -416,7 +411,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                 fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                 # Fit image data
-                f0 = imagedata[i,j,k,int(round(avy)),int(round(avx))]
+                f0 = imagedata[i,j,k,int(round(avy)),int(round(targetx))]
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
