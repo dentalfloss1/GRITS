@@ -61,7 +61,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         plt.legend()
         ax = plt.gca()
         xlim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
-        ylim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
+        ylim = (meanpos[1] - 2.5, meanpos[1] + 2.5)
         ax.set_xlim(xlim[0],xlim[1]) 
         ax.set_ylim(ylim[0],ylim[1]) 
         plt.savefig(plotfile.replace("multiplot.png",f"diff_fitpos.png"))
