@@ -15,7 +15,7 @@ from bifrost.device import set_device
 from GRITS.configtemplate import configfile
 from GRITS.plotresults import plotresults,plotsource,plotLC
 from GRITS.readimage import matchfilepairs
-from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask, angsep
+from GRITS.imagetools import pimsfitsout, oimsfitsout, exportcrtf,pbcorr, hdrtopixmask, angsep, sourcefitting
 from GRITS.fitGaussian import fitGaussian
 import glob
 def makeZoomCoords(rad, circular = True):
@@ -119,8 +119,8 @@ if __name__=="__main__":
             continue
         lastfilename1 = filename1
         lastfilename2 = filename2
-        obsfile1= filename1.split('/')[-1]+"_obsfile.npy"
-        obsfile2= filename2.split('/')[-1]+"_obsfile.npy"
+        obsfile1= filename1.split('/')[-1].replace(":",'-')+"_obsfile.npy"
+        obsfile2= filename2.split('/')[-1].replace(":","-")+"_obsfile.npy"
         np.save(obsfile1,obslist1)
         np.save(obsfile2,obslist2)
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
@@ -131,7 +131,7 @@ if __name__=="__main__":
         for s1 in keepdat1:
             currentmatch = [(s1,station1)]
             for m in allmatch:
-                if s1 in m:
+                if s1 in [row[0] for row in m]:
                     continue
             simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
             if np.sum(simul) > 0:
@@ -162,10 +162,10 @@ if __name__=="__main__":
                         sourcesep = min(sourcesep1,sourcesep1_2)
                         if sourcesep < float(config1['Quality Control']['statsep']):
                             currentmatch.append((s1_2,station1))
-        allmatch.append(tuple(currentmatch))
-        stat1srcs = []
-        stat2srcs = []
+            allmatch.append(tuple(currentmatch))
         for m in allmatch:
+            stat1srcs = []
+            stat2srcs = []
             for matchrow in m:
                 if matchrow[1]==station1:
                     s1 = matchrow[0]
@@ -173,7 +173,9 @@ if __name__=="__main__":
                 elif matchrow[1]==station2:
                     s2 = matchrow[0]
                     stat2srcs.append(s2)
-
+            if not stat2srcs:
+                allmatch.remove(m)
+                continue
             # Set some convenient variables for each station source
             s1 = stat1srcs[0]
             s2 = stat2srcs[0]
@@ -197,19 +199,19 @@ if __name__=="__main__":
                 # print("detection stokes does not match")
                 continue
             # Measure fluxes, serves as another QC step. The detection must fit as a guassian
-            imagefit1, diffFIT1, colnames1, coldtypes1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1)
+            imagefit1, diffFIT1, colnames1, coldtypes1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1,float(config1['Quality Control']['statsep']))
             if not diffFIT1:
                 continue
-            imagefit2, diffFIT2, colnames2,coldtypes2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2)
+            imagefit2, diffFIT2, colnames2,coldtypes2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2,float(config2['Quality Control']['statsep']))
             if not diffFIT2:
                 continue
                 
             imageflux1 = np.array(imagefit1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
-            diffFLUX1 = np.array(imagefit1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
+            diffFLUX1 = np.array(diffFIT1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
             imageflux2 = np.array(imagefit2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
-            diffFLUX2 = np.array(imagefit2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
+            diffFLUX2 = np.array(diffFIT2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
 
-            np.savez(filename1.replace(filename1[-4:],f"src{uniqueid}_fluxfile"),imageflux1=imageflux1,
+            np.savez(filename1.split('/')[-1].replace(":","-").replace(filename1[-4:],f"src{uniqueid}_fluxfile"),imageflux1=imageflux1,
                      diffFLUX1=diffFLUX1,
                      minrms1=minrms1,
                      imageflux2=imageflux2,
@@ -235,8 +237,21 @@ if __name__=="__main__":
                         exportcrtf(ra1,dec1,plotfile1.replace(".png",".crtf"))
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
             uniqueid+=1
-        if srclist1:
-            np.save(srcfile1,allmatch)
+
+        formattedoutput = []
+        for uid,m in enumerate(allmatch):
+            for entry in m:
+                row = []
+                for col in entry[0]:
+                    row.append(col)
+                row.append(uid)
+                row.append(entry[1])
+                formattedoutput.append(tuple(row))
+
+            
+
+        outputARRAY =  np.array(formattedoutput,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int),("uniqueid",'i4'),('station','S')])           
+        np.save(srcfile1.replace(":","-"),formattedoutput)
 
 
 

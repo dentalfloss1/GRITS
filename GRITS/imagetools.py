@@ -20,6 +20,8 @@ import astropy.units as u
 
 from lsl_toolkits.OrvilleImage.wcs import getSVwcs, getGENERICwcs
 
+from scipy.optimize import curve_fit
+
 def gaussian_nobackground(xy, amplitude, xo, yo, sigma, theta):
     x, y = xy
     xo = float(xo)
@@ -378,7 +380,7 @@ circle [[{ra}deg, {dec}deg], 15775.2806arcsec] coord=ICRS, corr=[I, Q, U, V], li
         f.write(contents)
 
 
-def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex):
+def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep):
     ngrid = data.shape[-1]
     nstokes = data.shape[2]
     nchan = data.shape[1]
@@ -393,17 +395,17 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     subyarr = np.linspace(0, 10,11)
     subx, suby = np.meshgrid(subxarr, subyarr)
     data[1:] = np.where(np.isnan(data[1:]),imagedata[1:] - imagedata[:-1],data[1:])
-    for i in tqdm(range(ints)):
+    for i in range(ints):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
-        xloc = x[np.sqrt((targetx-x)**2 + (targety-y)**2) < float(config['Quality Control']['statsep'])].astype(int)
-        yloc = y[np.sqrt((targetx-x)**2 + (targety-y)**2) < float(config['Quality Control']['statsep'])].astype(int)
-        for xpix,ypix in zip(xloc,yloc):
-            pixflux = data[i,j,k,ypix,xpix]
-            if pixflux==np.amax(data[i,j,k,np.round(yloc).astype(int),np.round(xloc).astype(int)]):
-                avx = xpix
-                avy = ypix
+        xloc = x[np.sqrt((targetx-x)**2 + (targety-y)**2) < statsep].astype(int)
+        yloc = y[np.sqrt((targetx-x)**2 + (targety-y)**2) < statsep].astype(int)
         for j in range(nchan):
             for k in range(nstokes):
+                for xpix,ypix in zip(xloc,yloc):
+                    pixflux = data[i,j,k,ypix,xpix]
+                    if pixflux==np.amax(data[i,j,k,np.round(yloc).astype(int),np.round(xloc).astype(int)]):
+                        avx = xpix
+                        avy = ypix
                 if (i,j,k) in flaggedtimes:
                     continue
                 hdr = hdrlist[i]
@@ -434,7 +436,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     xOUT = popt[1] + round(avx) - 5
                     yOUT = popt[2] + round(avy) - 5
                     # TIGHT position restrictions
-                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < float(config['Quality Control']['statsep']):
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < 1:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
                         row = []
                         for pind in range(len(popt)):
@@ -467,7 +469,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     xOUT = popt[1] + round(avx) - 5
                     yOUT = popt[2] + round(avy) - 5
                     # TIGHT position restrictions
-                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < float(config['Quality Control']['statsep']):
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < 1:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
                         row = []
                         for pind in range(len(popt)):

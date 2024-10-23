@@ -169,7 +169,9 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print("un-pbcorr and remove bad channels:",t2-t1)
     nchan = imagedata.shape[1]
     t1 = datetime.datetime.now()
-    rmsdata = getminrms(sRad, data,ints,nchan,ngrid,station, chunking=chunking)
+    nomaskdata = np.copy(imagedata)
+    nomaskdata[1:] = imagedata[1:]-imagedata[:-1]
+    rmsdata = getminrms(sRad, nomaskdata,ints,nchan,ngrid,station, chunking=chunking)
     t2 = datetime.datetime.now()
     if not quiet:
         print("RE-compute RMS:",t2-t1)
