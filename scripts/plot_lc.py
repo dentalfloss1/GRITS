@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import numpy as np 
 import matplotlib.pyplot as plt
 import scipy.signal as signal 
@@ -58,8 +59,14 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         if angsep(minVLSSr['ra'],minVLSSr['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(minVLSSr['ra'],minVLSSr['dec'],marker='*',color='black',label=f"{minVLSSr['name'][0]}")
         plt.legend()
+        ax = plt.gca()
+        xlim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
+        ylim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
+        ax.set_xlim(xlim[0],xlim[1]) 
+        ax.set_ylim(ylim[0],ylim[1]) 
         plt.savefig(plotfile.replace("multiplot.png",f"diff_fitpos.png"))
         plt.close()
+
         fig = plt.figure()
         meanpos = imagedat['ra'].mean(), imagedat['dec'].mean()
         plt.scatter(imagedat['ra'],imagedat['dec'],alpha=0.4)
@@ -70,5 +77,8 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         if angsep(min3C['ra'],min3C['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(min3C['ra'],min3C['dec'],marker='s',color='black',label=f"3C{min3C['3C'][0]}")
         plt.legend()
+        ax = plt.gca()
+        ax.set_xlim(xlim[0],xlim[1]) 
+        ax.set_ylim(ylim[0],ylim[1]) 
         plt.savefig(plotfile.replace("multiplot.png",f"image_fitpos.png"))
         plt.close()
