@@ -14,36 +14,82 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
     diffdat2 = alldata['diffFLUX2']
     for sno,(dat, diffdat) in enumerate(zip([dat1,dat2],[diffdat1,diffdat2])):
 
-        # print(dat)
-        # for ufreq in np.sort(np.unique(dat[:,3])):
-        #     subdat = dat[dat[:,3]==ufreq]
-        #     fig = plt.figure(figsize=(30,20))
-        #     plt.scatter(subdat[:,2],subdat[:,0],color='black')
-        #     plt.errorbar(subdat[:,2],subdat[:,0],yerr=subdat[:,1],ls='none',color='black')
-        #     ax = plt.gca()
-        #     ax.set_xlabel("date (MJD)")
-        #     ax.set_ylabel("Flux (Jy)")
-        #     plt.savefig(f"freq{ufreq}MHzLC.png")
-        #     plt.close()
-        #     
         plotfile = filename.replace(".npz",f"_station{sno}_multiplot.png")
-        fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(50,16))
-        for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
-            xdata = dat['mjd'][dat['stokes']==stokesno]
-            ydata = dat['f0'][dat['stokes']==stokesno]
-            yerr = dat['f0err'][dat['stokes']==stokesno]
-            axs[0].errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
-            xdiffdata = diffdat['mjd'][diffdat['stokes']==stokesno]
-            ydiffdata = diffdat['f0'][diffdat['stokes']==stokesno]
-            ydifferr = diffdat['f0err'][diffdat['stokes']==stokesno]
-            axs[1].errorbar(xdiffdata,ydiffdata,yerr=ydifferr,marker=marker,color='black',ls='none',label=stokes)
-        axs[0].set_xlabel("date (MJD)")
-        axs[1].set_xlabel("date (MJD)")
-        axs[0].set_ylabel("Flux (Jy)")
-        axs[1].set_ylabel("Diff. Flux (Jy)")
-        axs[0].legend()
-        axs[1].legend()
-        plt.tight_layout()
+        nchan = len(np.unique(diffdat['freq']))
+        if nchan==1:
+           fig,axs = plt.subplots(nrows=1,ncols=2, figsize=(50,16))
+           for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
+               xdata = dat['mjd'][dat['stokes']==stokesno]
+               ydata = dat['f0'][dat['stokes']==stokesno]
+               yerr = dat['f0err'][dat['stokes']==stokesno]
+               axs[0].errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
+               xdiffdata = diffdat['mjd'][diffdat['stokes']==stokesno]
+               ydiffdata = diffdat['f0'][diffdat['stokes']==stokesno]
+               ydifferr = diffdat['f0err'][diffdat['stokes']==stokesno]
+               axs[1].errorbar(xdiffdata,ydiffdata,yerr=ydifferr,marker=marker,color='black',ls='none',label=stokes)
+           axs[0].set_xlabel("date (MJD)")
+           axs[1].set_xlabel("date (MJD)")
+           axs[0].set_ylabel("Flux (Jy)")
+           axs[1].set_ylabel("Diff. Flux (Jy)")
+           axs[0].legend()
+           axs[1].legend()
+           plt.tight_layout()
+           plt.savefig(plotfile)
+           plt.close()
+        fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(50,12*nchan))
+        for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[:(2*nchan):2]):
+            freq = c
+            curdat = dat[(dat['freq']==freq) ]
+            for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
+                xdata = curdat['mjd'][curdat['stokes']==stokesno]
+                ydata = curdat['f0'][curdat['stokes']==stokesno]
+                yerr = curdat['f0err'][curdat['stokes']==stokesno]
+                ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
+            ax.set_title(f"{freq:5.2f} MHz")
+            ax.legend()
+            if ax==axs.flatten()[-4]:
+                ax.set_xlabel(f"Date (MJD)")
+                # ax.set_ylabel("Flux above median (Jy)")
+                ax.set_ylabel("Flux (Jy)")
+    
+        for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[1:(2*nchan):2]):
+            freq = c
+            curdat = diffdat[(diffdat['freq']==freq)]
+            for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
+                xdata = curdat['mjd'][curdat['stokes']==stokesno]
+                ydata = curdat['f0'][curdat['stokes']==stokesno]
+                yerr = curdat['f0err'][curdat['stokes']==stokesno]
+                ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
+            ax.set_title(f"{freq:5.2f} MHz")
+            ax.legend()
+            if ax==axs.flatten()[-4]:
+                ax.set_xlabel(f"Date (MJD)")
+                # ax.set_ylabel("Flux above median (Jy)")
+                ax.set_ylabel("Flux (Jy)")
+    
+        ax = axs.flatten()[-1]
+        Z = np.zeros((len(np.unique(dat['mjd'])),nchan))
+        sortuhrpsts = np.sort(np.unique(dat['mjd'][dat['mjd']!=0]))
+        for i,d in enumerate(sortuhrpsts):
+            for chno, c in enumerate(np.unique(np.sort(dat['freq']))):
+                try:
+                    Z[i,chno] = dat['f0'][(dat['mjd']==d) & (dat['freq']==c) & (dat['stokes']==0)][0]
+                except: 
+                    pass 
+    #             try:
+    #                 Z[i,c] = np.log10(thisZ) # - np.nanmedian(thisZ)
+    #             except RuntimeWarning:
+    #                 continue
+    #     Z[np.isnan(Z)] = 0
+    #     # setvscale = 3*np.median(Z[Z>0])
+    #     # setvscale = np.amax(np.abs(Z))
+        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+        cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
+    #     cbar.set_label('Approx. Log10 Flux (Jy)')
+        plt.subplots_adjust(hspace=0.3)
+        # locs,labels = plt.xticks()
+        # print(locs,labels)
+        # fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
         plt.savefig(plotfile)
         plt.close()
 
