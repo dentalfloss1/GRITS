@@ -12,12 +12,17 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
     diffdat1 = alldata['diffFLUX1']
     dat2 = alldata['imageflux2']
     diffdat2 = alldata['diffFLUX2']
-    for sno,(dat, diffdat) in enumerate(zip([dat1,dat2],[diffdat1,diffdat2])):
-
+    pixmeas1 = alldata['pixmeas1']
+    pixmeas2 = alldata['pixmeas2']
+    srcarray = alldata['srcarray']
+    station1 = srcarray['station'][0]
+    station2 = srcarray['station'][srcarray['station']!=station1][0]
+    for sno,(dat, diffdat,pixmeas,stationname) in enumerate(zip([dat1,dat2],[diffdat1,diffdat2],[pixmeas1,pixmeas2],[station1,station2])):
+        dettime = srcarray['mjd'][srcarray['station']==stationname]
         plotfile = filename.replace(".npz",f"_station{sno+1}_multiplot.png")
         nchan = len(np.unique(diffdat['freq']))
         if nchan==1:
-           fig,axs = plt.subplots(nrows=4,ncols=2, figsize=(50,16))
+           fig,axs = plt.subplots(nrows=4,ncols=3, figsize=(50,16))
            for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
                xdata = dat['mjd'][dat['stokes']==stokesno]
                ydata = dat['f0'][dat['stokes']==stokesno]
@@ -26,15 +31,25 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                xdiffdata = diffdat['mjd'][diffdat['stokes']==stokesno]
                ydiffdata = diffdat['f0'][diffdat['stokes']==stokesno]
                ydifferr = diffdat['f0err'][diffdat['stokes']==stokesno]
-               axs[stokesno,1].errorbar(xdiffdata,ydiffdata,yerr=ydifferr,marker=marker,color='black',ls='none',label=stokes)
+               axs[stokesno,1].errorbar(xdiffdata,ydiffdata,yerr=ydifferr,marker=marker,ls='none',color='black',label=stokes)
+               xpixdata = pixmeas['mjd'][pixmeas['stokes']==stokesno]
+               ypixdata = pixmeas['f0'][pixmeas['stokes']==stokesno]
+               ypixerr = pixmeas['f0err'][pixmeas['stokes']==stokesno]
+               axs[stokesno,2].scatter(xpixdata,ypixdata,marker=marker,color='black')
+               for d in dettime:
+                   for colno in range(3):
+                       axs[stokesno,colno].axvline(d)
+               axs[stokesno,2].title.set_text(f"Pixel values stokes {stokes}")
                axs[stokesno,1].title.set_text(f"Diff stokes {stokes}")
                axs[stokesno,0].title.set_text(f"Image stokes {stokes}")
                axs[stokesno,0].set_ylabel("Flux (Jy)")
                axs[stokesno,1].set_ylabel("Diff. Flux (Jy)")
+               axs[stokesno,2].set_ylabel("Pixel Flux (Jy)")
                axs[stokesno,0].legend()
                axs[stokesno,1].legend()
            axs[3,0].set_xlabel("date (MJD)")
            axs[3,1].set_xlabel("date (MJD)")
+           axs[3,2].set_xlabel("date (MJD)")
            plt.tight_layout()
            plt.savefig(plotfile)
            plt.close()

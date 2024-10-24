@@ -185,7 +185,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             print(e)
             print('could not compute median and max rms')
 
-    flaggedtimes, islanddata = maskislands(data, rmsdata, ints, nchan, ngrid, flaggedtimes,nsigma=float(config['Quality Control']['nsigma']))
+    flaggedtimes, islanddata = maskislands(imagedata, data, rmsdata, ints, nchan, ngrid, flaggedtimes,nsigma=float(config['Quality Control']['nsigma']))
     
 
     # skipping the first one

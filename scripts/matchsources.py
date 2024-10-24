@@ -129,26 +129,11 @@ if __name__=="__main__":
         srcfile1= filename1.split('/')[-1]+"_srcfile"
         allmatch = []
         for s1 in keepdat1:
+            addsource = False
             currentmatch = [(s1,station1)]
             for m in allmatch:
                 if s1 in [row[0] for row in m]:
                     continue
-            simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
-            if np.sum(simul) > 0:
-                matching2 = keepdat2[simul]
-                for s2 in matching2:
-                     # x and y pixel in image 2 from position in ra,dec image 1
-                    x2f1, y2f1 = hdrtopixmask(hdrlist2[s2['index']], imagedata2.shape[-1],sRad2, s1['ra'], s1['dec'],station2)[0]
-                    x1f2, y1f2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s2['ra'], s2['dec'],station1)[0]
-                    sourcesep1 =  np.sqrt((s1['x']-x1f2)**2 + (s1['y']-y1f2)**2)
-                    sourcesep2 =  np.sqrt((s2['x']-x2f1)**2 + (s2['y']-y2f1)**2)
-                    sourcesep = min(sourcesep1,sourcesep2)
-                    if sourcesep < float(config1['Quality Control']['statsep']):
-                        currentmatch.append((s2,station2))
-                        if args.verbose:
-                            print("----separation----")
-                            print(s1['x'],x1f2,s1['y'],y1f2,s2['x'],x2f1,s2['y'],y2f1,sourcesep1,sourcesep2,s1,s2,sourcesep,angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec']))
-                            print("--------")
             simul = np.abs(s1['mjd'] - keepdat1['mjd'])*24.0*60.0*60.0 < args.timedelta
             if np.sum(simul) > 0:
                 matching1 = keepdat1[simul]
@@ -162,7 +147,25 @@ if __name__=="__main__":
                         sourcesep = min(sourcesep1,sourcesep1_2)
                         if sourcesep < float(config1['Quality Control']['statsep']):
                             currentmatch.append((s1_2,station1))
-            allmatch.append(tuple(currentmatch))
+            simul = np.abs(s1['mjd'] - keepdat2['mjd'])*24.0*60.0*60.0 < args.timedelta
+            if np.sum(simul) > 0:
+                matching2 = keepdat2[simul]
+                for s2 in matching2:
+                     # x and y pixel in image 2 from position in ra,dec image 1
+                    x2f1, y2f1 = hdrtopixmask(hdrlist2[s2['index']], imagedata2.shape[-1],sRad2, s1['ra'], s1['dec'],station2)[0]
+                    x1f2, y1f2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s2['ra'], s2['dec'],station1)[0]
+                    sourcesep1 =  np.sqrt((s1['x']-x1f2)**2 + (s1['y']-y1f2)**2)
+                    sourcesep2 =  np.sqrt((s2['x']-x2f1)**2 + (s2['y']-y2f1)**2)
+                    sourcesep = min(sourcesep1,sourcesep2)
+                    if sourcesep < float(config1['Quality Control']['statsep']):
+                        addsource = True
+                        currentmatch.append((s2,station2))
+                        if args.verbose:
+                            print("----separation----")
+                            print("index:",s1['index'],s1['x'],x1f2,s1['y'],y1f2,s2['x'],x2f1,s2['y'],y2f1,sourcesep1,sourcesep2,s1,s2,sourcesep,angsep(s1['ra'],s1['dec'],s2['ra'],s2['dec']))
+                            print("--------")
+            if addsource:
+                allmatch.append(currentmatch)
         for m in allmatch:
             stat1srcs = []
             stat2srcs = []
@@ -173,9 +176,6 @@ if __name__=="__main__":
                 elif matchrow[1]==station2:
                     s2 = matchrow[0]
                     stat2srcs.append(s2)
-            if not stat2srcs:
-                allmatch.remove(m)
-                continue
             # Set some convenient variables for each station source
             s1 = stat1srcs[0]
             s2 = stat2srcs[0]
@@ -199,24 +199,48 @@ if __name__=="__main__":
                 # print("detection stokes does not match")
                 continue
             # Measure fluxes, serves as another QC step. The detection must fit as a guassian
-            imagefit1, diffFIT1, colnames1, coldtypes1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1,float(config1['Quality Control']['statsep']))
+            imagefit1, diffFIT1, colnames1, coldtypes1, pixmeas1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1,float(config1['Quality Control']['statsep']))
             if not diffFIT1:
                 continue
-            imagefit2, diffFIT2, colnames2,coldtypes2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2,float(config2['Quality Control']['statsep']))
+            imagefit2, diffFIT2, colnames2,coldtypes2, pixmeas2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2,float(config2['Quality Control']['statsep']))
             if not diffFIT2:
                 continue
-                
             imageflux1 = np.array(imagefit1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
             diffFLUX1 = np.array(diffFIT1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
+            pixmeas1 = np.array(pixmeas1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
             imageflux2 = np.array(imagefit2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
             diffFLUX2 = np.array(diffFIT2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
+            pixmeas2 = np.array(pixmeas2,dtype=[(name,dtype) for name,dtype in zip(colnames2,coldtypes2)])
+            formattedoutput = []
+            for entry in m:
+                row = []
+                for col in entry[0]:
+                    row.append(col)
+                row.append(uniqueid)
+                row.append(entry[1].decode())
+                formattedoutput.append(tuple(row))
 
-            np.savez(filename1.split('/')[-1].replace(":","-").replace(filename1[-4:],f"src{uniqueid}_fluxfile"),imageflux1=imageflux1,
+            srcarray =  np.array(formattedoutput,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int),("uniqueid",'i4'),('station','<U8')])           
+            detection1times = srcarray['mjd'][srcarray['station']==station1.decode()]
+            detection2times = srcarray['mjd'][srcarray['station']==station2.decode()]
+
+            if ~np.isin(detection1times, diffFLUX1['mjd']).any():
+                continue
+            if ~np.isin(detection2times, diffFLUX2['mjd']).any():
+                continue
+
+
+            np.savez(filename1.split('/')[-1].replace(":","-").replace(filename1[-4:],f"src{uniqueid}_fluxfile"),
+                     imageflux1=imageflux1,
                      diffFLUX1=diffFLUX1,
                      minrms1=minrms1,
                      imageflux2=imageflux2,
                      diffFLUX2=diffFLUX2,
-                     minrms2=minrms2)
+                     minrms2=minrms2,
+                     srcarray=srcarray,
+                     pixmeas1=pixmeas1,
+                     pixmeas2=pixmeas2)
+
             for s1 in stat1srcs:
                 for s2 in stat2srcs:
                  
@@ -238,20 +262,9 @@ if __name__=="__main__":
                         exportcrtf(ra2,dec2,plotfile2.replace(".png",".crtf"))
             uniqueid+=1
 
-        formattedoutput = []
-        for uid,m in enumerate(allmatch):
-            for entry in m:
-                row = []
-                for col in entry[0]:
-                    row.append(col)
-                row.append(uid)
-                row.append(entry[1])
-                formattedoutput.append(tuple(row))
 
             
 
-        outputARRAY =  np.array(formattedoutput,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int),("uniqueid",'i4'),('station','S')])           
-        np.save(srcfile1.replace(":","-"),formattedoutput)
 
 
 

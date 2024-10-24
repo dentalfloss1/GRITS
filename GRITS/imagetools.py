@@ -212,7 +212,7 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
         raise Exception(f"Invalid transform: {x},{y},{w},{station}")
     return radec
 
-def maskislands(data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxDR=300):
+def maskislands(imagedata, data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxDR=300):
     dataislands = np.copy(data)
     islandmasks = np.zeros(data.shape,dtype=bool)
     flaggedtimes = []
@@ -222,13 +222,8 @@ def maskislands(data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsigma=3, maxD
             islandcond = data[i,j,k] > (rmsdata[i,j,k]*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
             for k in range(1,4):
-                islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (data[i,j,k] < 0))
+                islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] > 0) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] < 0) & (data[i,j,k] < 0))
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-   #  islanddata = islanddata.copy('cuda')
-   #  # MULTI Channel detections only
-   #  BFMap("""if (sumisland(time,stokes,i,j) < (5/6)) isldata(time,chan,stokes,i,j) = 0;""",{'sumisland':sumisland,'isldata':islanddata},
-   #      axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
-   #  islanddata = islanddata.copy('system')
     return flaggedtimes, islandmasks
 
 def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
@@ -387,6 +382,10 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     ints = data.shape[0]
     imagefit = []
     diffFIT = []
+    for c in range(nchan):
+        XX,YY = pbcorr(hdrlist[0],ngrid,c,hdrlist[0]['psize'],station)
+        imagedata[:,c,0,:,:]/=((XX+YY)/2)
+        data[:,c,0,:,:]/=((XX+YY)/2)
     # Source fit the images
     xarr = np.linspace(0,data.shape[-1]-1,data.shape[-1])
     yarr = np.linspace(0, data.shape[-1]-1,data.shape[-1])
@@ -395,6 +394,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     subyarr = np.linspace(0, 10,11)
     subx, suby = np.meshgrid(subxarr, subyarr)
     data[1:] = np.where(np.isnan(data[1:]),imagedata[1:] - imagedata[:-1],data[1:])
+    pixmeas = []
     for i in range(ints):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
@@ -445,12 +445,16 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                         row.append(raOUT)
                         row.append(decOUT)
                         imagefit.append(tuple(row))
+                    else: 
+                        raise Exception("fit too far away")
                 except Exception as e:
-                    print(e)
-                    print(popt,pcov,infodict,mesg,ier)
+                    # print(e)
+                    # print(popt,pcov,infodict,mesg,ier)
+                    pass
 
                 # fit diff data
                 f0 = data[i,j,k,int(round(avy)),int(round(avx))]
+                pixmeas.append((f0,0,avx,0,avy,0,hdrlist[i]['start_time'],midfreq/1e6,k,srcRA,srcDEC))
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
@@ -478,13 +482,14 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                         row.append(raOUT)
                         row.append(decOUT)
                         diffFIT.append(tuple(row))
+                    else:
+                        raise Exception("fit too far away")
                 except Exception as e:
-                    print(e)
-                    print(popt,pcov,infodict,mesg,ier)
-                    if i==targetindex:
-                        return [],[],[],[]
+                    pass
+                  #   print(e)
+                  #   print(popt,pcov,infodict,mesg,ier)
     colnames = ["f0","f0err","x0","x0err","y0","y0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
-    return imagefit,diffFIT,colnames,coldtypes
+    return imagefit,diffFIT,colnames,coldtypes,pixmeas
 
 
