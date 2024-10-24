@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal 
 import glob
 from tqdm import tqdm
-from GRITS.catalogs import cat3c,VLSSr50jy
+from GRITS.catalogs import cat3c,VLSSr50jy,atnf
 from GRITS.imagetools import angsep
 for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
     alldata = np.load(filename)
@@ -55,36 +55,58 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
            plt.close()
         else:
             for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
-                fig, axs = plt.subplots(nrows=nchan+1,ncols=2,figsize=(50,12*nchan))
-                for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[:(2*nchan):2]):
+                fig, axs = plt.subplots(nrows=nchan+1,ncols=3,figsize=(50,12*nchan))
+                for c,ax in zip(np.unique(dat['freq']),axs.flatten()[:(3*nchan):3]):
                     freq = c
                     curdat = dat[(dat['freq']==freq) ]
                     xdata = curdat['mjd'][curdat['stokes']==stokesno]
                     ydata = curdat['f0'][curdat['stokes']==stokesno]
                     yerr = curdat['f0err'][curdat['stokes']==stokesno]
                     ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
-                    ax.set_title(f"{freq:5.2f} MHz stokes {stokes}")
+                    ax.set_title(f"{freq:5.2f} MHz stokes {stokes} Image Flux")
                     ax.legend()
+                    for d in dettime:
+                        for colno in range(3):
+                            ax.axvline(d)
                     if ax==axs.flatten()[-4]:
                         ax.set_xlabel(f"Date (MJD)")
                         # ax.set_ylabel("Flux above median (Jy)")
                         ax.set_ylabel("Flux (Jy)")
     
-                for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[1:(2*nchan):2]):
+                for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[1:(3*nchan):3]):
                     freq = c
                     curdat = diffdat[(diffdat['freq']==freq)]
                     xdata = curdat['mjd'][curdat['stokes']==stokesno]
                     ydata = curdat['f0'][curdat['stokes']==stokesno]
                     yerr = curdat['f0err'][curdat['stokes']==stokesno]
                     ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
-                    ax.set_title(f"{freq:5.2f} MHz")
+                    ax.set_title(f"{freq:5.2f} MHz Diff Flux")
                     ax.legend()
+                    for d in dettime:
+                        for colno in range(3):
+                            ax.axvline(d)
                     if ax==axs.flatten()[-4]:
                         ax.set_xlabel(f"Date (MJD)")
                         # ax.set_ylabel("Flux above median (Jy)")
-                        ax.set_ylabel("Flux (Jy)")
+                        ax.set_ylabel("Diff Flux (Jy)")
+
+                for c,ax in zip(np.unique(pixmeas['freq']),axs.flatten()[2:(3*nchan):3]):
+                    freq = c
+                    curdat = pixmeas[(pixmeas['freq']==freq)]
+                    xdata = curdat['mjd'][curdat['stokes']==stokesno]
+                    ydata = curdat['f0'][curdat['stokes']==stokesno]
+                    ax.scatter(xdata,ydata,marker=marker,color='black',label=stokes)
+                    ax.set_title(f"{freq:5.2f} MHz Pixel Flux")
+                    ax.legend()
+                    for d in dettime:
+                        for colno in range(3):
+                            ax.axvline(d)
+                    if ax==axs.flatten()[-4]:
+                        ax.set_xlabel(f"Date (MJD)")
+                        # ax.set_ylabel("Flux above median (Jy)")
+                        ax.set_ylabel("Pixel Flux (Jy)")
     
-                ax = axs.flatten()[-2]
+                ax = axs.flatten()[-3]
                 Z = np.zeros((len(np.unique(dat['mjd'])),nchan))
                 sortuhrpsts = np.sort(np.unique(dat['mjd'][dat['mjd']!=0]))
                 for i,d in enumerate(sortuhrpsts):
@@ -107,7 +129,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                 # locs,labels = plt.xticks()
                 # print(locs,labels)
                 # fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
-                ax = axs.flatten()[-1]
+                ax = axs.flatten()[-2]
                 Z = np.zeros((len(np.unique(diffdat['mjd'])),nchan))
                 sortuhrpsts = np.sort(np.unique(diffdat['mjd'][diffdat['mjd']!=0]))
                 for i,d in enumerate(sortuhrpsts):
@@ -130,6 +152,26 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                 # locs,labels = plt.xticks()
                 # print(locs,labels)
                 # fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
+                ax = axs.flatten()[-1]
+                Z = np.zeros((len(np.unique(pixmeas['mjd'])),nchan))
+                sortuhrpsts = np.sort(np.unique(pixmeas['mjd'][pixmeas['mjd']!=0]))
+                for i,d in enumerate(sortuhrpsts):
+                    for chno, c in enumerate(np.unique(np.sort(pixmeas['freq']))):
+                        try:
+                            Z[i,chno] = pixmeas['f0'][(pixmeas['mjd']==d) & (pixmeas['freq']==c) & (pixmeas['stokes']==stokesno)][0]
+                        except: 
+                            pass 
+    #                     try:
+    #                         Z[i,c] = np.log10(thisZ) # - np.nanmedian(thisZ)
+    #                     except RuntimeWarning:
+    #                         continue
+    #             Z[np.isnan(Z)] = 0
+    #             # setvscale = 3*np.median(Z[Z>0])
+    #             # setvscale = np.amax(np.abs(Z))
+                waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+                cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
+    #             cbar.set_label('Approx. Log10 Flux (Jy)')
+                plt.subplots_adjust(hspace=0.3)
                 plt.savefig(plotfile.replace(".png",f"-stokes{stokes}.png"))
                 plt.close()
 
@@ -138,6 +180,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
             meanpos = diffdat['ra'].mean(), diffdat['dec'].mean()
         min3C = cat3c[angsep(meanpos[0],meanpos[1],cat3c['ra'],cat3c['dec'])==angsep(meanpos[0],meanpos[1],cat3c['ra'],cat3c['dec']).min()]
         minVLSSr = VLSSr50jy[angsep(meanpos[0],meanpos[1],VLSSr50jy['ra'],VLSSr50jy['dec'])==angsep(meanpos[0],meanpos[1],VLSSr50jy['ra'],VLSSr50jy['dec']).min()]
+        minpulsar = atnf[angsep(meanpos[0],meanpos[1],atnf['ra'],atnf['dec'])==angsep(meanpos[0],meanpos[1],atnf['ra'],atnf['dec']).min()]
         fig = plt.figure()
         plt.scatter(diffdat['ra'],diffdat['dec'],alpha=0.4)
         plt.scatter(diffdat['ra'].mean(), diffdat['dec'].mean(),marker='x',color='black')
@@ -145,7 +188,9 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
             plt.scatter(min3C['ra'],min3C['dec'],marker='s',color='black',label=f"3C{min3C['3C'][0]}")
         if angsep(minVLSSr['ra'],minVLSSr['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(minVLSSr['ra'],minVLSSr['dec'],marker='*',color='black',label=f"{minVLSSr['name'][0]}")
-            plt.legend()
+        if angsep(minpulsar['ra'],minpulsar['dec'],meanpos[0],meanpos[1])[0] < 5:
+            plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='*',color='black',label=f"{minpulsar['name'][0]}")
+        plt.legend()
         ax = plt.gca()
         xlim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
         ylim = (meanpos[1] - 2.5, meanpos[1] + 2.5)
@@ -163,7 +208,9 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
             plt.scatter(minVLSSr['ra'],minVLSSr['dec'],marker='*',color='black',label=f"{minVLSSr['name'][0]}")
         if angsep(min3C['ra'],min3C['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(min3C['ra'],min3C['dec'],marker='s',color='black',label=f"3C{min3C['3C'][0]}")
-            plt.legend()
+        if angsep(minpulsar['ra'],minpulsar['dec'],meanpos[0],meanpos[1])[0] < 5:
+            plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='*',color='black',label=f"{minpulsar['name'][0]}")
+        plt.legend()
         ax = plt.gca()
         ax.set_xlim(xlim[0],xlim[1]) 
         ax.set_ylim(ylim[0],ylim[1]) 

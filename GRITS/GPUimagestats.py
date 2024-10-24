@@ -17,7 +17,6 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
     fltmax = np.finfo('f4').max
     imagedata[np.isnan(imagedata)] = fltmax
     minrms = np.zeros((ints,nchan,4))
-    chunking = 800
     for chunk in range(int(np.ceil(ints/chunking))):
         if chunk==0:
             start = 0
