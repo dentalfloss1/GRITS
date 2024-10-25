@@ -176,12 +176,15 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                 plt.close()
 
         imagedat = dat
+        detposra = diffdat['ra'][np.isin(diffdat['mjd'],dettime)]
+        detposdec = diffdat['dec'][np.isin(diffdat['mjd'],dettime)]
         if sno==0:
             meanpos = diffdat['ra'].mean(), diffdat['dec'].mean()
         min3C = cat3c[angsep(meanpos[0],meanpos[1],cat3c['ra'],cat3c['dec'])==angsep(meanpos[0],meanpos[1],cat3c['ra'],cat3c['dec']).min()]
         minVLSSr = VLSSr50jy[angsep(meanpos[0],meanpos[1],VLSSr50jy['ra'],VLSSr50jy['dec'])==angsep(meanpos[0],meanpos[1],VLSSr50jy['ra'],VLSSr50jy['dec']).min()]
         minpulsar = atnf[angsep(meanpos[0],meanpos[1],atnf['ra'],atnf['dec'])==angsep(meanpos[0],meanpos[1],atnf['ra'],atnf['dec']).min()]
         fig = plt.figure()
+        plt.scatter(detposra,detposdec,label="t=tdet",marker='P',color='red')
         plt.scatter(diffdat['ra'],diffdat['dec'],alpha=0.4)
         plt.scatter(diffdat['ra'].mean(), diffdat['dec'].mean(),marker='x',color='black')
         if angsep(min3C['ra'],min3C['dec'],meanpos[0],meanpos[1])[0] < 5:
@@ -189,7 +192,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         if angsep(minVLSSr['ra'],minVLSSr['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(minVLSSr['ra'],minVLSSr['dec'],marker='*',color='black',label=f"{minVLSSr['name'][0]}")
         if angsep(minpulsar['ra'],minpulsar['dec'],meanpos[0],meanpos[1])[0] < 5:
-            plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='*',color='black',label=f"{minpulsar['name'][0]}")
+            plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='X',color='black',label=f"{minpulsar['name'][0]}")
         plt.legend()
         ax = plt.gca()
         xlim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
@@ -199,8 +202,11 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         plt.savefig(plotfile.replace("multiplot.png",f"diff_fitpos.png"))
         plt.close()
 
+        detposra = imagedat['ra'][np.isin(imagedat['mjd'],dettime)]
+        detposdec = imagedat['dec'][np.isin(imagedat['mjd'],dettime)]
         fig = plt.figure()
         meanpos = imagedat['ra'].mean(), imagedat['dec'].mean()
+        plt.scatter(detposra,detposdec,label="t=tdet",marker='P',color='red')
         plt.scatter(imagedat['ra'],imagedat['dec'],alpha=0.4)
         
         plt.scatter(imagedat['ra'].mean(), imagedat['dec'].mean(),marker='x',color='black')
@@ -209,7 +215,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         if angsep(min3C['ra'],min3C['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(min3C['ra'],min3C['dec'],marker='s',color='black',label=f"3C{min3C['3C'][0]}")
         if angsep(minpulsar['ra'],minpulsar['dec'],meanpos[0],meanpos[1])[0] < 5:
-            plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='*',color='black',label=f"{minpulsar['name'][0]}")
+            plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='X',color='black',label=f"{minpulsar['name'][0]}")
         plt.legend()
         ax = plt.gca()
         ax.set_xlim(xlim[0],xlim[1]) 

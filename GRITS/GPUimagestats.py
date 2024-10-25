@@ -1,5 +1,6 @@
 import numpy as np 
 from bifrost import ndarray as BFArray
+from bifrost.ndarray import copy_array
 from bifrost import map as BFMap 
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.constants import CYG_A, CAS_A, SGR_A, TAU_A, VIRGO_A, HERC_A, floatmax
@@ -16,7 +17,9 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
     fltmax = np.finfo('f4').max
     imagedata[np.isnan(imagedata)] = fltmax
-    minrms = np.zeros((ints,nchan,4))
+    gpurmsdata = BFArray(np.full((chunking,nchan,4,ngrid,ngrid),floatmax,dtype='f4'),dtype='f32',space='cuda')
+    BFimagedata = BFArray(imagedata.astype('f4'),dtype='f32',space='system')
+    minrms = np.zeros((ints,nchan,4),dtype='f4')
     for chunk in range(int(np.ceil(ints/chunking))):
         if chunk==0:
             start = 0
@@ -24,41 +27,28 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
         else:
             start=chunk*chunking 
             end=min(chunk*chunking + chunking ,ints)
+        idata = BFimagedata[start:end].copy(space='cuda')
         subints = end-start
-        idata = BFArray(np.zeros((subints,nchan,4,ngrid,ngrid)),dtype='f32',space='system')
-        idata[...] = imagedata[start:end]
-        idata= idata.copy('cuda')
-        gpurmsdata = BFArray(np.zeros((subints,nchan,4,ngrid,ngrid)),dtype='f32',space='cuda')
         rmsbox = 30 #2*int(round(ngrid/28.8))
-        BFMap("""//auto boxhalflen = %f;
-                 //auto center = %f/2;
-                 //auto x = (float) i - center + 0.5 ;
-                 //auto y = (float) j - center + 0.5 ;
-                 auto intermediateI = 0.0;
-                 auto intermediateQ = 0.0;
-                 auto intermediateU = 0.0;
-                 auto intermediateV = 0.0;
-                 auto nx=%i;
-                 auto ny=%i;
-                 for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
-                     for (auto offj=-(ny/2); offj<=(ny/2); offj++){
-                         intermediateI+=dat(time,chan,0,i+offi,j+offj)*dat(time,chan,0,i+offi,j+offj);
-                         intermediateQ+=dat(time,chan,1,i+offi,j+offj)*dat(time,chan,1,i+offi,j+offj);
-                         intermediateU+=dat(time,chan,2,i+offi,j+offj)*dat(time,chan,2,i+offi,j+offj);
-                         intermediateV+=dat(time,chan,3,i+offi,j+offj)*dat(time,chan,3,i+offi,j+offj);
+        BFMap("""if ((i>%i) && (j>%i) && (i<%i) &&(j<%i)){
+                     auto intermediate = 0.0;
+                     auto nx=%i;
+                     auto ny=%i;
+                     for (auto offi=-(nx/2); offi<=(nx/2); offi++) { 
+                         for (auto offj=-(ny/2); offj<=(ny/2); offj++){
+                             intermediate+=dat(time,chan,stokes,i+offi,j+offj)*dat(time,chan,stokes,i+offi,j+offj);
+                         }
                      }
+                     rmsdat(time,chan,stokes,i,j) = sqrt(intermediate/((float) nx*ny)) ;
                  }
-                 rmsdat(time,chan,0,i,j) = sqrt(intermediateI/((float) nx*ny)) ;
-                 rmsdat(time,chan,1,i,j) = sqrt(intermediateQ/((float) nx*ny)) ;
-                 rmsdat(time,chan,2,i,j) = sqrt(intermediateU/((float) nx*ny)) ;
-                 rmsdat(time,chan,3,i,j) = sqrt(intermediateV/((float) nx*ny)) ;
-                 """ % (boxhalflen,float(ngrid),rmsbox,rmsbox,),
+                 """ % (rmsbox,rmsbox,ngrid - rmsbox,ngrid-rmsbox,rmsbox,rmsbox,),
                  {"dat":idata, "rmsdat":gpurmsdata},
-                 axis_names=('time','chan','i','j'), shape=(subints,nchan,ngrid,ngrid))
-        gpurmsdata = gpurmsdata.copy('system')
-        gpurmsdata[gpurmsdata==0] = floatmax
-        minrms[start:end] = gpurmsdata.min(axis=(-1,-2))
-    imagedata[imagedata==fltmax] = np.nan
+                 axis_names=('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+        try:
+            copy_array(cpurmsdata, gpurmsdata)
+        except NameError:
+            cpurmsdata = gpurmsdata.copy('system')
+        minrms[start:end] = cpurmsdata.min(axis=(-1,-2))[0:subints]
     return  minrms
 def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station, filename, positioncheck=False):
     # we can calibrate off of cyg a, cas a, virgo a, or tau a for now

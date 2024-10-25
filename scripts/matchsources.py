@@ -167,6 +167,7 @@ if __name__=="__main__":
             if addsource:
                 allmatch.append(currentmatch)
         for m in allmatch:
+            print(m)
             stat1srcs = []
             stat2srcs = []
             for matchrow in m:
@@ -243,6 +244,22 @@ if __name__=="__main__":
 
             for s1 in stat1srcs:
                 for s2 in stat2srcs:
+                    index1 = s1['index']
+                    fullsrclist.append((uniqueid,s1['ra'],s1['dec'],s1['nchan'],s2['ra'],s2['dec'],s2['nchan'],sourcesep))
+                    filename1 = str(s1['filename'])
+                    ra1 = s1['ra']
+                    dec1 = s1['dec']
+                    c1 = s1['channel']
+                    stokes1 = s1['stokes']
+                    plotfile1 = filename1.replace(".oims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(".pims",f"-src{uniqueid}-station1-t{index1}-c{c1}-stokes{stokes1}.png").replace(':','-').split('/')[-1]
+                    index2 = s2['index']
+                    filename2 = str(s2['filename'])
+                    ra2 = s2['ra']
+                    dec2 = s2['dec']
+                    c2 = s2['channel']
+                    stokes2 = s2['stokes']
+                    plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(':','-').split('/')[-1]
+
                  
                     # Make plots showing sources in diff images
                     plotresults(index1,c1,stokes1,plotfile1,minrms1[index1,c1,stokes1],islands1[:,c1,:,:,:],imagedata1[:,c1,:,:,:],diffdata1[:,c1,:,:,:],hdrlist1[index1],sRad1,station1)

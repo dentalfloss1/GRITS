@@ -224,7 +224,7 @@ def maskislands(imagedata, data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsi
             for k in range(1,4):
                 islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] > 0) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] < 0) & (data[i,j,k] < 0))
                 islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-    return flaggedtimes, islandmasks
+    return flaggedtimes, islandmasks.astype(int)
 
 def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
     hdulist = astrofits.HDUList()

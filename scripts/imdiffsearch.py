@@ -319,8 +319,6 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print(np.sum(numsrccond),"Images with a valid number of sources")
         print(np.sum(islandcondition.any(axis=(1,2,3,4))),"Images with sources")
         print(np.sum(numsrccond),np.sum(islandcondition.any(axis=(2,3,4))))
-    islandfloat = np.zeros(islanddata.shape,dtype=float)
-    islandfloat[...] = islanddata
     if not quiet:
         print("Iterating over sources")
     for ind in range(len(whereislands[0])):
@@ -377,7 +375,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             uniquesrcid += 1
         if not noplot:
             if not np.all(flagsrc):
-                plotresults(i,c,s,filename,rmsdata[i,c,s],islandfloat[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
+                plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
     for t in range(ints):
         for c in range(nchan):
             for s in range(nstokes):
