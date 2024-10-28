@@ -102,10 +102,10 @@ if __name__=="__main__":
     fullsrclist = []
     uniqueid=0
     for filename1,filename2 in tqdm(matchedfiles):
-        obsfile1= filename1.split('/')[-1]+"_obsfile.txt"
-        obsfile2= filename2.split('/')[-1]+"_obsfile.txt"
+        obsfile1= filename1.split('/')[-1].replace(":",'-')+"_obsfile.npy"
+        obsfile2= filename2.split('/')[-1].replace(":","-")+"_obsfile.npy"
         if args.resume:
-            if os.path.exists(obsfile1+'.npy') and os.path.exists(obsfile2+'.npy'):
+            if os.path.exists(obsfile1) and os.path.exists(obsfile2):
                 continue
         if lastfilename1!=filename1:
             dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
@@ -119,8 +119,6 @@ if __name__=="__main__":
             continue
         lastfilename1 = filename1
         lastfilename2 = filename2
-        obsfile1= filename1.split('/')[-1].replace(":",'-')+"_obsfile.npy"
-        obsfile2= filename2.split('/')[-1].replace(":","-")+"_obsfile.npy"
         np.save(obsfile1,obslist1)
         np.save(obsfile2,obslist2)
         keepdat1 = dat1[(dat1['3c']=="False") & (dat1['VLSSr50']=="False")]
