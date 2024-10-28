@@ -17,6 +17,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
     fltmax = np.finfo('f4').max
     imagedata[np.isnan(imagedata)] = fltmax
+    imagedata[imagedata>fltmax] = fltmax 
     gpurmsdata = BFArray(np.full((chunking,nchan,4,ngrid,ngrid),floatmax,dtype='f4'),dtype='f32',space='cuda')
     BFimagedata = BFArray(imagedata.astype('f4'),dtype='f32',space='system')
     minrms = np.zeros((ints,nchan,4),dtype='f4')
