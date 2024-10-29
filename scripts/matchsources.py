@@ -127,6 +127,7 @@ if __name__=="__main__":
         srcfile1= filename1.split('/')[-1]+"_srcfile"
         allmatch = []
         for s1 in keepdat1:
+            stokes1 = s1['stokes']
             addsource = False
             currentmatch = [(s1,station1)]
             for m in allmatch:
@@ -136,7 +137,8 @@ if __name__=="__main__":
             if np.sum(simul) > 0:
                 matching1 = keepdat1[simul]
                 for s1_2 in matching1:
-                    if s1_2!=s1:
+                    stokes1_2 = s1_2['stokes']
+                    if (s1_2!=s1) and (stokes1_2==stokes1):
                          # x and y pixel in image 2 from position in ra,dec image 1
                         x1_2f1, y1_2f1 = hdrtopixmask(hdrlist1[s1_2['index']], imagedata1.shape[-1],sRad1, s1['ra'], s1['dec'],station1)[0]
                         x1f1_2, y1f1_2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s1_2['ra'], s1_2['dec'],station1)[0]
@@ -149,13 +151,14 @@ if __name__=="__main__":
             if np.sum(simul) > 0:
                 matching2 = keepdat2[simul]
                 for s2 in matching2:
+                    stokes2 = s2['stokes']
                      # x and y pixel in image 2 from position in ra,dec image 1
                     x2f1, y2f1 = hdrtopixmask(hdrlist2[s2['index']], imagedata2.shape[-1],sRad2, s1['ra'], s1['dec'],station2)[0]
                     x1f2, y1f2 = hdrtopixmask(hdrlist1[s1['index']], imagedata1.shape[-1],sRad1, s2['ra'], s2['dec'],station1)[0]
                     sourcesep1 =  np.sqrt((s1['x']-x1f2)**2 + (s1['y']-y1f2)**2)
                     sourcesep2 =  np.sqrt((s2['x']-x2f1)**2 + (s2['y']-y2f1)**2)
                     sourcesep = min(sourcesep1,sourcesep2)
-                    if sourcesep < float(config1['Quality Control']['statsep']):
+                    if (sourcesep < float(config1['Quality Control']['statsep'])) and (stokes1==stokes2):
                         addsource = True
                         currentmatch.append((s2,station2))
                         if args.verbose:
@@ -194,15 +197,14 @@ if __name__=="__main__":
             stokes2 = s2['stokes']
             plotfile2 = filename2.replace(".oims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(".pims",f"-src{uniqueid}-station2-t{index2}-c{c2}-stokes{stokes2}.png").replace(':','-').split('/')[-1]
 
-            if stokes1!=stokes2:
-                # print("detection stokes does not match")
-                continue
             # Measure fluxes, serves as another QC step. The detection must fit as a guassian
-            imagefit1, diffFIT1, colnames1, coldtypes1, pixmeas1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1,float(config1['Quality Control']['statsep']))
+            imagefit1, diffFIT1, colnames1, coldtypes1, pixmeas1 =  sourcefitting(diffdata1,imagedata1,allflaggedtimes1,s1['ra'],s1['dec'],hdrlist1,sRad1,station1,index1,float(config1['Quality Control']['statsep']),fitrange=6)
             if not diffFIT1:
+                print("station1 failed to fit gaussian")
                 continue
-            imagefit2, diffFIT2, colnames2,coldtypes2, pixmeas2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2,float(config2['Quality Control']['statsep']))
+            imagefit2, diffFIT2, colnames2,coldtypes2, pixmeas2 =  sourcefitting(diffdata2,imagedata2,allflaggedtimes2,s2['ra'],s2['dec'],hdrlist2,sRad2,station2,index2,float(config2['Quality Control']['statsep']),fitrange=6)
             if not diffFIT2:
+                print("station2 failed to fit gaussian")
                 continue
             imageflux1 = np.array(imagefit1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
             diffFLUX1 = np.array(diffFIT1,dtype=[(name,dtype) for name,dtype in zip(colnames1,coldtypes1)])
@@ -224,8 +226,10 @@ if __name__=="__main__":
             detection2times = srcarray['mjd'][srcarray['station']==station2.decode()]
 
             if ~np.isin(detection1times, diffFLUX1['mjd']).any():
+                print("station 1 could not fit a gaussian at detection time")
                 continue
             if ~np.isin(detection2times, diffFLUX2['mjd']).any():
+                print("station 2 could not fit a gaussian at detection time")
                 continue
 
 
@@ -238,7 +242,9 @@ if __name__=="__main__":
                      minrms2=minrms2,
                      srcarray=srcarray,
                      pixmeas1=pixmeas1,
-                     pixmeas2=pixmeas2)
+                     pixmeas2=pixmeas2,
+                     corrfluxlist1=corrfluxlist1,
+                     corrfluxlist2=corrfluxlist2)
 
             for s1 in stat1srcs:
                 for s2 in stat2srcs:

@@ -28,6 +28,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                ydata = dat['f0'][dat['stokes']==stokesno]
                yerr = dat['f0err'][dat['stokes']==stokesno]
                axs[stokesno,0].errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
+               detpos = diffdat[['ra','dec']][np.isin(diffdat['mjd'],dettime) & (diffdat['stokes']==stokesno)]
                xdiffdata = diffdat['mjd'][diffdat['stokes']==stokesno]
                ydiffdata = diffdat['f0'][diffdat['stokes']==stokesno]
                ydifferr = diffdat['f0err'][diffdat['stokes']==stokesno]
@@ -40,7 +41,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                    for colno in range(3):
                        axs[stokesno,colno].axvline(d)
                axs[stokesno,2].title.set_text(f"Pixel values stokes {stokes}")
-               axs[stokesno,1].title.set_text(f"Diff stokes {stokes}")
+               axs[stokesno,1].title.set_text(f"Diff stokes {stokes} {detpos}")
                axs[stokesno,0].title.set_text(f"Image stokes {stokes}")
                axs[stokesno,0].set_ylabel("Flux (Jy)")
                axs[stokesno,1].set_ylabel("Diff. Flux (Jy)")
@@ -76,11 +77,13 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                 for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[1:(3*nchan):3]):
                     freq = c
                     curdat = diffdat[(diffdat['freq']==freq)]
+
+                    detpos = curdat[['ra','dec']][np.isin(curdat['mjd'],dettime) & (curdat['stokes']==stokesno)]
                     xdata = curdat['mjd'][curdat['stokes']==stokesno]
                     ydata = curdat['f0'][curdat['stokes']==stokesno]
                     yerr = curdat['f0err'][curdat['stokes']==stokesno]
                     ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
-                    ax.set_title(f"{freq:5.2f} MHz Diff Flux")
+                    ax.set_title(f"{freq:5.2f} MHz Diff Flux {detpos}")
                     ax.legend()
                     for d in dettime:
                         for colno in range(3):
@@ -205,7 +208,6 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         detposra = imagedat['ra'][np.isin(imagedat['mjd'],dettime)]
         detposdec = imagedat['dec'][np.isin(imagedat['mjd'],dettime)]
         fig = plt.figure()
-        meanpos = imagedat['ra'].mean(), imagedat['dec'].mean()
         plt.scatter(detposra,detposdec,label="t=tdet",marker='P',color='red')
         plt.scatter(imagedat['ra'],imagedat['dec'],alpha=0.4)
         

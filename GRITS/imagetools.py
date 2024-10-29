@@ -379,17 +379,21 @@ circle [[{ra}deg, {dec}deg], 15775.2806arcsec] coord=ICRS, corr=[I, Q, U, V], li
         f.write(contents)
 
 
-def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep):
+def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep,fitrange=-1):
     ngrid = data.shape[-1]
     nstokes = data.shape[2]
     nchan = data.shape[1]
     ints = data.shape[0]
+    if fitrange==-1:
+        fitrange = int(np.ceil(ints/2))
     imagefit = []
     diffFIT = []
+    pbimagedata = np.copy(imagedata)
+    pbdata = np.copy(data)
     for c in range(nchan):
         XX,YY = pbcorr(hdrlist[0],ngrid,c,hdrlist[0]['psize'],station)
-        imagedata[:,c,0,:,:]/=((XX+YY)/2)
-        data[:,c,0,:,:]/=((XX+YY)/2)
+        pbimagedata[:,c,0,:,:]/=((XX+YY)/2)
+        pbdata[:,c,0,:,:]/=((XX+YY)/2)
     # Source fit the images
     xarr = np.linspace(0,data.shape[-1]-1,data.shape[-1])
     yarr = np.linspace(0, data.shape[-1]-1,data.shape[-1])
@@ -397,9 +401,11 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     subxarr = np.linspace(0,10,11)
     subyarr = np.linspace(0, 10,11)
     subx, suby = np.meshgrid(subxarr, subyarr)
-    data[1:] = np.where(np.isnan(data[1:]),imagedata[1:] - imagedata[:-1],data[1:])
+    pbdata[1:] = np.where(np.isnan(pbdata[1:]),pbimagedata[1:] - pbimagedata[:-1],pbdata[1:])
     pixmeas = []
-    for i in range(ints):
+    startfit = max(0,targetindex-fitrange)
+    stopfit = max(ints,targetindex+fitrange+1)
+    for i in range(startfit,stopfit):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
         avy = targety
@@ -415,7 +421,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                 fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                 # Fit image data
-                f0 = imagedata[i,j,k,int(round(avy)),int(round(targetx))]
+                f0 = pbimagedata[i,j,k,int(round(avy)),int(round(targetx))]
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
@@ -428,7 +434,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(imagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
                 try:
                     
                     popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
@@ -457,7 +463,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     pass
 
                 # fit diff data
-                f0 = data[i,j,k,int(round(avy)),int(round(avx))]
+                f0 = pbdata[i,j,k,int(round(avy)),int(round(avx))]
                 pixmeas.append((f0,0,avx,0,avy,0,hdrlist[i]['start_time'],midfreq/1e6,k,srcRA,srcDEC))
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
@@ -466,7 +472,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(data[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
                 try:
                     popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
                     xOUT = popt[1] + round(avx) - 5

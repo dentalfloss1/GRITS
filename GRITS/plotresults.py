@@ -73,7 +73,7 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
 
     
 def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0):
-    vmax = rms*10
+    vmax = rms*5
     ints = data.shape[0]
     ngrid = data.shape[-1]
     skip = False
