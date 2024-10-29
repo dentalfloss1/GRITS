@@ -162,6 +162,8 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
     else:
         w.wcs.crpix = [ngrid/2 + 0.5, ngrid/2 + 0.5]
         w.wcs.cdelt = np.array([-cdelt,cdelt])
+        centerRA = hdr['center_ra']
+        centerDec = hdr['center_dec']
     w.wcs.crval = [centerRA,centerDec]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     w.wcs.radesys = 'FK5'
@@ -199,6 +201,8 @@ def hdrtoworld(hdr,imSize,sRad,x,y,station):
     else:
         w.wcs.crpix = [ngrid/2 + 0.5, ngrid/2 + 0.5]
         w.wcs.cdelt = np.array([-cdelt,cdelt])
+        centerRA = hdr['center_ra']
+        centerDec = hdr['center_dec']
     w.wcs.crval = [centerRA,centerDec]
     w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
     w.wcs.radesys = 'FK5'

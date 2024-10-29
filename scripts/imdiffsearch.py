@@ -101,8 +101,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         
     if ints==0:
         raise Exception("file is empty")
+    beampatterns = []
     for c in range(nchan):
         XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
+        beampatterns.append((XX,YY))
         imagedata[:,c,0,:,:]/=((XX+YY)/2)
         data[:,c,0,:,:]/=((XX+YY)/2)
 
@@ -143,9 +145,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     t2 = datetime.datetime.now()
     if not quiet:
         print("calibrate:",t2-t1)
-    # UN pbcorrect diff ims for a flat sky. We measure fluxes using the image data, so we keep that as pb corrected
+    # UNpbcorrect diff ims for a flat sky. We measure fluxes using the image data, so we keep that as pb corrected
     t1 = datetime.datetime.now()
     for c in range(nchan):
+        XX,YY = beampatterns[c]
         imagedata[:,c,0,:,:]*=((XX+YY)/2)
         data[:,c,0,:,:]*=((XX+YY)/2)
     if not quiet:
