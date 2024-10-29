@@ -324,6 +324,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print(np.sum(numsrccond),np.sum(islandcondition.any(axis=(2,3,4))))
     if not quiet:
         print("Iterating over sources")
+        t1 = datetime.datetime.now()
     for ind in range(len(whereislands[0])):
         i = whereislands[0][ind]
         c = whereislands[1][ind]
@@ -379,6 +380,11 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         if not noplot:
             if not np.all(flagsrc):
                 plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
+    if not quiet:
+        t2 = datetime.datetime.now()
+        print(t2-t1)
+        print("Making obslist")
+        
     for t in range(ints):
         for c in range(nchan):
             for s in range(nstokes):
@@ -395,6 +401,9 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     gaps="False"
                     fov=sRad*float(config['Quality Control']['pbpercent'])
                     obslist.append((dtstart,dtend,sens,ra,dec,gaps,fov,s))
+    if not quiet:
+        t3 = datetime.datetime.now()
+        print(t3-t2)
     if not noplot:
         uniquecoords = np.unique([(src[3],src[4]) for src in srclist] ,axis=0)
         coordarray = np.array([(src[1],src[2],src[3],src[4]) for src in srclist])
@@ -476,8 +485,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
 
 
 
-
     srcarray =  np.array(srclist,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)])           
+    if not quiet:
+        print("Grouping sources")
+        t1 = datetime.datetime.now()
     for udate in np.unique(srcarray['mjd']):
         cursrc = srcarray[srcarray['mjd']==udate]
         if len(cursrc) > 1:
@@ -491,6 +502,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                                 srcarray['nchan'][(srcarray['mjd']==udate) & (srcarray['ra']==src1['ra']) & (srcarray['dec']==src1['dec'])]+=1
                                 completedsrc.append(src2)
     if not quiet: 
+        t2 = datetime.datetime.now()
+        print(t2-t1)
         print("-------------------")
     return srcarray, rmsdata, corrfluxlist, imagedata, islanddata, hdrlist, station, obslist, sRad, flaggedtimes
 
