@@ -38,8 +38,14 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                ypixerr = pixmeas['f0err'][pixmeas['stokes']==stokesno]
                axs[stokesno,2].scatter(xpixdata,ypixdata,marker=marker,color='black')
                for d in dettime:
-                   for colno in range(3):
+                   if d in xdata:
+                       colno=0
                        axs[stokesno,colno].axvline(d)
+                   if d in xdiffdata:
+                       colno=1
+                       axs[stokesno,colno].axvline(d)
+                   colno=2
+                   axs[stokesno,colno].axvline(d)
                axs[stokesno,2].title.set_text(f"Pixel values stokes {stokes}")
                axs[stokesno,1].title.set_text(f"Diff stokes {stokes} {detpos}")
                axs[stokesno,0].title.set_text(f"Image stokes {stokes}")
@@ -67,8 +73,9 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                     ax.set_title(f"{freq:5.2f} MHz stokes {stokes} Image Flux")
                     ax.legend()
                     for d in dettime:
-                        for colno in range(3):
-                            ax.axvline(d)
+                        if d in xdata:
+                            for colno in range(3):
+                                ax.axvline(d)
                     if ax==axs.flatten()[-4]:
                         ax.set_xlabel(f"Date (MJD)")
                         # ax.set_ylabel("Flux above median (Jy)")
@@ -86,8 +93,9 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                     ax.set_title(f"{freq:5.2f} MHz Diff Flux {detpos}")
                     ax.legend()
                     for d in dettime:
-                        for colno in range(3):
-                            ax.axvline(d)
+                        if d in xdata:
+                            for colno in range(3):
+                                ax.axvline(d)
                     if ax==axs.flatten()[-4]:
                         ax.set_xlabel(f"Date (MJD)")
                         # ax.set_ylabel("Flux above median (Jy)")
