@@ -425,12 +425,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
-                if k==0:
-                    if f0<0:
-                        continue
-                    initbounds = [(f0*0.1,f0*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
-                else:
-                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
@@ -500,6 +495,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                   #   print(popt,pcov,infodict,mesg,ier)
     colnames = ["f0","f0err","x0","x0err","y0","y0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
+
     return imagefit,diffFIT,colnames,coldtypes,pixmeas
 
 

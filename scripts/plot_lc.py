@@ -17,12 +17,14 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
     srcarray = alldata['srcarray']
     station1 = srcarray['station'][0]
     station2 = srcarray['station'][srcarray['station']!=station1][0]
+    detstokes = srcarray['stokes'][0]
     for sno,(dat, diffdat,pixmeas,stationname) in enumerate(zip([dat1,dat2],[diffdat1,diffdat2],[pixmeas1,pixmeas2],[station1,station2])):
         dettime = srcarray['mjd'][srcarray['station']==stationname]
         plotfile = filename.replace(".npz",f"_station{sno+1}_multiplot.png")
         nchan = len(np.unique(diffdat['freq']))
         if nchan==1:
            fig,axs = plt.subplots(nrows=4,ncols=3, figsize=(50,16))
+           fig.suptitle(f"{diffdat['freq'][0]} MHz")
            for stokesno, (stokes,marker) in enumerate(zip(['I','Q','U','V'],['s','o','*','D'])):
                xdata = dat['mjd'][dat['stokes']==stokesno]
                ydata = dat['f0'][dat['stokes']==stokesno]
@@ -187,8 +189,8 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
                 plt.close()
 
         imagedat = dat
-        detposra = diffdat['ra'][np.isin(diffdat['mjd'],dettime)]
-        detposdec = diffdat['dec'][np.isin(diffdat['mjd'],dettime)]
+        detposra = diffdat['ra'][np.isin(diffdat['mjd'],dettime) & (diffdat['stokes']==detstokes)]
+        detposdec = diffdat['dec'][np.isin(diffdat['mjd'],dettime) & (diffdat['stokes']==detstokes)]
         if sno==0:
             meanpos = diffdat['ra'].mean(), diffdat['dec'].mean()
         min3C = cat3c[angsep(meanpos[0],meanpos[1],cat3c['ra'],cat3c['dec'])==angsep(meanpos[0],meanpos[1],cat3c['ra'],cat3c['dec']).min()]
@@ -196,7 +198,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         minpulsar = atnf[angsep(meanpos[0],meanpos[1],atnf['ra'],atnf['dec'])==angsep(meanpos[0],meanpos[1],atnf['ra'],atnf['dec']).min()]
         fig = plt.figure()
         plt.scatter(detposra,detposdec,label="t=tdet",marker='P',color='red')
-        plt.scatter(diffdat['ra'],diffdat['dec'],alpha=0.4)
+        plt.scatter(diffdat['ra'],diffdat['dec'],alpha=0.1,color='gray')
         plt.scatter(diffdat['ra'].mean(), diffdat['dec'].mean(),marker='x',color='black')
         if angsep(min3C['ra'],min3C['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(min3C['ra'],min3C['dec'],marker='s',color='black',label=f"3C{min3C['3C'][0]}")
@@ -206,8 +208,8 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
             plt.scatter(minpulsar['ra'],minpulsar['dec'],marker='X',color='black',label=f"{minpulsar['name'][0]}")
         plt.legend()
         ax = plt.gca()
-        xlim = (meanpos[0] - 2.5, meanpos[0] + 2.5)
-        ylim = (meanpos[1] - 2.5, meanpos[1] + 2.5)
+        xlim = (meanpos[0] - 5, meanpos[0] + 5)
+        ylim = (meanpos[1] - 5, meanpos[1] + 5)
         ax.set_xlim(xlim[0],xlim[1]) 
         ax.set_ylim(ylim[0],ylim[1]) 
         plt.savefig(plotfile.replace("multiplot.png",f"diff_fitpos.png"))
@@ -217,7 +219,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         detposdec = imagedat['dec'][np.isin(imagedat['mjd'],dettime)]
         fig = plt.figure()
         plt.scatter(detposra,detposdec,label="t=tdet",marker='P',color='red')
-        plt.scatter(imagedat['ra'],imagedat['dec'],alpha=0.4)
+        plt.scatter(imagedat['ra'],imagedat['dec'],alpha=0.1,color='gray')
         
         plt.scatter(imagedat['ra'].mean(), imagedat['dec'].mean(),marker='x',color='black')
         if angsep(minVLSSr['ra'],minVLSSr['dec'],meanpos[0],meanpos[1])[0] < 5:
