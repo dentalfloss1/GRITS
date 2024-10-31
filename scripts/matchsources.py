@@ -101,6 +101,8 @@ if __name__=="__main__":
     fullobslist = []
     fullsrclist = []
     uniqueid=0
+    if args.resume:
+        uniqueid = np.amax([ int(f.replace('_fluxfile.npz','').split('.')[-1].replace("src","")) for f in glob.glob("*.src*_*.*")])
     for filename1,filename2 in tqdm(matchedfiles):
         obsfile1= filename1.split('/')[-1].replace(":",'-')+"_obsfile.npy"
         obsfile2= filename2.split('/')[-1].replace(":","-")+"_obsfile.npy"
