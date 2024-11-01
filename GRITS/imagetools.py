@@ -404,7 +404,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     pbdata[1:] = np.where(np.isnan(pbdata[1:]),pbimagedata[1:] - pbimagedata[:-1],pbdata[1:])
     pixmeas = []
     startfit = max(0,targetindex-fitrange)
-    stopfit = max(ints,targetindex+fitrange+1)
+    stopfit = min(ints,targetindex+fitrange+1)
     for i in range(startfit,stopfit):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
