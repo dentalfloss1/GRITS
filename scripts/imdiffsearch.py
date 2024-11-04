@@ -493,7 +493,7 @@ if __name__ == "__main__":
                 pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
                 formattedoutput = []
                 row = []
-                numdets = np.sum((np.isin(s1['mjd'],diffFIT['mjd'])) | (np.isin(s1['mjd'],imageFIT)))
+                numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])) | (np.isin(s1['mjd'],imageflux)))
                 if numdets==0:
                     print("station could not fit a gaussian at detection time")
                     continue
