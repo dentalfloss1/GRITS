@@ -484,7 +484,7 @@ if __name__ == "__main__":
             diffdata = np.copy(allimagedata)
             diffdata[1:] = diffdata[1:] - diffdata[:-1]
             for s1 in srcarr:
-                imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config1['Quality Control']['statsep']),fitrange=6)
+                imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=6)
                 if not diffFIT:
                     print("Failed to fit gaussian")
                     continue
