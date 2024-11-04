@@ -404,85 +404,6 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     if not quiet:
         t3 = datetime.datetime.now()
         print(t3-t2)
-    if not noplot:
-        uniquecoords = np.unique([(src[3],src[4]) for src in srclist] ,axis=0)
-        coordarray = np.array([(src[1],src[2],src[3],src[4]) for src in srclist])
-        skiplist = []
-        beamI = []
-        prad = float(config['Quality Control']['statsep'])/psize
-        xcoord = np.arange(ngrid)
-        ycoord = np.arange(ngrid)
-        xcoord,ycoord = np.meshgrid(xcoord, ycoord)
-        for c in range(imagedata.shape[1]):
-            XX,YY = pbcorr(hdrlist[0],ngrid,c,psize,station)
-            beamI.append((XX+YY)/2)
-        for i,(ra,dec) in enumerate(uniquecoords):
-            u_x = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),0][0]
-            u_y = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),1][0]
-            if not quiet:
-                print(i+1,"out of",(len(uniquecoords)),end="\r")
-            if (ra,dec) in skiplist:
-                continue
-            for ra2,dec2 in uniquecoords[(i+1):]:
-                u_x2 = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),0][0]
-                u_y2 = coordarray[(coordarray[:,2]==ra) & (coordarray[:,3]==dec),1][0]
-                pixdist = np.sqrt( (u_x - u_x2)**2 + (u_y - u_y2)**2)
-                # If within the specified localization, we will skip it when we get to it in the primary loop
-                if pixdist < float(config['Quality Control']['statsep']):
-                    skiplist.append((ra2,dec2))
-            dettimechan = []
-            timelist = []
-            for src_id,src_x,src_y,src_ra,src_dec,src_mjd,_,_,_,src_index,src_filename,src_channel,src_nchan,src_stokes in srclist:
-                pixdist = np.sqrt( (u_x - src_x)**2 + (u_y - src_y)**2)
-                if pixdist < float(config['Quality Control']['statsep']):
-                    srcid = src_id # Grab a src id for a valid detection
-                    dettimechan.append((src_index,src_channel,src_ra,src_dec,src_stokes))
-                    timelist.append(str(src_index))
-            dettimechan = np.array(dettimechan, dtype=[('index','i8'),('c','u2'),('ra','f8'),('dec','f8'),('stokes',int)])
-            for udet in np.unique(dettimechan['index']):
-                plotdata = []
-                zoomplotdata = []
-                curdettimechan = dettimechan[dettimechan['index']==udet]
-                detstokes = np.unique(curdettimechan['stokes'])[0]
-                if curdettimechan.size <= 0:
-                    continue
-                for timeind in range(1,len(hdrlist)):
-                    if timeind in dettimechan['index']:
-                        measRA = dettimechan['ra'][dettimechan['index']==timeind][0]
-                        measDec = dettimechan['dec'][dettimechan['index']==timeind][0]
-                        hasDETECT = True
-                    else:
-                        measRA = ra
-                        measDec = dec
-                        hasDETECT= False
-                    x,y = hdrtopixmask(hdrlist[timeind], ngrid, sRad, measRA,measDec, station)[0]
-                    for c in range(imagedata.shape[1]):
-                        if detstokes==0:
-                            corbeam = beamI[c]
-                        else:
-                            corbeam = 1
-                        pbcorrallimage= (imagedata[timeind,c,detstokes]/corbeam) - (imagedata[timeind-1,c,detstokes]/corbeam)
-                        if hasDETECT:
-                            flux = pbcorrallimage[int(y),int(x)]
-                        else:
-                            flux = np.nanmean(np.where(((xcoord-x)**2 + (ycoord-y)**2) < prad**2,pbcorrallimage,np.nan))
-                        midfreq = round((hdrlist[timeind]['start_freq']  + (c*hdrlist[timeind]['bandwidth']) + (hdrlist[timeind]['bandwidth']/2))*1e-6,2)
-                        flagged = (timeind,c) in flaggedtimes
-                        mjd = hdrlist[timeind]['start_time']
-                        hourspastmid = (mjd - np.floor(mjd))*24
-                        plotdata.append((timeind,flux,c,midfreq,flagged,False,hourspastmid))
-                mintime = max(0,curdettimechan['index'].min()-12)
-                maxtime = min(len(hdrlist)-1, curdettimechan['index'].max()+12)
-                if mintime > maxtime:
-                    raise RuntimeWarning
-                plotdata = np.array(plotdata, dtype=[('index','i8'),('flux','f8'),('c','u2'),('freq','f4'),('flagged',bool),('statmatch',bool),('hrpst','f8')])
-                zoomplotdata = np.copy(plotdata[(plotdata['index']>mintime) & (plotdata['index'] < maxtime)])
-                tdet = Time(hdrlist[udet]['start_time'],format='mjd',scale='utc')
-                if plotdata.size>0 :
-                    plotLC(src_filename.replace(".oims",f"stokes{detstokes}.oims").replace(".pims",f"stokes{detstokes}.pims"), plotdata, zoomplotdata, curdettimechan,srcid,str(udet),tdet.isot,ra,dec)
-    
-
-
 
 
     srcarray =  np.array(srclist,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)])           
@@ -498,13 +419,13 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     for src2 in cursrc:
                         if src1!=src2:
                             pixdist = np.sqrt( (src1['x']-src2['x'])**2 + (src1['y'] - src2['y'])**2)
-                            if (pixdist < float(config['Quality Control']['catsep'])) and (src1['channel']!=src2['channel']):
+                            if (pixdist < float(config['Quality Control']['statsep'])) and (src1['channel']!=src2['channel']):
                                 srcarray['nchan'][(srcarray['mjd']==udate) & (srcarray['ra']==src1['ra']) & (srcarray['dec']==src1['dec'])]+=1
                                 completedsrc.append(src2)
     if not quiet: 
         t2 = datetime.datetime.now()
         print(t2-t1)
-        print("-------------------")
+    print("-------------------")
     return srcarray, rmsdata, corrfluxlist, imagedata, islanddata, hdrlist, station, obslist, sRad, flaggedtimes
 
 if __name__ == "__main__":
@@ -560,6 +481,32 @@ if __name__ == "__main__":
             except Exception as e:
                 print(traceback.format_exc())
                 print("Issue with ",filename,"skipping.")
+            diffdata = np.copy(imagedata)
+            diffdata[1:] = imagedata[1:] - imagedata[:-1]
+            for s1 in srcarr:
+                imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config1['Quality Control']['statsep']),fitrange=6)
+                if not diffFIT:
+                    print("Failed to fit gaussian")
+                    continue
+                imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                formattedoutput = []
+                row = []
+                numdets = np.sum((np.isin(s1['mjd'],diffFIT['mjd'])) | (np.isin(s1['mjd'],imageFIT)))
+                if numdets==0:
+                    print("station could not fit a gaussian at detection time")
+                    continue
+
+
+                np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
+                         imageflux=imageflux,
+                         diffFLUX1=diffFLUX,
+                         minrms=minrms,
+                         srcarray=srcarr,
+                         pixmeas=pixmeas,
+                         corrfluxlist=corrfluxlist)
+
             for i in np.unique(srcarr['index']):
                 src = srcarr[srcarr['index']==i]
                 nsrcleft = len(src)
@@ -572,14 +519,14 @@ if __name__ == "__main__":
                             seps[j]=True
                         else:  
                             pixdist = np.sqrt( (s1['x']-s['x'])**2 + (s1['y'] - s['y'])**2)
-                            seps[j] = pixdist < float(config['Quality Control']['catsep'])
+                            seps[j] = pixdist < float(config['Quality Control']['statsep'])
                     matching2 = src[seps]
                     outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
                     srcleft = srcleft[~np.isin(srcleft,matching2)]
                     nsrcleft = srcleft.size
             if args.targetsource:
                 for s in srcarr:
-                    if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['catsep']):
+                    if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['statsep']):
                         print(s)
         outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
         with open(outobsfile,"w") as f:
