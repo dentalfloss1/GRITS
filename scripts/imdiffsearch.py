@@ -481,8 +481,8 @@ if __name__ == "__main__":
             except Exception as e:
                 print(traceback.format_exc())
                 print("Issue with ",filename,"skipping.")
-            diffdata = np.copy(imagedata)
-            diffdata[1:] = imagedata[1:] - imagedata[:-1]
+            diffdata = np.copy(allimagedata)
+            diffdata[1:] = diffdata[1:] - diffdata[:-1]
             for s1 in srcarr:
                 imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config1['Quality Control']['statsep']),fitrange=6)
                 if not diffFIT:
