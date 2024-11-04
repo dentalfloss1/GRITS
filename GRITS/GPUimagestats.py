@@ -29,7 +29,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
             end=min(chunk*chunking + chunking ,ints)
         idata = BFimagedata[start:end].copy(space='cuda')
         subints = end-start
-        rmsbox = 30 #2*int(round(ngrid/28.8))
+        rmsbox =   int(round(30*(ngrid/128)**(1.7)))
         BFMap("""if ((i>%i) && (j>%i) && (i<%i) &&(j<%i)){
                      auto intermediate = 0.0;
                      auto nx=%i;

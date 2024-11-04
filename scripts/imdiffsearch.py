@@ -483,6 +483,7 @@ if __name__ == "__main__":
                 print("Issue with ",filename,"skipping.")
             diffdata = np.copy(allimagedata)
             diffdata[1:] = diffdata[1:] - diffdata[:-1]
+            uniqueid = 0
             for s1 in srcarr:
                 imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=6)
                 if not diffFIT:
@@ -493,7 +494,7 @@ if __name__ == "__main__":
                 pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
                 formattedoutput = []
                 row = []
-                numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])) | (np.isin(s1['mjd'],imageflux)))
+                numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
                 if numdets==0:
                     print("station could not fit a gaussian at detection time")
                     continue
@@ -506,6 +507,7 @@ if __name__ == "__main__":
                          srcarray=srcarr,
                          pixmeas=pixmeas,
                          corrfluxlist=corrfluxlist)
+                uniqueid+=1
 
             for i in np.unique(srcarr['index']):
                 src = srcarr[srcarr['index']==i]
