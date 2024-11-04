@@ -42,7 +42,7 @@ from GRITS.configtemplate import configfile
 from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups
-from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands
+from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands, sourcefitting
 from GRITS.plotresults import plotresults, plotLC
 from GRITS.qc import restrictnumsrc,restrictangvel, checkgalactic
 from GRITS.readimage import readoims,readpims
