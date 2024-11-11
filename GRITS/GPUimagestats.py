@@ -219,7 +219,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             print("Invalid corrflux for channel ",c)
             corrflux = 0
         corrfluxlist.append(corrflux)
-        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[i,c])*corrflux
+        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:]) *corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
     return imagedata, data, corrfluxlist 
 
