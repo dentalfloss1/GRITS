@@ -370,11 +370,6 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             else:
                 c3 = False
             detchan=1
-            if c3 or vlss  or negflux:
-                islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
-            else:
-                radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-                srclist.append([i, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s])
             nongauss = False
             if gaussqc:
                 constraint = 1 
@@ -410,23 +405,22 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     yOUT = popt[2] + round(avy) - 5
                     if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) > constraint:
                         raise Exception("fit too far away")
-                    fitradec = hdrtoworld(hdr,ngrid,sRad,xOUT,yOUT,station)
-                    srclist[-1][3] = fitradec[0][0]
-                    srclist[-1][4] = fitradec[0][1]
-                except Exception as e:
-                    print(e)
+                    radec = hdrtoworld(hdr,ngrid,sRad,xOUT,yOUT,station)
+                except Exception:
+                    traceback.print_exc()
                     nongauss= True
-            flagsrc.append(c3 or vlss or negflux or nongauss)
-            lastlabel = label
+            if c3 or vlss  or negflux or nongauss:
+                islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
+                flagsrc.append((i,c,s,ind))
+            else:
+                radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
+                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s))
             uniquesrcid += 1
-        if not noplot:
-            if not np.all(flagsrc):
-                plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
+            lastlabel = label
     if not quiet:
         t2 = datetime.datetime.now()
         print(t2-t1)
         print("Making obslist")
-    srclist = [tuple(s) for s in srclist]
     for t in range(ints):
         for c in range(nchan):
             for s in range(nstokes):
@@ -464,6 +458,16 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                             if (pixdist < float(config['Quality Control']['statsep'])) and (src1['channel']!=src2['channel']):
                                 srcarray['nchan'][(srcarray['mjd']==udate) & (srcarray['ra']==src1['ra']) & (srcarray['dec']==src1['dec'])]+=1
                                 completedsrc.append(src2)
+    if not noplot:
+        for ind in range(len(whereislands[0])):
+            i = whereislands[0][ind]
+            c = whereislands[1][ind]
+            s = whereislands[2][ind]
+            ndetchans = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)]
+            if ndetchans.size > 0:
+                chanpercent = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)]/nchan
+                if ((i,c,s,ind) not in flagsrc) & (chanpercent > float(config['Quality Control']['minchanfraction'])):
+                    plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
     if not quiet: 
         t2 = datetime.datetime.now()
         print(t2-t1)
@@ -555,9 +559,11 @@ if __name__ == "__main__":
                     uniqueid+=1
             else:
                 if srcarr.size > 0:
+                    outsrcs = srcarr[srcarr['nchan'] > (allimagedata.shape[1]*float(config['Quality Control']['minchanfraction']))]
+
                     np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile"),
                              minrms=minrms,
-                             srcarray=srcarr,
+                             srcarray=outsrcs,
                              corrfluxlist=corrfluxlist,
                              flaggedtimes=allflaggedtimes)
 

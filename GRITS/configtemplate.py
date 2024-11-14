@@ -23,6 +23,8 @@ catsep = 1.5
 statsep = 1.5
 ; Minimum source width
 minwid = 0
+; Minimum fraction of channels
+minchanfraction = 0
 ; Fraction of PB to include, must be less than 0.95
 pbpercent = 0.80
 [Batch Control]
