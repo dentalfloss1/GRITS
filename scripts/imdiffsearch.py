@@ -35,6 +35,7 @@ from bifrost import map as BFMap
 from bifrost.device import set_devices_no_spin_cpu as BFNoSpinZone
 BFNoSpinZone()
 
+from scipy.optimize import curve_fit
 
 from GRITS.ateamtools import getsunjup, getcasa, getcyga, getcrab, getvira
 from GRITS.catalogs import cat3c, VLSSr50jy
@@ -42,7 +43,7 @@ from GRITS.configtemplate import configfile
 from GRITS.constants import floatmax
 from GRITS.GPUimagestats import getminrms,fluxcalmask,getmultistat,getdiffstats
 from GRITS.GPUgrouping import groupvertcols,grouphorizrows,groupdiagcols,groupdiagrows,labelgroups
-from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands, sourcefitting
+from GRITS.imagetools import  angsep,maskhorizon, pbcorr, hdrtopixmask, hdrtoworld, maskislands, sourcefitting, gaussian_nobackground
 from GRITS.plotresults import plotresults, plotLC
 from GRITS.qc import restrictnumsrc,restrictangvel, checkgalactic
 from GRITS.readimage import readoims,readpims
@@ -81,7 +82,7 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False):
     uniquesrcid=0
     srclist = []
     obslist = []
@@ -369,12 +370,53 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             else:
                 c3 = False
             detchan=1
-            flagsrc.append(c3 or vlss or negflux) 
             if c3 or vlss  or negflux:
                 islanddata[i,c,s,:,:][islanddata[i,c,s,:,:]==label] = 0
             else:
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-                srclist.append((i, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s))
+                srclist.append([i, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s])
+            nongauss = False
+            if gaussqc:
+                constraint = 1 
+                subxarr = np.linspace(0,10,11)
+                subyarr = np.linspace(0, 10,11)
+                subx, suby = np.meshgrid(subxarr, subyarr)
+                try:
+                    hdr = hdrlist[i]
+                    try:
+                        midfreq = (hdr['freq']  + c*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                    except KeyError:
+                        midfreq = (hdr['start_freq']  + c*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                    bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
+                    fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
+                    pbdata = np.copy(data[i,c,s])
+                    pbimagedata = np.copy(imagedata)
+                    if s==0:
+                        XX,YY = beampatterns[c]
+                        pbimagedata[:,c,0,:,:]/=((XX+YY)/2)
+                        pbdata[:,:]/=((XX+YY)/2)
+                    pbdata = np.where(np.isnan(pbdata),pbimagedata[i,c,s] - pbimagedata[i-1,c,s],pbdata)
+                    f0 = pbdata[int(round(avy)),int(round(avx))]
+                    x0 = avx - round(avx) + 5
+                    y0 = avy - round(avy) + 5
+                    initial_guess = [f0,x0,y0]
+                    initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-3,x0+3),(y0-3,y0+3)]
+                    bounds0 = tuple([b[0] for b in initbounds])
+                    bounds1 = tuple([b[1] for b in initbounds])
+                    bounds = [bounds0,bounds1]
+                    fitdata = np.transpose(pbdata[(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                    popt,  pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess, bounds=bounds,ftol=1e-2)
+                    xOUT = popt[1] + round(avx) - 5
+                    yOUT = popt[2] + round(avy) - 5
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) > constraint:
+                        raise Exception("fit too far away")
+                    fitradec = hdrtoworld(hdr,ngrid,sRad,xOUT,yOUT,station)
+                    srclist[-1][3] = fitradec[0][0]
+                    srclist[-1][4] = fitradec[0][1]
+                except Exception as e:
+                    print(e)
+                    nongauss= True
+            flagsrc.append(c3 or vlss or negflux or nongauss)
             lastlabel = label
             uniquesrcid += 1
         if not noplot:
@@ -384,7 +426,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         t2 = datetime.datetime.now()
         print(t2-t1)
         print("Making obslist")
-        
+    srclist = [tuple(s) for s in srclist]
     for t in range(ints):
         for c in range(nchan):
             for s in range(nstokes):
@@ -458,6 +500,8 @@ if __name__ == "__main__":
                         help='Look for source at this ra dec')
     parser.add_argument("--maskstokes",nargs="+",type=int, default=None)
     parser.add_argument("--positioncheck",action="store_true")
+    parser.add_argument("--postgaussfit",action="store_true")
+    parser.add_argument("--gaussqc", action="store_true")
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -477,37 +521,45 @@ if __name__ == "__main__":
         for i,filename in enumerate(args.filename):
             print(i+1,"out of",len(args.filename))
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
                 print("Issue with ",filename,"skipping.")
             diffdata = np.copy(allimagedata)
             diffdata[1:] = diffdata[1:] - diffdata[:-1]
-            for s1 in srcarr:
-                imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=6)
-                if not diffFIT:
-                    print("Failed to fit gaussian")
-                    continue
-                imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                formattedoutput = []
-                row = []
-                numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
-                if numdets==0:
-                    print("station could not fit a gaussian at detection time")
-                    continue
+            if args.postgaussfit:
+                for s1 in srcarr:
+                    imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=6)
+                    if not diffFIT:
+                        print("Failed to fit gaussian")
+                        continue
+                    imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                    diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                    pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                    formattedoutput = []
+                    row = []
+                    numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
+                    if numdets==0:
+                        print("station could not fit a gaussian at detection time")
+                        continue
 
 
-                np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
-                         imageflux=imageflux,
-                         diffFLUX1=diffFLUX,
-                         minrms=minrms,
-                         srcarray=srcarr,
-                         pixmeas=pixmeas,
-                         corrfluxlist=corrfluxlist)
-                uniqueid+=1
+                    np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
+                             imageflux=imageflux,
+                             diffFLUX1=diffFLUX,
+                             minrms=minrms,
+                             srcarray=srcarr,
+                             pixmeas=pixmeas,
+                             corrfluxlist=corrfluxlist)
+                    uniqueid+=1
+            else:
+                if srcarr.size > 0:
+                    np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile"),
+                             minrms=minrms,
+                             srcarray=srcarr,
+                             corrfluxlist=corrfluxlist,
+                             flaggedtimes=allflaggedtimes)
 
             for i in np.unique(srcarr['index']):
                 src = srcarr[srcarr['index']==i]
