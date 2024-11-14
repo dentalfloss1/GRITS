@@ -172,9 +172,8 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
         pixcrd = [(r,d) for r,d in zip(ra,dec)]
     except TypeError:
         pixcrd = [(ra,dec)]
-    if np.isnan(pixcrd[0][0]):
-        raise Exception(f"Invalid transform: {ra},{dec},{w},{station}")
-    return w.wcs_world2pix(pixcrd, 0)
+    result = w.wcs_world2pix(pixcrd, 0)
+    return result 
 
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
     cdelt = hdr['psize']
@@ -423,7 +422,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                 fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                 # Fit image data
-                f0 = pbimagedata[i,j,k,int(round(avy)),int(round(targetx))]
+                f0 = pbimagedata[i,j,k,int(round(avy)),int(round(avx))]
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
