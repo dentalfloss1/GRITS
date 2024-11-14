@@ -79,7 +79,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     skip = False
     extent = SetExtent(sRad,data)
     chantoplot = 0
-    fig, axs = plt.subplots(ncols=5,nrows=6,figsize=(40,35))
+    fig, axs = plt.subplots(ncols=5,nrows=6,figsize=(20,17))
     ytextloc = 0.9
     lastlabel = -1
     mintime = max(1,i-2)
@@ -130,10 +130,10 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             if np.sum(atnfmatches) > 0:
                 for amatch in atnf[atnfmatches]:
                     aresult = f"{amatch['name']},{amatch['ra']},{amatch['dec']}"
-                    axs[1,4].text(0,ytextloc2, aresult)
+                    axs[1,4].text(0,ytextloc2, aresult,size=10)
                     ytextloc2-=0.15
                 
-            axs[0,2].text(0,ytextloc,resulttext)
+            axs[0,2].text(0,ytextloc,resulttext,size=10)
             ytextloc-=0.15
             for anum in range(2,6,1):
                 for imind in range(5):
@@ -145,10 +145,8 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
         for imind in range(5):
             circle = plt.Circle((ngrid/2,ngrid/2),sRad*0.95,fill=False)
             axs[anum,imind].add_artist(circle)
-    for axnum in range(2,5):
-        axs[0,axnum].set_axis_off()
-    axs[1,4].set_axis_off()
-
+    for ax in axs.flatten():
+        ax.axis('off')
     islandplot = islands[i,0,:,:]
     axs[1,0].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
     axs[1,0].set_title('I src')
