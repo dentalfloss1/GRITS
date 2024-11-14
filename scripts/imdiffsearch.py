@@ -466,7 +466,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             s = whereislands[2][ind]
             ndetchans = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)]
             if ndetchans.size > 0:
-                chanpercent = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)]/nchan
+                chanpercent = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)][0]/nchan
                 if ((i,c,s,ind) not in flagsrc) & (chanpercent > float(config['Quality Control']['minchanfraction'])):
                     plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
     if not quiet: 
