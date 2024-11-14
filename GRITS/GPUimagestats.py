@@ -29,7 +29,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
             end=min(chunk*chunking + chunking ,ints)
         idata = BFimagedata[start:end].copy(space='cuda')
         subints = end-start
-        rmsbox = 30 #2*int(round(ngrid/28.8))
+        rmsbox =   int(round(30*(ngrid/128)**(1.7)))
         BFMap("""if ((i>%i) && (j>%i) && (i<%i) &&(j<%i)){
                      auto intermediate = 0.0;
                      auto nx=%i;
@@ -219,7 +219,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             print("Invalid corrflux for channel ",c)
             corrflux = 0
         corrfluxlist.append(corrflux)
-        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:] - minrms[i,c])*corrflux
+        imagedata[:,c,:,:,:] = (imagedata[:,c,:,:,:]) *corrflux
         data[:,c,:,:,:] = data[:,c,:,:,:]*corrflux
     return imagedata, data, corrfluxlist 
 

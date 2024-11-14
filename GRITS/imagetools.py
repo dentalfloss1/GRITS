@@ -172,7 +172,8 @@ def hdrtopixmask(hdr,imSize,sRad,ra,dec,station):
         pixcrd = [(r,d) for r,d in zip(ra,dec)]
     except TypeError:
         pixcrd = [(ra,dec)]
-    return w.wcs_world2pix(pixcrd, 0)
+    result = w.wcs_world2pix(pixcrd, 0)
+    return result 
 
 def hdrtoworld(hdr,imSize,sRad,x,y,station):
     cdelt = hdr['psize']
@@ -379,7 +380,7 @@ circle [[{ra}deg, {dec}deg], 15775.2806arcsec] coord=ICRS, corr=[I, Q, U, V], li
         f.write(contents)
 
 
-def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep,fitrange=-1):
+def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep,fitrange=-1,constraint=1):
     ngrid = data.shape[-1]
     nstokes = data.shape[2]
     nchan = data.shape[1]
@@ -421,7 +422,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                 fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                 # Fit image data
-                f0 = pbimagedata[i,j,k,int(round(avy)),int(round(targetx))]
+                f0 = pbimagedata[i,j,k,int(round(avy)),int(round(avx))]
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
@@ -436,7 +437,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     xOUT = popt[1] + round(avx) - 5
                     yOUT = popt[2] + round(avy) - 5
                     # TIGHT position restrictions
-                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < 1:
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
                         row = []
                         for pind in range(len(popt)):
@@ -463,7 +464,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 x0 = avx - round(avx) + 5
                 y0 = avy - round(avy) + 5
                 initial_guess = [f0,x0,y0]
-                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-3,x0+3),(y0-3,y0+3)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
@@ -473,7 +474,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     xOUT = popt[1] + round(avx) - 5
                     yOUT = popt[2] + round(avy) - 5
                     # TIGHT position restrictions
-                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < 1:
+                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
                         row = []
                         for pind in range(len(popt)):

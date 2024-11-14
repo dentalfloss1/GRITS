@@ -246,7 +246,10 @@ if __name__=="__main__":
                      pixmeas1=pixmeas1,
                      pixmeas2=pixmeas2,
                      corrfluxlist1=corrfluxlist1,
-                     corrfluxlist2=corrfluxlist2)
+                     corrfluxlist2=corrfluxlist2,
+                     allflaggedtimes1=allflaggedtimes1,
+                     allflaggedtimes2=allflaggedtimes2)
+
 
             for s1 in stat1srcs:
                 for s2 in stat2srcs:
