@@ -510,6 +510,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
+    start_run =datetime.datetime.now()
     if not os.path.isfile(args.configfile):
         print(f"{args.configfile} does not exist. Creating one and stopping.")
         with open(args.configfile,"w") as f:
@@ -529,7 +530,7 @@ if __name__ == "__main__":
             filelist = glob.glob(args.filename)
 
         for i,filename in enumerate(filelist):
-            print(i+1,"out of",len(filelist))
+            print(i+1,"out of",len(filelist), "elapsed:",datetime.datetime.now()-start_run)
             try:
                 srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc)
                 fullobslist.extend(obslist)
