@@ -4,6 +4,7 @@ import os
 import sys
 import datetime
 import traceback
+import glob
 start_epoch = datetime.datetime(1858, 11, 17, 00, 00, 00, 00)
 import argparse
 import sys
@@ -518,8 +519,13 @@ if __name__ == "__main__":
                 if os.path.exists(posfile):
                     os.remove(posfile)
         uniqueid = 0
-        for i,filename in enumerate(args.filename):
-            print(i+1,"out of",len(args.filename))
+        if '*' in args.filename[0]:
+            filelist = glob.glob(args.filename[0])
+        else:
+            filelist = glob.glob(args.filename)
+
+        for i,filename in enumerate(filelist):
+            print(i+1,"out of",len(filelist))
             try:
                 srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc)
                 fullobslist.extend(obslist)
