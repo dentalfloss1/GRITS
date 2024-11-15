@@ -17,16 +17,10 @@ for f in fluxfiles:
     fitsrc = []
     # alldettimes.append(tuple(np.load(f)['srcarray'][['mjd','filename','index']]))
     minrms = np.load(f)['minrms']
-    fluxmeas = np.load(f)['diffFLUX1']
     for t,fname,i,c,s in np.load(f)['srcarray'][['mjd','filename','index','channel','stokes']]:
         curRMS = minrms[i,c,s]
-        curflux = fluxmeas['f0'][fluxmeas['mjd']==t]
-        if curflux.size==0:
-            continue
-        if (np.abs((curflux/curRMS)) < 10).any():
-            continue
         alldettimes.append((t,fname,i))
-    for fit in np.load(f)['diffFLUX1'][['mjd','ra','dec']]:
+    for fit in np.load(f)['srcarray'][['mjd','ra','dec']]:
         fitsrc.append(tuple(fit))
     for t,fname,i in alldettimes:
         for row in fitsrc:
