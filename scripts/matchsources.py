@@ -107,8 +107,12 @@ if __name__=="__main__":
         obsfile1= filename1.split('/')[-1].replace(":",'-')+"_obsfile.npy"
         obsfile2= filename2.split('/')[-1].replace(":","-")+"_obsfile.npy"
         if args.resume:
+            print("checking if",obsfile1, "and",obsfile2,"exist")
             if os.path.exists(obsfile1) and os.path.exists(obsfile2):
+                print("both exists, skipping this one")
                 continue
+            else:
+                print(obsfile1,"and",obsfile2,"do not exist, doing this one")
         if lastfilename1!=filename1:
             dat1,minrms1,corrfluxlist1,imagedata1,islands1,hdrlist1,station1,obslist1, sRad1, allflaggedtimes1 = imdiffsearch.main(filename1,config1,noplot=True,quiet=quiet,maskstokes=args.maskstokes)
             diffdata1 = np.copy(imagedata1)
