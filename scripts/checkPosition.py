@@ -42,7 +42,7 @@ for src in detsrcout:
 hist3C = np.array(hist3C, dtype=[('name','<U32'),('dist','f8'),('ra','f8'),('dec','f8')])
 histvlssr = np.array(histvlssr,dtype=[('name','<U128'),('dist','f8'),('ra','f8'),('dec','f8')])
 
-bins = np.linspace(0.2,2.5,num=20)
+bins = np.linspace(0.2,5,num=40)
 for src3c in np.unique(hist3C['name']):
     curdata =hist3C['dist'][hist3C['name']==src3c]
     fig = plt.figure()
@@ -51,7 +51,7 @@ for src3c in np.unique(hist3C['name']):
         plt.close()
         continue
     ax = plt.gca()
-    ax.set_xlim(0.2,2.5)
+    ax.set_xlim(0.2,5)
     ax.set_title(f"{src3c} src sep")
     plt.savefig(f"{src3c}_separation.png")
     plt.close()
@@ -71,7 +71,7 @@ for srcvlssr in np.unique(histvlssr['name']):
         plt.close()
         continue
     ax = plt.gca()
-    ax.set_xlim(0.2,2.5)
+    ax.set_xlim(0.2,5)
     ax.set_title(f"{srcvlssr} src sep")
     plt.savefig(f"{srcvlssr}_separation.png")
     plt.close()
