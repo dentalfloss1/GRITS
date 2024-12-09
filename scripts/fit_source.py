@@ -181,12 +181,41 @@ for stokesno in range(4):
     plt.legend()
     plt.savefig(f"Fullpositions_stokes{stokesno}.png")
     plt.close()
-start = max(0,detindex2-10)
+start = m(0,detindex2-10)
 stop = min(len(data2),detindex2+11)
 
 for c in range(data2.shape[1]):
     images = []
     for i in range(start,stop):
+        if i==(detindex2):
+            pixcrd = hdrtopixmask(hdrlist2[i], data2.shape[-1], sRad2, avx, avy, station2)
+            fig, axs = plt.subplots(ncols=2,nrows=2)
+            currimage = unpbdata2[i,c,0]
+            vmax = rmsdata2[i,c,0]*5
+            axs[0,0].imshow(currimage,vmin=-10,vmax=vmax,origin='lower',cmap='viridis')
+            axs[0,0].set_title('I')
+            currimage = data2[i,c,1]
+            vmax = np.sqrt(rmsdata2[i,c,1]**2 + rmsdata2[i,c,2]**2)*5
+            axs[0,1].imshow(currimage,vmin=0,vmax=vmax,origin='lower',cmap='viridis')
+            axs[0,1].set_title('Linear')
+            currimage = data2[i,c,2]
+            vmax = np.sqrt(rmsdata2[i,c,1]**2 + rmsdata2[i,c,2]**2 + rmsdata2[i,c,3]**2)*5
+            axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',cmap='viridis')
+            axs[1,0].set_title('Total')
+            currimage = data2[i,c,3]
+            vmax = rmsdata2[i,c,3]*5
+           
+            for ax in axs.flatten():
+                circle = plt.Circle((pixcrd[0][0],pixcrd[0][1]),5,fill=False,lw=1,edgecolor='white')
+                ax.add_artist(circle)
+                ax.axis('off')
+                circle = plt.Circle((data2.shape[-1]/2,data2.shape[-1]/2),sRad2,fill=False,lw=1,edgecolor='white')
+                ax.add_artist(circle)
+            axs[1,1].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap='coolwarm')
+            axs[1,1].set_title('V')
+            fig.suptitle("Difference Images")
+            plt.savefig(f"TDET-station2-{i}-{c}.png")
+            plt.close()
         pixcrd = hdrtopixmask(hdrlist2[i], data2.shape[-1], sRad2, avx, avy, station2)
         fig, axs = plt.subplots(ncols=2,nrows=2)
         currimage = unpbdata2[i,c,0]
@@ -200,7 +229,7 @@ for c in range(data2.shape[1]):
         axs[1,0].imshow(currimage,vmin=0,vmax=vmax,origin='lower',cmap='viridis')
         currimage = data2[i,c,3]
         vmax = rmsdata2[i,c,3]*5
-       
+        
         for ax in axs.flatten():
             circle = plt.Circle((pixcrd[0][0],pixcrd[0][1]),5,fill=False)
             ax.add_artist(circle)
@@ -276,11 +305,11 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
     axs[stokesno,2].set_ylabel("Pixel Flux (Jy)")
     axs[stokesno,0].legend()
     axs[stokesno,1].legend()
-   #  miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
-   #  maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
+    miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
+    maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
     for ax in axs.flatten():
         ax.grid(visible=True)
-       #  ax.set_ylim(miny,maxy)
+        ax.set_ylim(miny,maxy)
         for d in hrdettimes: 
             ax.axvline(d)
             
@@ -289,7 +318,7 @@ axs[3,1].set_xlabel("date (MJD)")
 axs[3,2].set_xlabel("date (MJD)")
 for ax in axs.flatten():
     print(trange[0],trange[1])
-    # ax.set_xlim(trange[0],trange[1])
+    ax.set_xlim(trange[0],trange[1])
 plt.tight_layout()
 plt.savefig("PASI full data")
 plt.close()
@@ -301,8 +330,8 @@ print(np.unique(diffdat['freq']))
 for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','o','*','D'])):
     fig, axs = plt.subplots(nrows=nchan+1,ncols=3,figsize=(50,12*nchan))
     for c,ax in zip(np.unique(dat['freq']),axs.flatten()[:(3*nchan):3]):
-        freq = c 
-        curdat = dat[(dat['freq']==freq)]
+        freq = c
+        curdat = dat[(dat['freq']==freq) ]
         xdata = curdat['mjd'][curdat['stokes']==stokesno]
         xdata = (xdata - np.floor(xdata))*24
         ydata = curdat['f0'][curdat['stokes']==stokesno]
@@ -310,8 +339,8 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
         ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
         ax.set_title(f"{freq:5.2f} MHz stokes {stokes} Image Flux")
         ax.legend()
-#         miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
-#         maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
+        miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
+        maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
         for ax in axs.flatten():
             ax.grid(visible=True)
             for d in hrdettimes: 
@@ -322,8 +351,8 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
             ax.set_ylabel("Flux (Jy)")
 
     for c,ax in zip(np.unique(diffdat['freq']),axs.flatten()[1:(3*nchan):3]):
-        freq = c 
-        curdat = diffdat[(diffdat['freq']==freq) ]
+        freq = c
+        curdat = diffdat[(diffdat['freq']==freq)]
 
         xdata = curdat['mjd'][curdat['stokes']==stokesno]
         xdata = (xdata - np.floor(xdata))*24
@@ -331,8 +360,8 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
         yerr = curdat['f0err'][curdat['stokes']==stokesno]
         ax.errorbar(xdata,ydata,yerr=yerr,marker=marker,ls='none',color='black',label=stokes)
         ax.set_title(f"{freq:5.2f} MHz Diff Flux")
-       #  miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
-       #  maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
+        miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
+        maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
         for ax in axs.flatten():
             ax.grid(visible=True)
             for d in hrdettimes: 
@@ -344,15 +373,15 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
             ax.set_ylabel("Diff Flux (Jy)")
 
     for c,ax in zip(np.unique(pixmeas['freq']),axs.flatten()[2:(3*nchan):3]):
-        freq = c 
-        curdat = pixmeas[(pixmeas['freq']==freq) ]
+        freq = c
+        curdat = pixmeas[(pixmeas['freq']==freq)]
         xdata = curdat['mjd'][curdat['stokes']==stokesno]
         xdata = (xdata - np.floor(xdata))*24
         ydata = curdat['f0'][curdat['stokes']==stokesno]
         ax.scatter(xdata,ydata,marker=marker,color='black',label=stokes)
         ax.set_title(f"{freq:5.2f} MHz Pixel Flux")
-       #  miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
-       #  maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
+        miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
+        maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
         for ax in axs.flatten():
             ax.grid(visible=True)
             for d in hrdettimes: 
@@ -362,8 +391,8 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
             ax.set_xlabel(f"Date (MJD)")
             # ax.set_ylabel("Flux above median (Jy)")
             ax.set_ylabel("Pixel Flux (Jy)")
-    # for ax in axs.flatten()[:-3]:
-        # ax.set_xlim(trange[0],trange[1])
+    for ax in axs.flatten()[:-3]:
+        ax.set_xlim(trange[0],trange[1])
     ax = axs.flatten()[-3]
     Z = np.zeros((len(np.unique(dat['mjd'])),nchan))
     sortuhrpsts = np.sort(np.unique(dat['mjd'][dat['mjd']!=0]))
@@ -375,12 +404,7 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
                 pass 
       # setvscale = 3*np.median(Z[Z>0])
       # setvscale = np.amax(np.abs(Z))
-    try: 
-        vmax = dat['f0'][(dat['mjd'] > (np.average(dettimes) - 1/60/24)) & (dat['mjd'] < (np.average(dettimes) + 1/60/24))].max()
-        vmin = dat['f0'][(dat['mjd'] > (np.average(dettimes) - 1/60/24)) & (dat['mjd'] < (np.average(dettimes) + 1/60/24))].min()
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
-    except:
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
     cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     plt.subplots_adjust(hspace=0.3)
     # locs,labels = plt.xticks()
@@ -397,12 +421,7 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
                 pass 
       # setvscale = 3*np.median(Z[Z>0])
       # setvscale = np.amax(np.abs(Z))
-    try:
-        vmax = diffdat['f0'][(diffdat['mjd'] > (np.average(dettimes) - 1/60/24)) & (diffdat['mjd'] < (np.average(dettimes) + 1/60/24))].max()
-        vmin = diffdat['f0'][(diffdat['mjd'] > (np.average(dettimes) - 1/60/24)) & (diffdat['mjd'] < (np.average(dettimes) + 1/60/24))].min()
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
-    except: 
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
     cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     plt.subplots_adjust(hspace=0.3)
     # locs,labels = plt.xticks()
@@ -419,9 +438,7 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
                 pass 
       # setvscale = 3*np.median(Z[Z>0])
       # setvscale = np.amax(np.abs(Z))
-    vmax = pixmeas['f0'][(pixmeas['mjd'] > (np.average(dettimes) - 1/60/24)) & (pixmeas['mjd'] < (np.average(dettimes) + 1/60/24))].max()
-    vmin = pixmeas['f0'][(pixmeas['mjd'] > (np.average(dettimes) - 1/60/24)) & (pixmeas['mjd'] < (np.average(dettimes) + 1/60/24))].min()
-    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
+    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
     cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     plt.subplots_adjust(hspace=0.3)
     plt.savefig(f"fullorvilledata-stokes{stokes}.png")
