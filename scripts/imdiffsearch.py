@@ -525,13 +525,7 @@ if __name__ == "__main__":
                 if os.path.exists(posfile):
                     os.remove(posfile)
         uniqueid = 0
-        if args.globfilelist:
-            if '*' in args.filename[0]:
-                filelist = glob.glob(args.filename[0])
-            else:
-                filelist = glob.glob(args.filename)
-        else:
-            filelist = args.filename
+        filelist = args.filename
 
         for i,filename in enumerate(filelist):
             print(i+1,"out of",len(filelist), "elapsed:",datetime.datetime.now()-start_run)
