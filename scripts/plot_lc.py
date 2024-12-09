@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/home/sarahchastain/Environments/bifrost/bin/python
 import numpy as np 
 import matplotlib.pyplot as plt
 import scipy.signal as signal 
