@@ -278,7 +278,10 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
     axs[stokesno,1].legend()
    #  miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
    #  maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
+    maxx = (np.amax(dettimes) - np.floor(pixmeas1['mjd'].max()) + 1/24/60)*24
+    minx = (np.amin(dettimes) - np.floor(pixmeas1['mjd'].max()) - 1/24/60)*24
     for ax in axs.flatten():
+        ax.set_xlim(minx,maxx)
         ax.grid(visible=True)
        #  ax.set_ylim(miny,maxy)
         for d in hrdettimes: 
@@ -312,10 +315,6 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
         ax.legend()
 #         miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
 #         maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
-        for ax in axs.flatten():
-            ax.grid(visible=True)
-            for d in hrdettimes: 
-                ax.axvline(d)
         if ax==axs.flatten()[-4]:
             ax.set_xlabel(f"Date (MJD)")
             # ax.set_ylabel("Flux above median (Jy)")
@@ -333,10 +332,6 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
         ax.set_title(f"{freq:5.2f} MHz Diff Flux")
        #  miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
        #  maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
-        for ax in axs.flatten():
-            ax.grid(visible=True)
-            for d in hrdettimes: 
-                ax.axvline(d)
         ax.legend()
         if ax==axs.flatten()[-4]:
             ax.set_xlabel(f"Date (MJD)")
@@ -353,10 +348,6 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
         ax.set_title(f"{freq:5.2f} MHz Pixel Flux")
        #  miny = np.amin(ydata[np.isin(xdata,hrdettimes)])
        #  maxy = np.amax(ydata[np.isin(xdata,hrdettimes)])
-        for ax in axs.flatten():
-            ax.grid(visible=True)
-            for d in hrdettimes: 
-                ax.axvline(d)
         ax.legend()
         if ax==axs.flatten()[-4]:
             ax.set_xlabel(f"Date (MJD)")
@@ -364,9 +355,17 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
             ax.set_ylabel("Pixel Flux (Jy)")
     # for ax in axs.flatten()[:-3]:
         # ax.set_xlim(trange[0],trange[1])
+    maxx = (np.amax(dettimes) - np.floor(pixmeas['mjd'].max()) + 1/24/60)*24
+    minx = (np.amin(dettimes) - np.floor(pixmeas['mjd'].max()) - 1/24/60)*24
+    print(minx,maxx,dettimes.min(),dettimes.max(), np.floor(pixmeas['mjd'].max()))
+    for ax in axs.flatten()[:-3]:
+        ax.set_xlim(minx,maxx)
+        ax.grid(visible=True)
+        for d in hrdettimes: 
+            ax.axvline(d)
     ax = axs.flatten()[-3]
-    Z = np.zeros((len(np.unique(dat['mjd'])),nchan))
-    sortuhrpsts = np.sort(np.unique(dat['mjd'][dat['mjd']!=0]))
+    sortuhrpsts = np.sort(np.unique(dat['mjd'][ (dat['mjd'] > (np.amin(dettimes) - 1/24/60)) & (dat['mjd'] < (np.amax(dettimes) + 1/24/60))]))
+    Z = np.zeros((len(sortuhrpsts),nchan))
     for i,d in enumerate(sortuhrpsts):
         for chno, c in enumerate(np.unique(np.sort(dat['freq']))):
             try:
@@ -375,20 +374,21 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
                 pass 
       # setvscale = 3*np.median(Z[Z>0])
       # setvscale = np.amax(np.abs(Z))
-    try: 
-        vmax = dat['f0'][(dat['mjd'] > (np.average(dettimes) - 1/60/24)) & (dat['mjd'] < (np.average(dettimes) + 1/60/24))].max()
-        vmin = dat['f0'][(dat['mjd'] > (np.average(dettimes) - 1/60/24)) & (dat['mjd'] < (np.average(dettimes) + 1/60/24))].min()
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
-    except:
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+   #  try: 
+   #      vmax = dat['f0'][(dat['mjd'] > (np.average(dettimes) - 1/60/24)) & (dat['mjd'] < (np.average(dettimes) + 1/60/24))].max()
+   #      vmin = dat['f0'][(dat['mjd'] > (np.average(dettimes) - 1/60/24)) & (dat['mjd'] < (np.average(dettimes) + 1/60/24))].min()
+   #      waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
+   #  except:
+   #      waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
     cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     plt.subplots_adjust(hspace=0.3)
     # locs,labels = plt.xticks()
     # print(locs,labels)
     # fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
     ax = axs.flatten()[-2]
-    Z = np.zeros((len(np.unique(diffdat['mjd'])),nchan))
-    sortuhrpsts = np.sort(np.unique(diffdat['mjd'][diffdat['mjd']!=0]))
+    sortuhrpsts = np.sort(np.unique(diffdat['mjd'][ (diffdat['mjd'] > (np.amin(dettimes) - 1/24/60)) & (diffdat['mjd'] < (np.amax(dettimes) + 1/24/60))]))
+    Z = np.zeros((len(sortuhrpsts),nchan))
     for i,d in enumerate(sortuhrpsts):
         for chno, c in enumerate(np.unique(np.sort(diffdat['freq']))):
             try:
@@ -397,20 +397,21 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
                 pass 
       # setvscale = 3*np.median(Z[Z>0])
       # setvscale = np.amax(np.abs(Z))
-    try:
-        vmax = diffdat['f0'][(diffdat['mjd'] > (np.average(dettimes) - 1/60/24)) & (diffdat['mjd'] < (np.average(dettimes) + 1/60/24))].max()
-        vmin = diffdat['f0'][(diffdat['mjd'] > (np.average(dettimes) - 1/60/24)) & (diffdat['mjd'] < (np.average(dettimes) + 1/60/24))].min()
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
-    except: 
-        waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+   #  try:
+#  #        vmax = diffdat['f0'][(diffdat['mjd'] > (np.average(dettimes) - 1/60/24)) & (diffdat['mjd'] < (np.average(dettimes) + 1/60/24))].max()
+#  #        vmin = diffdat['f0'][(diffdat['mjd'] > (np.average(dettimes) - 1/60/24)) & (diffdat['mjd'] < (np.average(dettimes) + 1/60/24))].min()
+   #      waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
+   #  except: 
+   #      waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
+    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
     cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     plt.subplots_adjust(hspace=0.3)
     # locs,labels = plt.xticks()
     # print(locs,labels)
     # fig.suptitle(f"source at {ra:5.2f}, {dec:5.2f}\ndetected at {tdet}")
     ax = axs.flatten()[-1]
-    Z = np.zeros((len(np.unique(pixmeas['mjd'])),nchan))
-    sortuhrpsts = np.sort(np.unique(pixmeas['mjd'][pixmeas['mjd']!=0]))
+    sortuhrpsts = np.sort(np.unique(pixmeas['mjd'][ (pixmeas['mjd'] > (np.amin(dettimes) - 1/24/60)) & (pixmeas['mjd'] < (np.amax(dettimes) + 1/24/60))]))
+    Z = np.zeros((len(sortuhrpsts),nchan))
     for i,d in enumerate(sortuhrpsts):
         for chno, c in enumerate(np.unique(np.sort(pixmeas['freq']))):
             try:
@@ -419,9 +420,9 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
                 pass 
       # setvscale = 3*np.median(Z[Z>0])
       # setvscale = np.amax(np.abs(Z))
-    vmax = pixmeas['f0'][(pixmeas['mjd'] > (np.average(dettimes) - 1/60/24)) & (pixmeas['mjd'] < (np.average(dettimes) + 1/60/24))].max()
-    vmin = pixmeas['f0'][(pixmeas['mjd'] > (np.average(dettimes) - 1/60/24)) & (pixmeas['mjd'] < (np.average(dettimes) + 1/60/24))].min()
-    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto',vmin=vmin,vmax=vmax)
+#     vmax = pixmeas['f0'][(pixmeas['mjd'] > (np.average(dettimes) - 1/60/24)) & (pixmeas['mjd'] < (np.average(dettimes) + 1/60/24))].max()
+#     vmin = pixmeas['f0'][(pixmeas['mjd'] > (np.average(dettimes) - 1/60/24)) & (pixmeas['mjd'] < (np.average(dettimes) + 1/60/24))].min()
+    waterfall = ax.imshow(Z.transpose(),cmap='viridis',origin='lower',aspect='auto')
     cbar = fig.colorbar(waterfall,ax=ax, orientation='horizontal', cmap='coolwarm',fraction=0.1)
     plt.subplots_adjust(hspace=0.3)
     plt.savefig(f"fullorvilledata-stokes{stokes}.png")
