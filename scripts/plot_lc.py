@@ -6,6 +6,7 @@ import glob
 from tqdm import tqdm
 from GRITS.catalogs import cat3c,VLSSr50jy,atnf
 from GRITS.imagetools import angsep
+import imageio
 for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
     alldata = np.load(filename)
     dat1 = alldata['imageflux1']
@@ -220,8 +221,7 @@ for fno,filename in enumerate(glob.glob("*fluxfile*npz")):
         fig = plt.figure()
         plt.scatter(detposra,detposdec,label="t=tdet",marker='P',color='red')
         plt.scatter(imagedat['ra'],imagedat['dec'],alpha=0.1,color='gray')
-        
-        plt.scatter(imagedat['ra'].mean(), imagedat['dec'].mean(),marker='x',color='black')
+        plt.scatter(imagedat['ra'].mean(), imagedat['dec'].mean(),marker='x',color='blue')
         if angsep(minVLSSr['ra'],minVLSSr['dec'],meanpos[0],meanpos[1])[0] < 5:
             plt.scatter(minVLSSr['ra'],minVLSSr['dec'],marker='*',color='black',label=f"{minVLSSr['name'][0]}")
         if angsep(min3C['ra'],min3C['dec'],meanpos[0],meanpos[1])[0] < 5:
