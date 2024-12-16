@@ -283,7 +283,7 @@ def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
             hdu.header['CRPIX3'] = 1
             hdu.header['CDELT3'] = 1
             hdu.header['CRVAL3'] = 1
-            midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
+            midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) )
             beamSize = 2.2*74e6/midfreq
             ### LWA1 approximate beam size
         #     hdu.header['BMAJ'] = beamSize/psize
@@ -358,7 +358,7 @@ def pimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
             hdu.header['END_UTC'] = dateEnd.strftime("%Y-%m-%dT%H:%M:%S")
             hdu.header['EXPTIME'] = tInt
             ### LWA1 approximate beam size
-            midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) + (hdr['bandwidth']/2))
+            midfreq = (hdr['start_freq']  + ((chan)*hdr['bandwidth']) )
             beamSize = 2.2*74e6/midfreq
             hdu.header['BMAJ'] = beamSize/psize
             hdu.header['BMIN'] = beamSize/psize
@@ -416,9 +416,9 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     continue
                 hdr = hdrlist[i]
                 try:
-                    midfreq = (hdr['freq']  + j*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                    midfreq = (hdr['freq']  + j*hdr['bandwidth'])
                 except KeyError:
-                    midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                    midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] )
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                 fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                 # Fit image data

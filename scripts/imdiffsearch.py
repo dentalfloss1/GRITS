@@ -83,7 +83,7 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None):
     uniquesrcid=0
     srclist = []
     obslist = []
@@ -100,7 +100,21 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     else:
         print("unrecognized filename")
         exit()
-        
+    if minfreq is not None:
+        for c in range(nchan):
+            try:
+                chanfreq = (hdrlist[0]['freq']  + c*hdrlist[0]['bandwidth'] )
+            except KeyError:
+                chanfreq = (hdrlist[0]['start_freq']  + c*hdrlist[0]['bandwidth'] )
+            if chanfreq < minfreq:
+                if not quiet:
+                    print(f"channel is {chanfreq} MHz, which is lower than the minimum, zeroing the data")
+                data[:,c,:,:,:] = 0
+            if chanfreq > maxfreq:
+                if not quiet:
+                    print(f"channel is {chanfreq} MHz, which is higher than the maximum, zeroing the data")
+                data[:,c,:,:,:] = 0
+               
     if ints==0:
         raise Exception("file is empty")
     beampatterns = []
@@ -380,9 +394,9 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 try:
                     hdr = hdrlist[i]
                     try:
-                        midfreq = (hdr['freq']  + c*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                        midfreq = (hdr['freq']  + c*hdr['bandwidth'] )
                     except KeyError:
-                        midfreq = (hdr['start_freq']  + c*hdr['bandwidth'] + (hdr['bandwidth']/2))
+                        midfreq = (hdr['start_freq']  + c*hdr['bandwidth'] )
                     bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
                     fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
                     pbdata = np.copy(data[i,c,s])
@@ -508,6 +522,8 @@ if __name__ == "__main__":
     parser.add_argument("--postgaussfit",action="store_true")
     parser.add_argument("--gaussqc", action="store_true")
     parser.add_argument("--globfilelist", action="store_true")
+    parser.add_argument("--minfreq",type=float)
+    parser.add_argument("--maxfreq",type=float)
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -530,7 +546,7 @@ if __name__ == "__main__":
         for i,filename in enumerate(filelist):
             print(i+1,"out of",len(filelist), "elapsed:",datetime.datetime.now()-start_run)
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
