@@ -103,17 +103,19 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     if minfreq is not None:
         for c in range(nchan):
             try:
-                chanfreq = (hdrlist[0]['freq']  + c*hdrlist[0]['bandwidth'] )
+                chanfreq = (hdrlist[0]['freq']  + c*hdrlist[0]['bandwidth'] )*1e-6
             except KeyError:
-                chanfreq = (hdrlist[0]['start_freq']  + c*hdrlist[0]['bandwidth'] )
+                chanfreq = (hdrlist[0]['start_freq']  + c*hdrlist[0]['bandwidth'] )*1e-6
             if chanfreq < minfreq:
                 if not quiet:
                     print(f"channel is {chanfreq} MHz, which is lower than the minimum, zeroing the data")
                 data[:,c,:,:,:] = 0
+                imagedata[:,c,:,:,:] = 0
             if chanfreq > maxfreq:
                 if not quiet:
                     print(f"channel is {chanfreq} MHz, which is higher than the maximum, zeroing the data")
                 data[:,c,:,:,:] = 0
+                imagedata[:,c,:,:,:] = 0
                
     if ints==0:
         raise Exception("file is empty")
