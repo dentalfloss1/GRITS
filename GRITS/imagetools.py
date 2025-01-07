@@ -2,7 +2,7 @@ import os
 
 import numpy as np 
 from datetime import timedelta 
-
+import datetime
 from lsl.common.paths import DATA as dataPath
 from lsl.common.mcs import mjdmpm_to_datetime
 from lsl.common.stations import lwasv as lsllwasv
@@ -407,6 +407,75 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     pixmeas = []
     startfit = max(0,targetindex-fitrange)
     stopfit = min(ints,targetindex+fitrange+1)
+    t1= datetime.datetime.now()
+    # GPU only section
+    targetx, targety = hdrtopixmask(hdrlist[targetindex],ngrid,sRad,srcRA,srcDEC,station)[0]
+    midfreq = hdrlist[0]['freq']
+    b0 = (2.2*74e6/midfreq/2)/hdrlist[0]['psize']
+    srcX = int(np.round(targetx))
+    srcY = int(np.round(targety))
+    pixval = pbdata[startfit:stopfit,:,:,srcY,srcX]
+    fitres = 20
+    fguess = np.zeros((stopfit-startfit,pbdata.shape[1],pbdata.shape[2],fitres))
+    for i in range(startfit,stopfit):
+        for c in range(pbdata.shape[1]):
+            for s in range(pbdata.shape[2]):
+                for fno,fval in enumerate(np.linspace(pbdata[i,c,s,srcY,srcX]*0.5,pbdata[i,c,s,srcY,srcX]*1.5,num=fitres)):
+                    fguess[i-startfit,c,s,fno] = fval
+    gpusubdiff = BFArray(pbdata[startfit:stopfit,:,:,srcY - 2*constraint:srcY + 2*constraint + 1,srcX - 2*constraint:srcX + 2*constraint +1].astype('f8'),dtype='f64',space='cuda')
+    gpugauss = BFArray(np.zeros(pbdata[startfit:stopfit,:,:,srcY - 2*constraint:srcY + 2*constraint + 1,srcX - 2*constraint:srcX + 2*constraint +1].shape).astype('f8'),dtype='f64',space='cuda')
+    fltmax = np.finfo('f4').max
+    gpuresid = BFArray(fltmax*np.ones(pbdata[startfit:stopfit,:,:,srcY - 2*constraint:srcY + 2*constraint + 1,srcX - 2*constraint:srcX + 2*constraint +1].shape).astype('f8'),dtype='f64',space='cuda')
+    fitval = BFArray(fltmax*np.ones((stopfit-startfit,pbdata.shape[1],pbdata.shape[2], 4)).astype('f8'),dtype='f64',space='cuda' )
+   # GPU starting parameters
+    BFMap("""
+    auto fitres = %f ;
+    auto constraint = %f ; 
+    auto pixdelt = (2*constraint + 1)/fitres;
+    auto b0 = %f ;
+    auto bdelt = (1.25*b0 - 0.75*b0)/fitres;
+    int Y = %i ; 
+    int X = %i ; 
+    auto f0  = dat(time,chan,stokes,Y,X); 
+    auto fstart = fmin(0.5*f0,1.5*f0);
+    auto fstop = fmax(0.5*f0,1.5*f0);
+    auto fdelt = (fstop-fstart)/fitres;
+    auto gval = 0.0;
+    auto lastresid =%f;
+    auto sumresid = 0.0;
+    
+    for (auto yoff=-constraint; yoff<constraint; yoff += pixdelt){
+        for (auto xoff=-constraint; xoff<constraint; xoff += pixdelt){
+            for (auto bval=b0*0.75; bval<b0*1.25; bval+=bdelt){
+                for (auto fval=fstart; fval<fstop; fval+=fdelt){
+                    sumresid = 0;
+                    for (auto y=0; y<5*constraint; y++){
+                        for (auto x=0; x<5*constraint; x++){
+                            auto xprime = x - xoff;
+                            auto yprime = y - yoff;
+                            gval = fval * exp(-((xprime*xprime) + (yprime*yprime))/(2*bval));
+                            sumresid += pow(fabs(gval - dat(time,chan,stokes,y,x)),2);
+                            }
+                         }
+                    if (sumresid < lastresid){
+                        lastresid =sumresid;
+                        fitval(time,chan,stokes,0) = yoff;
+                        fitval(time,chan,stokes,1) = xoff;
+                        fitval(time,chan,stokes,2) = bval;
+                        fitval(time,chan,stokes,3) = fval;
+                        }
+                    }
+                }
+            }
+        }
+    """ %(fitres, float(constraint), b0, srcY, srcX, fltmax,),
+    {"dat":gpusubdiff,"gauss":gpugauss,"fitval":fitval},axis_names=('time','chan','stokes'), shape=(stopfit-startfit,pbdata.shape[1],pbdata.shape[2]))
+    fitval = fitval.copy('system')
+    print(fitval.shape)
+
+    t2 = datetime.datetime.now()
+    print(t2-t1,"Fit on GPU")
+    t1= datetime.datetime.now() 
     for i in (tqdm(range(startfit,stopfit)) if progress else range(startfit,stopfit)):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
@@ -497,7 +566,8 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                   #   print(popt,pcov,infodict,mesg,ier)
     colnames = ["f0","f0err","x0","x0err","y0","y0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
-
+    t2 =datetime.datetime.now()
+    print(t2-t1, "current including imagefit")
     return imagefit,diffFIT,colnames,coldtypes,pixmeas
 
 

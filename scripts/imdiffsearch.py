@@ -557,7 +557,7 @@ if __name__ == "__main__":
             diffdata[1:] = diffdata[1:] - diffdata[:-1]
             if args.postgaussfit:
                 for s1 in srcarr:
-                    imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=6)
+                    imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=int(60/5))
                     if not diffFIT:
                         print("Failed to fit gaussian")
                         continue
