@@ -367,7 +367,7 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
     sortuhrpsts = np.sort(np.unique(dat['mjd'][ (dat['mjd'] > (np.amin(dettimes) - 1/24/60)) & (dat['mjd'] < (np.amax(dettimes) + 1/24/60))]))
     Z = np.zeros((len(sortuhrpsts),nchan))
     for i,d in enumerate(sortuhrpsts):
-        for chno, c in enumerate(np.unique(np.sort(dat['freq']))):
+        for chno, c in enumerate(np.sort(np.unique(dat['freq']))):
             try:
                 Z[i,chno] = dat['f0'][(dat['mjd']==d) & (dat['freq']==c) & (dat['stokes']==stokesno)][0]
             except: 
@@ -390,7 +390,7 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
     sortuhrpsts = np.sort(np.unique(diffdat['mjd'][ (diffdat['mjd'] > (np.amin(dettimes) - 1/24/60)) & (diffdat['mjd'] < (np.amax(dettimes) + 1/24/60))]))
     Z = np.zeros((len(sortuhrpsts),nchan))
     for i,d in enumerate(sortuhrpsts):
-        for chno, c in enumerate(np.unique(np.sort(diffdat['freq']))):
+        for chno, c in enumerate(np.sort(np.unique(diffdat['freq']))):
             try:
                 Z[i,chno] = diffdat['f0'][(diffdat['mjd']==d) & (diffdat['freq']==c) & (diffdat['stokes']==stokesno)][0]
             except: 
@@ -413,7 +413,7 @@ for stokesno, (stokes,marker) in enumerate(zip(['I','Linear','Total','V'],['s','
     sortuhrpsts = np.sort(np.unique(pixmeas['mjd'][ (pixmeas['mjd'] > (np.amin(dettimes) - 1/24/60)) & (pixmeas['mjd'] < (np.amax(dettimes) + 1/24/60))]))
     Z = np.zeros((len(sortuhrpsts),nchan))
     for i,d in enumerate(sortuhrpsts):
-        for chno, c in enumerate(np.unique(np.sort(pixmeas['freq']))):
+        for chno, c in enumerate(np.sort(np.unique(pixmeas['freq']))):
             try:
                 Z[i,chno] = pixmeas['f0'][(pixmeas['mjd']==d) & (pixmeas['freq']==c) & (pixmeas['stokes']==stokesno)][0]
             except: 

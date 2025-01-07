@@ -21,6 +21,7 @@ import astropy.units as u
 from lsl_toolkits.OrvilleImage.wcs import getSVwcs, getGENERICwcs
 
 from scipy.optimize import curve_fit
+from tqdm import tqdm
 
 def gaussian_nobackground(xy, amplitude, xo, yo, sigma, theta):
     x, y = xy
@@ -380,7 +381,7 @@ circle [[{ra}deg, {dec}deg], 15775.2806arcsec] coord=ICRS, corr=[I, Q, U, V], li
         f.write(contents)
 
 
-def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep,fitrange=-1,constraint=1):
+def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,targetindex,statsep,fitrange=-1,constraint=1,progress=False):
     ngrid = data.shape[-1]
     nstokes = data.shape[2]
     nchan = data.shape[1]
@@ -406,7 +407,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     pixmeas = []
     startfit = max(0,targetindex-fitrange)
     stopfit = min(ints,targetindex+fitrange+1)
-    for i in range(startfit,stopfit):
+    for i in (tqdm(range(startfit,stopfit)) if progress else range(startfit,stopfit)):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
         avy = targety
