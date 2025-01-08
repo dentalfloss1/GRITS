@@ -400,82 +400,13 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     xarr = np.linspace(0,data.shape[-1]-1,data.shape[-1])
     yarr = np.linspace(0, data.shape[-1]-1,data.shape[-1])
     x, y = np.meshgrid(xarr, yarr)
-    subxarr = np.linspace(0,10,11)
-    subyarr = np.linspace(0, 10,11)
+    subxarr = np.arange(4*constraint+1)
+    subyarr = np.arange(4*constraint+1)
     subx, suby = np.meshgrid(subxarr, subyarr)
     pbdata[1:] = np.where(np.isnan(pbdata[1:]),pbimagedata[1:] - pbimagedata[:-1],pbdata[1:])
     pixmeas = []
     startfit = max(0,targetindex-fitrange)
     stopfit = min(ints,targetindex+fitrange+1)
-    t1= datetime.datetime.now()
-    # GPU only section
-    targetx, targety = hdrtopixmask(hdrlist[targetindex],ngrid,sRad,srcRA,srcDEC,station)[0]
-    midfreq = hdrlist[0]['freq']
-    b0 = (2.2*74e6/midfreq/2)/hdrlist[0]['psize']
-    srcX = int(np.round(targetx))
-    srcY = int(np.round(targety))
-    pixval = pbdata[startfit:stopfit,:,:,srcY,srcX]
-    fitres = 20
-    fguess = np.zeros((stopfit-startfit,pbdata.shape[1],pbdata.shape[2],fitres))
-    for i in range(startfit,stopfit):
-        for c in range(pbdata.shape[1]):
-            for s in range(pbdata.shape[2]):
-                for fno,fval in enumerate(np.linspace(pbdata[i,c,s,srcY,srcX]*0.5,pbdata[i,c,s,srcY,srcX]*1.5,num=fitres)):
-                    fguess[i-startfit,c,s,fno] = fval
-    gpusubdiff = BFArray(pbdata[startfit:stopfit,:,:,srcY - 2*constraint:srcY + 2*constraint + 1,srcX - 2*constraint:srcX + 2*constraint +1].astype('f8'),dtype='f64',space='cuda')
-    gpugauss = BFArray(np.zeros(pbdata[startfit:stopfit,:,:,srcY - 2*constraint:srcY + 2*constraint + 1,srcX - 2*constraint:srcX + 2*constraint +1].shape).astype('f8'),dtype='f64',space='cuda')
-    fltmax = np.finfo('f4').max
-    gpuresid = BFArray(fltmax*np.ones(pbdata[startfit:stopfit,:,:,srcY - 2*constraint:srcY + 2*constraint + 1,srcX - 2*constraint:srcX + 2*constraint +1].shape).astype('f8'),dtype='f64',space='cuda')
-    fitval = BFArray(fltmax*np.ones((stopfit-startfit,pbdata.shape[1],pbdata.shape[2], 4)).astype('f8'),dtype='f64',space='cuda' )
-   # GPU starting parameters
-    BFMap("""
-    auto fitres = %f ;
-    auto constraint = %f ; 
-    auto pixdelt = (2*constraint + 1)/fitres;
-    auto b0 = %f ;
-    auto bdelt = (1.25*b0 - 0.75*b0)/fitres;
-    int Y = %i ; 
-    int X = %i ; 
-    auto f0  = dat(time,chan,stokes,Y,X); 
-    auto fstart = fmin(0.5*f0,1.5*f0);
-    auto fstop = fmax(0.5*f0,1.5*f0);
-    auto fdelt = (fstop-fstart)/fitres;
-    auto gval = 0.0;
-    auto lastresid =%f;
-    auto sumresid = 0.0;
-    
-    for (auto yoff=-constraint; yoff<constraint; yoff += pixdelt){
-        for (auto xoff=-constraint; xoff<constraint; xoff += pixdelt){
-            for (auto bval=b0*0.75; bval<b0*1.25; bval+=bdelt){
-                for (auto fval=fstart; fval<fstop; fval+=fdelt){
-                    sumresid = 0;
-                    for (auto y=0; y<5*constraint; y++){
-                        for (auto x=0; x<5*constraint; x++){
-                            auto xprime = x - xoff;
-                            auto yprime = y - yoff;
-                            gval = fval * exp(-((xprime*xprime) + (yprime*yprime))/(2*bval));
-                            sumresid += pow(fabs(gval - dat(time,chan,stokes,y,x)),2);
-                            }
-                         }
-                    if (sumresid < lastresid){
-                        lastresid =sumresid;
-                        fitval(time,chan,stokes,0) = yoff;
-                        fitval(time,chan,stokes,1) = xoff;
-                        fitval(time,chan,stokes,2) = bval;
-                        fitval(time,chan,stokes,3) = fval;
-                        }
-                    }
-                }
-            }
-        }
-    """ %(fitres, float(constraint), b0, srcY, srcX, fltmax,),
-    {"dat":gpusubdiff,"gauss":gpugauss,"fitval":fitval},axis_names=('time','chan','stokes'), shape=(stopfit-startfit,pbdata.shape[1],pbdata.shape[2]))
-    fitval = fitval.copy('system')
-    print(fitval.shape)
-
-    t2 = datetime.datetime.now()
-    print(t2-t1,"Fit on GPU")
-    t1= datetime.datetime.now() 
     for i in (tqdm(range(startfit,stopfit)) if progress else range(startfit,stopfit)):
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
@@ -490,22 +421,24 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 except KeyError:
                     midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] )
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
-                fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
+                fsize_gaussian = lambda xy, amplitude, xo, yo, bo: gaussian_nobackground(xy, amplitude, xo, yo, bo,0)
                 # Fit image data
                 f0 = pbimagedata[i,j,k,int(round(avy)),int(round(avx))]
-                x0 = avx - round(avx) + 5
-                y0 = avy - round(avy) + 5
-                initial_guess = [f0,x0,y0]
-                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                x0 = avx - round(avx) + 2*constraint
+                y0 = avy - round(avy) + 2*constraint
+                initial_guess = [f0,x0,y0,bsizepix]
+                minf0 = min(f0*0.5,f0*1.5)
+                maxf0 = max(f0*0.5,f0*1.5)
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
                 try:
                     
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
-                    xOUT = popt[1] + round(avx) - 5
-                    yOUT = popt[2] + round(avy) - 5
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
+                    xOUT = popt[1] + round(avx) - 2*constraint
+                    yOUT = popt[2] + round(avy) - 2*constraint
                     # TIGHT position restrictions
                     if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
@@ -524,25 +457,26 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     else: 
                         raise Exception("fit too far away")
                 except Exception as e:
-                    # print(e)
-                    # print(popt,pcov,infodict,mesg,ier)
-                    pass
+                    print(e)
+                   #  print(popt,pcov,infodict,mesg,ier)
 
                 # fit diff data
                 f0 = pbdata[i,j,k,int(round(avy)),int(round(avx))]
-                pixmeas.append((f0,0,avx,0,avy,0,hdrlist[i]['start_time'],midfreq/1e6,k,srcRA,srcDEC))
-                x0 = avx - round(avx) + 5
-                y0 = avy - round(avy) + 5
-                initial_guess = [f0,x0,y0]
-                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-3,x0+3),(y0-3,y0+3)]
+                pixmeas.append((f0,0,avx,0,avy,0,bsizepix,0,hdrlist[i]['start_time'],midfreq/1e6,k,srcRA,srcDEC))
+                x0 = avx - round(avx) + 2*constraint
+                y0 = avy - round(avy) + 2*constraint
+                initial_guess = [f0,x0,y0,bsizepix]
+                minf0 = min(f0*0.5,f0*1.5)
+                maxf0 = max(f0*0.5,f0*1.5)
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint + 1)]).ravel()
                 try:
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
-                    xOUT = popt[1] + round(avx) - 5
-                    yOUT = popt[2] + round(avy) - 5
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
+                    xOUT = popt[1] + round(avx) - 2*constraint
+                    yOUT = popt[2] + round(avy) - 2*constraint
                     # TIGHT position restrictions
                     if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
@@ -561,13 +495,10 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     else:
                         raise Exception("fit too far away")
                 except Exception as e:
-                    pass
-                  #   print(e)
-                  #   print(popt,pcov,infodict,mesg,ier)
-    colnames = ["f0","f0err","x0","x0err","y0","y0err","mjd","freq","stokes","ra","dec"]
-    coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
-    t2 =datetime.datetime.now()
-    print(t2-t1, "current including imagefit")
+                    print(e)
+                   #  print(popt,pcov,infodict,mesg,ier)
+    colnames = ["f0","f0err","x0","x0err","y0","y0err","b0","b0err","mjd","freq","stokes","ra","dec"]
+    coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
     return imagefit,diffFIT,colnames,coldtypes,pixmeas
 
 
