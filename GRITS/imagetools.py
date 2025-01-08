@@ -2,7 +2,7 @@ import os
 
 import numpy as np 
 from datetime import timedelta 
-
+import datetime
 from lsl.common.paths import DATA as dataPath
 from lsl.common.mcs import mjdmpm_to_datetime
 from lsl.common.stations import lwasv as lsllwasv
@@ -400,8 +400,8 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     xarr = np.linspace(0,data.shape[-1]-1,data.shape[-1])
     yarr = np.linspace(0, data.shape[-1]-1,data.shape[-1])
     x, y = np.meshgrid(xarr, yarr)
-    subxarr = np.linspace(0,10,11)
-    subyarr = np.linspace(0, 10,11)
+    subxarr = np.arange(4*constraint+1)
+    subyarr = np.arange(4*constraint+1)
     subx, suby = np.meshgrid(subxarr, subyarr)
     pbdata[1:] = np.where(np.isnan(pbdata[1:]),pbimagedata[1:] - pbimagedata[:-1],pbdata[1:])
     pixmeas = []
@@ -421,22 +421,24 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 except KeyError:
                     midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] )
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
-                fsize_gaussian = lambda xy, amplitude, xo, yo: gaussian_nobackground(xy, amplitude, xo, yo, bsizepix,0)
+                fsize_gaussian = lambda xy, amplitude, xo, yo, bo: gaussian_nobackground(xy, amplitude, xo, yo, bo,0)
                 # Fit image data
                 f0 = pbimagedata[i,j,k,int(round(avy)),int(round(avx))]
-                x0 = avx - round(avx) + 5
-                y0 = avy - round(avy) + 5
-                initial_guess = [f0,x0,y0]
-                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-(bsizepix/2),x0+(bsizepix/2)),(y0-(bsizepix/2),y0+(bsizepix/2))]
+                x0 = avx - round(avx) + 2*constraint
+                y0 = avy - round(avy) + 2*constraint
+                initial_guess = [f0,x0,y0,bsizepix]
+                minf0 = min(f0*0.5,f0*1.5)
+                maxf0 = max(f0*0.5,f0*1.5)
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
                 try:
                     
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
-                    xOUT = popt[1] + round(avx) - 5
-                    yOUT = popt[2] + round(avy) - 5
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
+                    xOUT = popt[1] + round(avx) - 2*constraint
+                    yOUT = popt[2] + round(avy) - 2*constraint
                     # TIGHT position restrictions
                     if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
@@ -455,25 +457,26 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     else: 
                         raise Exception("fit too far away")
                 except Exception as e:
-                    # print(e)
-                    # print(popt,pcov,infodict,mesg,ier)
-                    pass
+                    print(e)
+                   #  print(popt,pcov,infodict,mesg,ier)
 
                 # fit diff data
                 f0 = pbdata[i,j,k,int(round(avy)),int(round(avx))]
-                pixmeas.append((f0,0,avx,0,avy,0,hdrlist[i]['start_time'],midfreq/1e6,k,srcRA,srcDEC))
-                x0 = avx - round(avx) + 5
-                y0 = avy - round(avy) + 5
-                initial_guess = [f0,x0,y0]
-                initbounds = [(-np.abs(f0)*10,np.abs(f0)*10),(x0-3,x0+3),(y0-3,y0+3)]
+                pixmeas.append((f0,0,avx,0,avy,0,bsizepix,0,hdrlist[i]['start_time'],midfreq/1e6,k,srcRA,srcDEC))
+                x0 = avx - round(avx) + 2*constraint
+                y0 = avy - round(avy) + 2*constraint
+                initial_guess = [f0,x0,y0,bsizepix]
+                minf0 = min(f0*0.5,f0*1.5)
+                maxf0 = max(f0*0.5,f0*1.5)
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
-                fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 5):(int(round(avy)) + 6),(int(round(avx)) - 5):(int(round(avx)) + 6)]).ravel()
+                fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint + 1)]).ravel()
                 try:
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-3)
-                    xOUT = popt[1] + round(avx) - 5
-                    yOUT = popt[2] + round(avy) - 5
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
+                    xOUT = popt[1] + round(avx) - 2*constraint
+                    yOUT = popt[2] + round(avy) - 2*constraint
                     # TIGHT position restrictions
                     if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
                         raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
@@ -492,12 +495,10 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     else:
                         raise Exception("fit too far away")
                 except Exception as e:
-                    pass
-                  #   print(e)
-                  #   print(popt,pcov,infodict,mesg,ier)
-    colnames = ["f0","f0err","x0","x0err","y0","y0err","mjd","freq","stokes","ra","dec"]
-    coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
-
+                    print(e)
+                   #  print(popt,pcov,infodict,mesg,ier)
+    colnames = ["f0","f0err","x0","x0err","y0","y0err","b0","b0err","mjd","freq","stokes","ra","dec"]
+    coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
     return imagefit,diffFIT,colnames,coldtypes,pixmeas
 
 
