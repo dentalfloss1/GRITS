@@ -13,7 +13,7 @@ for (auto i=0; i<%s; i++){
     }
             """ % (ngrid,ngrid),
         {'isldata':islanddata}, 
-        axis_names=('time','chan','stokes'), shape=(ints,nchan,4))
+        axis_names=('time','chan','stokes'), shape=(ints,nchan,islanddata.shape[2]))
         
 def groupvertcols(idata,grid):
     BFMap("""

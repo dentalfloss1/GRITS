@@ -84,15 +84,15 @@ def plotislands(islanddata):
     plt.close()
 
 def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None):
-    nstokes = 4 
+    nstokes = len(maskstokes)
     chunking = int( config['Batch Control']['chunktime'])
     if not quiet:
         print(filename)
             
     if ".oims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startchan=startchan,stopchan=stopchan)
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startchan=startchan,stopchan=stopchan,maskstokes=maskstokes)
     elif ".pims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename)
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename,maskstokes=maskstokes)
     else:
         print("unrecognized filename")
         exit()
@@ -208,25 +208,19 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     # skipping the first one
     islanddata[0,:,:,:,:] = 0
     for c in range(nchan):
-        for s in range(4):
+        for s in range(nstokes):
             flaggedtimes.append((0,c,s))
     for ind in range(ints): 
         if ((ind) < skip):
             islanddata[ind,:,:,:,:] = 0
             for c in range(nchan):
-                for s in range(4):
+                for s in range(nstokes):
                     flaggedtimes.append((ind,c,s))
         if ((ind) > endearly):
             islanddata[ind,:,:,:,:] = 0
             for c in range(nchan):
-                for s in range(4):
+                for s in range(nstokes):
                     flaggedtimes.append((ind,c,s))
-    if maskstokes is not None:
-        for m in maskstokes:
-            islanddata[:,:,m,:,:] = 0
-            for i in range(ints):
-                for c in range(nchan):
-                    flaggedtimes.append((i,c,m))
 
 
     for chunk in range(int(np.ceil(ints/chunking))):
@@ -248,10 +242,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # GROUPCOLS
         groupvertcols(islandcuda,ngrid)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((subints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
+        rotateddata = BFArray(np.zeros((subints,nchan,nstokes,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
         rotgrid = 2*ngrid-1
 
         # GROUP DIAG COLS
@@ -263,7 +257,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # UPDATE UNROTATED Island data
         BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
         # GROUPCOLS
         groupvertcols(islandcuda,ngrid)
         # GROUPROWS
@@ -271,10 +265,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # GROUPCOLS
         groupvertcols(islandcuda,ngrid)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((subints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
+        rotateddata = BFArray(np.zeros((subints,nchan,nstokes,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
         rotgrid = 2*ngrid-1
 
         # GROUP DIAG COLS
@@ -286,7 +280,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # UPDATE UNROTATED Island data
         BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
 
         t2 = datetime.datetime.now()
         if not quiet:
@@ -315,7 +309,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                         else:
                             # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
                             # We can't really trust the other polarizations either
-                            for l in range(4):
+                            for l in range(nstokes):
                                 flaggedtimes.append((i,j,l))
                                 islanddata[i,j,l,:,:] = 0
     pblimit = float(config['Quality Control']['pbpercent'])
@@ -549,7 +543,7 @@ if __name__ == "__main__":
                 nchanchunks=1
                 chanchunk = 1
             elif ".oims" in filename:
-                with closing(OrvilleImageDB(filename'r')) as db:
+                with closing(OrvilleImageDB(filename,'r')) as db:
                     nchan = db.header.nchan
                 chanchunk=args.chanchunk
                 nchanchunks = int(np.ceil(nchan/chanchunk))
