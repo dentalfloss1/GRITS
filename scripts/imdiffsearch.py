@@ -554,7 +554,7 @@ if __name__ == "__main__":
 
             for ccno in range(nchanchunks):
                 startchan = ccno*chanchunk
-                stopchan = min(start+chanchunk,nchan)
+                stopchan = min(startchan+chanchunk,nchan)
                 try:
                     srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan)
                     fullobslist.extend(obslist)

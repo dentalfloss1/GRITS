@@ -127,7 +127,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None,maskstokes=None):
         minfreq=hdr['freq']
         if maskstokes is None:
             maskstokes = []
-        selstokes = [s for s in range(4) if s is not in maskstokes]
+        selstokes = [s for s in range(4) if s not in maskstokes]
         nstokes = len(selstokes)
         data = np.zeros((ints,nchan,nstokes,ngrid,ngrid))
         if not hdronly:
