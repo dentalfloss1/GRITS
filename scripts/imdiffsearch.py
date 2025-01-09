@@ -83,18 +83,14 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None):
-    uniquesrcid=0
-    srclist = []
-    obslist = []
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None):
     nstokes = 4 
     chunking = int( config['Batch Control']['chunktime'])
     if not quiet:
         print(filename)
-
             
     if ".oims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename)
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startchan=startchan,stopchan=stopchan)
     elif ".pims" in filename:
         ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename)
     else:
@@ -526,6 +522,7 @@ if __name__ == "__main__":
     parser.add_argument("--globfilelist", action="store_true")
     parser.add_argument("--minfreq",type=float)
     parser.add_argument("--maxfreq",type=float)
+    parser.add_argument("--chanchunk",type=int, default=10)
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -547,70 +544,87 @@ if __name__ == "__main__":
 
         for i,filename in enumerate(filelist):
             print(i+1,"out of",len(filelist), "elapsed:",datetime.datetime.now()-start_run)
-            try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq)
-                fullobslist.extend(obslist)
-            except Exception as e:
-                print(traceback.format_exc())
-                print("Issue with ",filename,"skipping.")
-            diffdata = np.copy(allimagedata)
-            diffdata[1:] = diffdata[1:] - diffdata[:-1]
-            if args.postgaussfit:
-                for s1 in srcarr:
-                    imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=int(60/5),constraint=2)
-                    if not diffFIT:
-                        print("Failed to fit gaussian")
-                        continue
-                    imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                    diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                    pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                    formattedoutput = []
-                    row = []
-                    numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
-                    if numdets==0:
-                        print("station could not fit a gaussian at detection time")
-                        continue
-
-
-                    np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
-                             imageflux=imageflux,
-                             diffFLUX1=diffFLUX,
-                             minrms=minrms,
-                             srcarray=srcarr,
-                             pixmeas=pixmeas,
-                             corrfluxlist=corrfluxlist)
-                    uniqueid+=1
+            if ".pims" in filename:
+                nchan = 1
+                nchanchunks=1
+                chanchunk = 1
+            elif ".oims" in filename:
+                with closing(OrvilleImageDB(filename'r')) as db:
+                    nchan = db.header.nchan
+                chanchunk=args.chanchunk
+                nchanchunks = int(np.ceil(nchan/chanchunk))
+                
             else:
-                if srcarr.size > 0:
-                    outsrcs = srcarr[srcarr['nchan'] > (allimagedata.shape[1]*float(config['Quality Control']['minchanfraction']))]
+                print("unrecognized filename")
+                continue
 
-                    np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile"),
-                             minrms=minrms,
-                             srcarray=outsrcs,
-                             corrfluxlist=corrfluxlist,
-                             flaggedtimes=allflaggedtimes)
+            for ccno in range(nchanchunks):
+                startchan = ccno*chanchunk
+                stopchan = min(start+chanchunk,nchan)
+                try:
+                    srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan)
+                    fullobslist.extend(obslist)
+                except Exception as e:
+                    print(traceback.format_exc())
+                    print("Issue with ",filename,"skipping.")
+                diffdata = np.copy(allimagedata)
+                diffdata[1:] = diffdata[1:] - diffdata[:-1]
+                if args.postgaussfit:
+                    for s1 in srcarr:
+                        imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=int(60/5),constraint=2)
+                        if not diffFIT:
+                            print("Failed to fit gaussian")
+                            continue
+                        imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                        diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                        pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                        formattedoutput = []
+                        row = []
+                        numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
+                        if numdets==0:
+                            print("station could not fit a gaussian at detection time")
+                            continue
 
-            for i in np.unique(srcarr['index']):
-                src = srcarr[srcarr['index']==i]
-                nsrcleft = len(src)
-                srcleft = src
-                while nsrcleft > 0:
-                    s1 = srcleft[0]
-                    seps = np.zeros(len(src),dtype=bool)
-                    for j,s in enumerate(src):
-                        if s==s1:
-                            seps[j]=True
-                        else:  
-                            pixdist = np.sqrt( (s1['x']-s['x'])**2 + (s1['y'] - s['y'])**2)
-                            seps[j] = pixdist < float(config['Quality Control']['statsep'])
-                    matching2 = src[seps]
-                    outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
-                    srcleft = srcleft[~np.isin(srcleft,matching2)]
-                    nsrcleft = srcleft.size
-            if args.targetsource:
-                for s in srcarr:
-                    if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['statsep']):
-                        print(s)
+
+                        np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
+                                 imageflux=imageflux,
+                                 diffFLUX1=diffFLUX,
+                                 minrms=minrms,
+                                 srcarray=srcarr,
+                                 pixmeas=pixmeas,
+                                 corrfluxlist=corrfluxlist)
+                        uniqueid+=1
+                else:
+                    if srcarr.size > 0:
+                        outsrcs = srcarr[srcarr['nchan'] > (allimagedata.shape[1]*float(config['Quality Control']['minchanfraction']))]
+
+                        np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile"),
+                                 minrms=minrms,
+                                 srcarray=outsrcs,
+                                 corrfluxlist=corrfluxlist,
+                                 flaggedtimes=allflaggedtimes)
+
+                for i in np.unique(srcarr['index']):
+                    src = srcarr[srcarr['index']==i]
+                    nsrcleft = len(src)
+                    srcleft = src
+                    while nsrcleft > 0:
+                        s1 = srcleft[0]
+                        seps = np.zeros(len(src),dtype=bool)
+                        for j,s in enumerate(src):
+                            if s==s1:
+                                seps[j]=True
+                            else:  
+                                pixdist = np.sqrt( (s1['x']-s['x'])**2 + (s1['y'] - s['y'])**2)
+                                seps[j] = pixdist < float(config['Quality Control']['statsep'])
+                        matching2 = src[seps]
+                        outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
+                        srcleft = srcleft[~np.isin(srcleft,matching2)]
+                        nsrcleft = srcleft.size
+                if args.targetsource:
+                    for s in srcarr:
+                        if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['statsep']):
+                            print(s)
         outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
         with open(outobsfile,"w") as f:
             for o in fullobslist:

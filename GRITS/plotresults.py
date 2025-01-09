@@ -79,7 +79,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     skip = False
     extent = SetExtent(sRad,data)
     chantoplot = 0
-    fig, axs = plt.subplots(ncols=5,nrows=6,figsize=(20,17))
+    fig, axs = plt.subplots(ncols=5,nrows=6)
     ytextloc = 0.9
     lastlabel = -1
     mintime = max(1,i-2)

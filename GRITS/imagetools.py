@@ -436,7 +436,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
                 try:
                     
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,xtol=1e-2,maxfev=50)
                     xOUT = popt[1] + round(avx) - 2*constraint
                     yOUT = popt[2] + round(avy) - 2*constraint
                     # TIGHT position restrictions
@@ -457,7 +457,10 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     else: 
                         raise Exception("fit too far away")
                 except Exception as e:
-                    print(e)
+                    if progress:
+                        print(e)
+                    else:
+                        pass
                    #  print(popt,pcov,infodict,mesg,ier)
 
                 # fit diff data
@@ -474,7 +477,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 bounds = [bounds0,bounds1]
                 fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint + 1)]).ravel()
                 try:
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
+                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,xtol=1e-2,maxfev=50)
                     xOUT = popt[1] + round(avx) - 2*constraint
                     yOUT = popt[2] + round(avy) - 2*constraint
                     # TIGHT position restrictions
@@ -495,7 +498,10 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                     else:
                         raise Exception("fit too far away")
                 except Exception as e:
-                    print(e)
+                    if progress:
+                        print(e)
+                    else:
+                        pass
                    #  print(popt,pcov,infodict,mesg,ier)
     colnames = ["f0","f0err","x0","x0err","y0","y0err","b0","b0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]

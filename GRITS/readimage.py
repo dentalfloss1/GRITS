@@ -56,7 +56,7 @@ def matchfilepairs(station1,station2):
                 matchingfilepairs.append((f1,f2))
     return matchingfilepairs
 
-def readoims(filename,hdronly=False,startind=None,stopind=None):
+def readoims(filename,hdronly=False,startind=None,stopind=None,startchan=None,stopchan=None):
     with closing(OrvilleImageDB(filename, 'r')) as db:
         # Get parameters from the input file
         file_start = db.header.start_time # file start time
@@ -81,6 +81,11 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
         if intlen > 1: # if larger than one, has to be in seconds
             intlen = intlen/24.0/60.0/60.0 # seconds to days
         file_end = hdr['start_time'] + intlen
+        if startchan is None:
+            startchan = 0
+        if stopchan is None:
+            stopchan = nchan
+        nchan = stopchan-startchan
         if not hdronly:
             # Collect header and data from the whole file
             hdrlist = []
@@ -90,7 +95,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
                 hdr,alldata = db.read_image()
                 hdr['psize'] = psize
                 hdrlist.append(hdr)
-                data[i] = np.asarray(alldata.data)
+                data[i] = np.asarray(alldata.data)[startchan:stopchan]
             imagedata = np.copy(data)
             data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
