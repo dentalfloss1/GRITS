@@ -227,9 +227,10 @@ def maskislands(imagedata, data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsi
             k=0
             islandcond = data[i,j,k] > (rmsdata[i,j,k]*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-            for k in range(1,4):
-                islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] > 0) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] < 0) & (data[i,j,k] < 0))
-                islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            if data.shape[2]>1:
+                for k in range(1,data.shape[2]):
+                    islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] > 0) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] < 0) & (data[i,j,k] < 0))
+                    islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     return flaggedtimes, islandmasks.astype(int)
 
 def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):

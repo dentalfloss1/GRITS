@@ -98,6 +98,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None,startchan=None,st
                 db.seek(i+startind)
                 hdr,alldata = db.read_image()
                 hdr['psize'] = psize
+                hdr['start_freq'] = hdr['start_freq'] + hdr['bandwidth']*startchan
                 hdrlist.append(hdr)
                 data[i] = np.asarray(alldata.data)[startchan:stopchan,tuple(selstokes)]
             imagedata = np.copy(data)

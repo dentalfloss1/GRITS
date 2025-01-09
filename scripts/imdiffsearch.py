@@ -84,7 +84,12 @@ def plotislands(islanddata):
     plt.close()
 
 def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None):
-    nstokes = len(maskstokes)
+    uniquesrcid = 0
+    srclist = []
+    obslist = []
+    if startchan is None:
+        startchan = 0
+    nstokes = 4-len(maskstokes)
     chunking = int( config['Batch Control']['chunktime'])
     if not quiet:
         print(filename)
@@ -421,7 +426,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 flagsrc.append((i,c,s,ind))
             else:
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s))
+                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c+startchan,detchan+startchan,s))
             uniquesrcid += 1
             lastlabel = label
     if not quiet:
@@ -474,12 +479,17 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             if ndetchans.size > 0:
                 chanpercent = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)][0]/nchan
                 if ((i,c,s,ind) not in flagsrc) & (chanpercent > float(config['Quality Control']['minchanfraction'])):
-                    plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
+                    plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),maskstokes=maskstokes)
+
+
+    correctedflaggedtimes = []
+    for i,c,s in flaggedtimes:
+        correctedflaggedtimes.append((i,c+startchan,s))
     if not quiet: 
         t2 = datetime.datetime.now()
         print(t2-t1)
     print("-------------------")
-    return srcarray, rmsdata, corrfluxlist, imagedata, islanddata, hdrlist, station, obslist, sRad, flaggedtimes
+    return srcarray, rmsdata, corrfluxlist, imagedata, islanddata, hdrlist, station, obslist, sRad, correctedflaggedtimes
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -592,7 +602,7 @@ if __name__ == "__main__":
                     if srcarr.size > 0:
                         outsrcs = srcarr[srcarr['nchan'] > (allimagedata.shape[1]*float(config['Quality Control']['minchanfraction']))]
 
-                        np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile"),
+                        np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile_subband{ccno}"),
                                  minrms=minrms,
                                  srcarray=outsrcs,
                                  corrfluxlist=corrfluxlist,
