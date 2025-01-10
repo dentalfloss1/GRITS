@@ -84,6 +84,8 @@ def plotislands(islanddata):
     plt.close()
 
 def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None):
+    if maskstokes is None:
+        maskstokes = []
     uniquesrcid = 0
     srclist = []
     obslist = []
@@ -117,7 +119,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     print(f"channel is {chanfreq} MHz, which is higher than the maximum, zeroing the data")
                 data[:,c,:,:,:] = 0
                 imagedata[:,c,:,:,:] = 0
-               
+    if (imagedata==0).all():
+        raise Exception("No Data")
     if ints==0:
         raise Exception("file is empty")
     beampatterns = []
@@ -384,7 +387,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             detchan=1
             nongauss = False
             if gaussqc:
-                constraint = 1 
+                constraint = 2 
                 subxarr = np.linspace(0,10,11)
                 subyarr = np.linspace(0, 10,11)
                 subx, suby = np.meshgrid(subxarr, subyarr)
@@ -563,6 +566,7 @@ if __name__ == "__main__":
                 continue
 
             for ccno in range(nchanchunks):
+                print("Channel chunk",ccno+1,"out of",nchanchunks)
                 startchan = ccno*chanchunk
                 stopchan = min(startchan+chanchunk,nchan)
                 try:
@@ -571,6 +575,7 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(traceback.format_exc())
                     print("Issue with ",filename,"skipping.")
+                    continue
                 diffdata = np.copy(allimagedata)
                 diffdata[1:] = diffdata[1:] - diffdata[:-1]
                 if args.postgaussfit:
