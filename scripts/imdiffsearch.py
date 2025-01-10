@@ -429,7 +429,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 flagsrc.append((i,c,s,ind))
             else:
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c+startchan,detchan+startchan,s))
+                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c+startchan,1,s))
             uniquesrcid += 1
             lastlabel = label
     if not quiet:
@@ -478,11 +478,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             i = whereislands[0][ind]
             c = whereislands[1][ind]
             s = whereislands[2][ind]
-            ndetchans = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)]
-            if ndetchans.size > 0:
-                chanpercent = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)][0]/nchan
-                if ((i,c,s,ind) not in flagsrc) & (chanpercent > float(config['Quality Control']['minchanfraction'])):
-                    plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),maskstokes=maskstokes)
+            if ((i,c,s,ind) not in flagsrc) :
+                plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),maskstokes=maskstokes)
 
 
     correctedflaggedtimes = []
