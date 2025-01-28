@@ -411,6 +411,8 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
         targetx, targety = hdrtopixmask(hdrlist[i],ngrid,sRad,srcRA,srcDEC,station)[0]
         avx = targetx
         avy = targety
+        if np.isnan(avx).any() or np.isnan(avy).any():
+            continue
         for j in range(nchan):
             for k in range(nstokes):
                 if (i,j,k) in flaggedtimes:
@@ -430,34 +432,40 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 minf0 = min(f0*0.5,f0*1.5)
                 maxf0 = max(f0*0.5,f0*1.5)
                 initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
+                invalidBounds=False
+                for b1,b2 in initbounds:
+                    if b1==b2:
+                       invalidBounds=True
+                if invalidBounds:
+                    continue
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
+                magcond = np.any([(np.abs(b2) > 1e16) for b1 in bounds for b2 in b1])
+                if magcond:
+                    continue
                 fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
-                try:
-                    
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
-                    xOUT = popt[1] + round(avx) - 2*constraint
-                    yOUT = popt[2] + round(avy) - 2*constraint
-                    # TIGHT position restrictions
-                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
-                        raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
-                        row = []
-                        for pind in range(len(popt)):
-                            param = popt[pind]
-                            perr = np.absolute(pcov[pind][pind])**0.5
-                            row.append(param)
-                            row.append(perr)
-                        row.append(hdrlist[i]['start_time'])
-                        row.append(midfreq/1e6)
-                        row.append(k)
-                        row.append(raOUT)
-                        row.append(decOUT)
-                        imagefit.append(tuple(row))
-                    else: 
-                        raise Exception("fit too far away")
-                except Exception as e:
-                    print(e)
+                popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
+                xOUT = popt[1] + round(avx) - 2*constraint
+                yOUT = popt[2] + round(avy) - 2*constraint
+                # TIGHT position restrictions
+                if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
+                    raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
+                    row = []
+                    for pind in range(len(popt)):
+                        param = popt[pind]
+                        perr = np.absolute(pcov[pind][pind])**0.5
+                        row.append(param)
+                        row.append(perr)
+                    row.append(hdrlist[i]['start_time'])
+                    row.append(midfreq/1e6)
+                    row.append(k)
+                    row.append(raOUT)
+                    row.append(decOUT)
+                    imagefit.append(tuple(row))
+                else: 
+                    pass
+                        # raise Exception("fit too far away")
                    #  print(popt,pcov,infodict,mesg,ier)
 
                 # fit diff data
@@ -469,33 +477,40 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 minf0 = min(f0*0.5,f0*1.5)
                 maxf0 = max(f0*0.5,f0*1.5)
                 initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
+                invalidBounds=False
+                for b1,b2 in initbounds:
+                    if b1==b2:
+                       invalidBounds=True
+                if invalidBounds:
+                    continue
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
+                magcond = np.any([(np.abs(b2) > 1e16) for b1 in bounds for b2 in b1])
+                if magcond:
+                    continue
                 fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint + 1)]).ravel()
-                try:
-                    popt, pcov, infodict, mesg, ier = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=True,ftol=1e-2)
-                    xOUT = popt[1] + round(avx) - 2*constraint
-                    yOUT = popt[2] + round(avy) - 2*constraint
-                    # TIGHT position restrictions
-                    if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
-                        raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
-                        row = []
-                        for pind in range(len(popt)):
-                            param = popt[pind]
-                            perr = np.absolute(pcov[pind][pind])**0.5
-                            row.append(param)
-                            row.append(perr)
-                        row.append(hdrlist[i]['start_time'])
-                        row.append(midfreq/1e6)
-                        row.append(k)
-                        row.append(raOUT)
-                        row.append(decOUT)
-                        diffFIT.append(tuple(row))
-                    else:
-                        raise Exception("fit too far away")
-                except Exception as e:
-                    print(e)
+                popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
+                xOUT = popt[1] + round(avx) - 2*constraint
+                yOUT = popt[2] + round(avy) - 2*constraint
+                # TIGHT position restrictions
+                if np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint:
+                    raOUT, decOUT = hdrtoworld(hdrlist[i],ngrid,sRad,xOUT,yOUT,station)[0]
+                    row = []
+                    for pind in range(len(popt)):
+                        param = popt[pind]
+                        perr = np.absolute(pcov[pind][pind])**0.5
+                        row.append(param)
+                        row.append(perr)
+                    row.append(hdrlist[i]['start_time'])
+                    row.append(midfreq/1e6)
+                    row.append(k)
+                    row.append(raOUT)
+                    row.append(decOUT)
+                    diffFIT.append(tuple(row))
+                else:
+                    continue
+                    # raise Exception("fit too far away")
                    #  print(popt,pcov,infodict,mesg,ier)
     colnames = ["f0","f0err","x0","x0err","y0","y0err","b0","b0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
