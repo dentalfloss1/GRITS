@@ -72,7 +72,9 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
     
 
     
-def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0):
+def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0,maskstokes=None):
+    if maskstokes is None:
+        maskstokes = []
     vmax = rms*5
     ints = data.shape[0]
     ngrid = data.shape[-1]
@@ -90,13 +92,16 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     unmasked[1:] = unmasked[1:] - unmasked[:-1]
    #  for imno in range(ints-avgno):
    #      unmasked[imno+avgno] = imagedata[imno+avgno] - np.nanmedian(imagedata[imno:(imno+avgno)],axis=0)
+    stokesdataind = 0
     for stokesno,sname in enumerate(['I','Q','U','V']):
+        if stokesno in maskstokes:
+            continue
         for timenum, t in enumerate(range(mintime,maxtime+1)):
             # if (i==mintime):
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[maxtime+1,stokesno,:,:]
             # else:
             #     currimage = imagedata[t,stokesno,:,:]-imagedata[mintime-1,stokesno,:,:]
-            currimage = unmasked[t,stokesno,:,:]
+            currimage = unmasked[t,stokesdataind,:,:]
             if stokesno>0:
                 cmap='coolwarm'
             else:
@@ -106,15 +111,19 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             if t==i:
                 axs[stokesno+2,timenum].set_title(f'{sname} diff')
             # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
+        stokesdataind+=1
     uniquelabel =1
     ytextloc2 = ytextloc
+    stokesdataind = 0
     for s in [0,1,2,3]:
-        for label in np.unique(islands[i,s,:,:][(~np.isnan(islands[i,s,:,:])) & ( islands[i,s,:,:] >0)]).astype(int):
-            yloc, xloc = np.where(islands[i,s,:,:]==label)
+        if s in maskstokes:
+            continue
+        for label in np.unique(islands[i,stokesdataind,:,:][(~np.isnan(islands[i,stokesdataind,:,:])) & ( islands[i,stokesdataind,:,:] >0)]).astype(int):
+            yloc, xloc = np.where(islands[i,stokesdataind,:,:]==label)
             if yloc.size==0:
                 continue
             for x,y in zip(xloc,yloc):
-                if data[i,s,y,x]==np.amax(data[i,s,yloc,xloc]):
+                if data[i,stokesdataind,y,x]==np.amax(data[i,stokesdataind,yloc,xloc]):
                     avx = x
                     avy = y 
                     break
@@ -123,8 +132,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             XX,YY = pbcorr(hdr,ngrid,channel,hdr['psize'], station)
             pbdata = data[i,0,:,:]/((XX+YY)/2)
             measI = pbdata[avy,avx]
-            measQ, measU, measV = data[i,1:4,int(avy),int(avx)]
-            resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} I:{np.nan_to_num(measI):.2e},Q:{np.nan_to_num(measQ):.2e},U:{np.nan_to_num(measU):.2e},V:{np.nan_to_num(measV):.2e}"
+            resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} meas:{np.nan_to_num(measI):.2e}"
             atnfmatches = (angsep(radec[0][0],radec[0][1],atnf['ra'],atnf['dec']) < catsep)
             
             if np.sum(atnfmatches) > 0:
@@ -147,24 +155,17 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             axs[anum,imind].add_artist(circle)
     for ax in axs.flatten():
         ax.axis('off')
-    islandplot = islands[i,0,:,:]
-    axs[1,0].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[1,0].set_title('I src')
-    islandplot = islands[i,1,:,:]
-    axs[1,1].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[1,1].set_title('Q src')
-    islandplot = islands[i,2,:,:]
-    axs[1,2].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[1,2].set_title('U src')
-    islandplot = islands[i,3,:,:]
-    axs[1,3].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
-    axs[1,3].set_title('V src')
+    for stokes in range(islands.shape[1]):
+        islandplot = islands[i,stokes,:,:]
+        axs[1,stokes].imshow(islandplot,vmin=0,vmax=1,origin='lower',cmap='coolwarm')
+        axs[1,stokes].set_title('src')
     currimage = imagedata[i,0,:,:]
     axs[0,0].imshow(currimage,origin='lower',extent=extent)
     #axs[0,0].imshow(currimage,vmin=0,vmax=vmax*5,origin='lower',extent=extent)
-    currimage = imagedata[i,3,:,:]
-    #axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmaxy,origin='lower',extent=extent,cmap="coolwarm")
-    axs[0,1].imshow(currimage,origin='lower',extent=extent,cmap="coolwarm")
+    if imagedata.shape[1]==4:
+        currimage = imagedata[i,3,:,:]
+        #axs[0,1].imshow(currimage,vmin=-vmax,vmax=vmaxy,origin='lower',extent=extent,cmap="coolwarm")
+        axs[0,1].imshow(currimage,origin='lower',extent=extent,cmap="coolwarm")
     mjd = int(hdr['start_time'])
     mpm = int((hdr['start_time'] - mjd)*86400.0*1000.0)
     # determine if header is in seconds or days
@@ -176,7 +177,11 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     nomaskimdiff = imagedata[i] - imagedata[i-1]
     s2n = np.amax(np.abs(nomaskimdiff[detstokes]))/rms
     fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
-    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-c{channel}-stokes{detstokes}.png").replace(".pims",f"-t{i+chunkt}-stokes{detstokes}.png").replace(':','-')
+    try:
+        midfreq = (hdr['freq']  + channel*hdr['bandwidth'] )*1e-6
+    except KeyError:
+        midfreq = (hdr['start_freq']  + channel*hdr['bandwidth'] )*1e-6
+    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-{midfreq:.2f}MHz-stokes{detstokes}.png").replace(".pims",f"-t{i+chunkt}-stokes{detstokes}.png").replace(':','-')
     plt.savefig(plotfile)
     plt.close()
 

@@ -17,9 +17,9 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
     fltmax = np.finfo('f4').max
     imagedata[np.isnan(imagedata)] = fltmax
-    gpurmsdata = BFArray(np.full((chunking,nchan,4,ngrid,ngrid),floatmax,dtype='f4'),dtype='f32',space='cuda')
+    gpurmsdata = BFArray(np.full((chunking,nchan,imagedata.shape[2],ngrid,ngrid),floatmax,dtype='f4'),dtype='f32',space='cuda')
     BFimagedata = BFArray(imagedata.astype('f8'),dtype='f64',space='system')
-    minrms = np.zeros((ints,nchan,4),dtype='f4')
+    minrms = np.zeros((ints,nchan,imagedata.shape[2]),dtype='f4')
     for chunk in range(int(np.ceil(ints/chunking))):
         if chunk==0:
             start = 0
@@ -43,7 +43,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
                  }
                  """ % (rmsbox,rmsbox,ngrid - rmsbox,ngrid-rmsbox,rmsbox,rmsbox,),
                  {"dat":idata, "rmsdat":gpurmsdata},
-                 axis_names=('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+                 axis_names=('time','chan','stokes','i','j'), shape=(subints,nchan,imagedata.shape[2],ngrid,ngrid))
         try:
             copy_array(cpurmsdata, gpurmsdata)
         except NameError:
@@ -185,7 +185,7 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                     tauaflux.append((imagedata[i,c,0,taumask[0],taumask[1]].max() - minrms[i,c],c))
         invalid = np.where( completemask[i] )
 
-        for stokesno in range(4):
+        for stokesno in range(data.shape[2]):
             data[i,:,stokesno,invalid[0], invalid[1]] = np.nan
 
     freq = lambda c: (int(hdrlist[0]['start_freq'])  + ((c+1)*int(hdrlist[0]['bandwidth'])/2))*1e-6
@@ -245,9 +245,10 @@ def getmultistat(sRad, imagedata, ints, nchan, ngrid):
     calimdata = BFArray(np.zeros(imagedata.shape),dtype='f32',space='system')
     calimdata[...] = imagedata
     calimdata = calimdata.copy('cuda')
-    calrmsdata = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)),dtype='f32',space='cuda')
-    immean = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)), dtype='f32',space='cuda')
-    imstd = BFArray(np.zeros((ints,nchan,4,ngrid,ngrid)), dtype='f32',space='cuda')
+    nstokes = imagedata.shape[2]
+    calrmsdata = BFArray(np.zeros((ints,nchan,nstokes,ngrid,ngrid)),dtype='f32',space='cuda')
+    immean = BFArray(np.zeros((ints,nchan,nstokes,ngrid,ngrid)), dtype='f32',space='cuda')
+    imstd = BFArray(np.zeros((ints,nchan,nstokes,ngrid,ngrid)), dtype='f32',space='cuda')
     BFMap("""auto boxhalflen = %f;
              auto center = %f/2;
              auto x = (float) i - center + 0.5 ;
@@ -277,7 +278,7 @@ def getmultistat(sRad, imagedata, ints, nchan, ngrid):
                  rmsdat(time,chan,stokes,i,j) = 9999;
                  }""" % (boxhalflen,float(ngrid),),
                  {"dat":calimdata,"rmsdat":calrmsdata,'meandat':immean,'std':imstd},
-                 axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,4,ngrid,ngrid))
+                 axis_names=('time','chan','stokes','i','j'), shape=(ints,nchan,nstokes,ngrid,ngrid))
     calrmsdata = calrmsdata.copy('system')
     calimdata = calimdata.copy('system')
     rmsdata = []
@@ -290,11 +291,11 @@ def getmultistat(sRad, imagedata, ints, nchan, ngrid):
     imstd = np.array(imstd.copy('system'))
     meanstokeep = []
     stdtokeep = []
-    meanarray = np.zeros((ints,nchan,4))
-    stdarray = np.zeros((ints,nchan,4))
+    meanarray = np.zeros((ints,nchan,nstokes))
+    stdarray = np.zeros((ints,nchan,nstokes))
     for i in range(ints):
         for c in range(nchan):
-            for s in range(4):
+            for s in range(nstokes):
                 meanarr = immean[i,c,s]
                 stdarr = imstd[i,c,s]
                 nonzero = meanarr!=0

@@ -30,10 +30,10 @@ def checkgalactic(islanddata,flaggedtimes, hdrlist,sRad,station,galpercent=0.33)
     
 
 def restrictnumsrc(islanddata,ints,nchan,maxsrcs=2):
-    numsrcs = np.zeros((ints,nchan,4),dtype=int)
+    numsrcs = np.zeros((ints,nchan,islanddata.shape[2]),dtype=int)
     for i in range(ints):
         for c in range(nchan):
-            for s in range(4):
+            for s in range(islanddata.shape[2]):
                 numsrcs[i,c,s] = len(np.unique(islanddata[i,c,s,:,:]))
     numsrccond = numsrcs <= maxsrcs
     return numsrccond

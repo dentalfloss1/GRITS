@@ -56,7 +56,7 @@ def matchfilepairs(station1,station2):
                 matchingfilepairs.append((f1,f2))
     return matchingfilepairs
 
-def readoims(filename,hdronly=False,startind=None,stopind=None):
+def readoims(filename,hdronly=False,startind=None,stopind=None,startchan=None,stopchan=None,maskstokes=None):
     with closing(OrvilleImageDB(filename, 'r')) as db:
         # Get parameters from the input file
         file_start = db.header.start_time # file start time
@@ -81,16 +81,26 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
         if intlen > 1: # if larger than one, has to be in seconds
             intlen = intlen/24.0/60.0/60.0 # seconds to days
         file_end = hdr['start_time'] + intlen
+        if startchan is None:
+            startchan = 0
+        if stopchan is None:
+            stopchan = nchan
+        nchan = stopchan-startchan
+        if maskstokes is None:
+            maskstokes = []
+        selstokes = [s for s in range(4) if s not in maskstokes]
+        nstokes = len(selstokes)
         if not hdronly:
             # Collect header and data from the whole file
             hdrlist = []
-            data = np.zeros((ints,nchan,4,ngrid,ngrid))
+            data = np.zeros((ints,nchan,nstokes,ngrid,ngrid))
             for i in range(ints):
                 db.seek(i+startind)
                 hdr,alldata = db.read_image()
                 hdr['psize'] = psize
+                hdr['start_freq'] = hdr['start_freq'] + hdr['bandwidth']*startchan
                 hdrlist.append(hdr)
-                data[i] = np.asarray(alldata.data)
+                data[i] = np.asarray(alldata.data)[startchan:stopchan,tuple(selstokes)]
             imagedata = np.copy(data)
             data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
@@ -98,7 +108,7 @@ def readoims(filename,hdronly=False,startind=None,stopind=None):
             return file_start,file_end,minfreq
 
 
-def readpims(filename,hdronly=False,startind=None,stopind=None):
+def readpims(filename,hdronly=False,startind=None,stopind=None,maskstokes=None):
     with closing(PasiImageDB(filename, 'r')) as db:
         file_start = db.header['startTime'] 
         file_end = db.header['stopTime']
@@ -116,7 +126,11 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
         db.seek(stopind)
         hdr,_,_ = db.readImage()
         minfreq=hdr['freq']
-        data = np.zeros((ints,nchan,4,ngrid,ngrid))
+        if maskstokes is None:
+            maskstokes = []
+        selstokes = [s for s in range(4) if s not in maskstokes]
+        nstokes = len(selstokes)
+        data = np.zeros((ints,nchan,nstokes,ngrid,ngrid))
         if not hdronly:
             for i in range(ints):
                 db.seek(i+startind)
@@ -130,7 +144,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None):
                 hdr['psize'] = psize
                 hdrlist.append(hdr)
                 thisdata = alldata.data
-                data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))
+                data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))[tuple(selstokes)]
             imagedata = np.copy(data)
             data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']

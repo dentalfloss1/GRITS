@@ -83,20 +83,24 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, keepateam=False):
-    uniquesrcid=0
+
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None, keepateam=False):
+    if maskstokes is None:
+        maskstokes = []
+    uniquesrcid = 0
     srclist = []
     obslist = []
-    nstokes = 4 
+    if startchan is None:
+        startchan = 0
+    nstokes = 4-len(maskstokes)
     chunking = int( config['Batch Control']['chunktime'])
     if not quiet:
         print(filename)
-
             
     if ".oims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename)
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readoims(filename,startchan=startchan,stopchan=stopchan,maskstokes=maskstokes)
     elif ".pims" in filename:
-        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename)
+        ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station = readpims(filename,maskstokes=maskstokes)
     else:
         print("unrecognized filename")
         exit()
@@ -116,7 +120,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                     print(f"channel is {chanfreq} MHz, which is higher than the maximum, zeroing the data")
                 data[:,c,:,:,:] = 0
                 imagedata[:,c,:,:,:] = 0
-               
+    if (imagedata==0).all():
+        raise Exception("No Data")
     if ints==0:
         raise Exception("file is empty")
     beampatterns = []
@@ -212,25 +217,19 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
     # skipping the first one
     islanddata[0,:,:,:,:] = 0
     for c in range(nchan):
-        for s in range(4):
+        for s in range(nstokes):
             flaggedtimes.append((0,c,s))
     for ind in range(ints): 
         if ((ind) < skip):
             islanddata[ind,:,:,:,:] = 0
             for c in range(nchan):
-                for s in range(4):
+                for s in range(nstokes):
                     flaggedtimes.append((ind,c,s))
         if ((ind) > endearly):
             islanddata[ind,:,:,:,:] = 0
             for c in range(nchan):
-                for s in range(4):
+                for s in range(nstokes):
                     flaggedtimes.append((ind,c,s))
-    if maskstokes is not None:
-        for m in maskstokes:
-            islanddata[:,:,m,:,:] = 0
-            for i in range(ints):
-                for c in range(nchan):
-                    flaggedtimes.append((i,c,m))
 
 
     for chunk in range(int(np.ceil(ints/chunking))):
@@ -252,10 +251,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # GROUPCOLS
         groupvertcols(islandcuda,ngrid)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((subints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
+        rotateddata = BFArray(np.zeros((subints,nchan,nstokes,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
         rotgrid = 2*ngrid-1
 
         # GROUP DIAG COLS
@@ -267,7 +266,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # UPDATE UNROTATED Island data
         BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
         # GROUPCOLS
         groupvertcols(islandcuda,ngrid)
         # GROUPROWS
@@ -275,10 +274,10 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # GROUPCOLS
         groupvertcols(islandcuda,ngrid)
         # ROTATE Island data
-        rotateddata = BFArray(np.zeros((subints,nchan,4,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
+        rotateddata = BFArray(np.zeros((subints,nchan,nstokes,2*ngrid-1,2*ngrid-1)),space='cuda',dtype='u16')
         BFMap("""rm(time,chan,stokes,%i-i+j-1,i+j-2) = isldata(time,chan,stokes,i,j);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
         rotgrid = 2*ngrid-1
 
         # GROUP DIAG COLS
@@ -290,7 +289,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         # UPDATE UNROTATED Island data
         BFMap("""isldata(time,chan,stokes,i,j) = rm(time,chan,stokes,%i-i+j-1,i+j-2);""" % (ngrid,),
             {'isldata':islandcuda,'rm':rotateddata},
-            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,4,ngrid,ngrid))
+            axis_names = ('time','chan','stokes','i','j'), shape=(subints,nchan,nstokes,ngrid,ngrid))
 
         t2 = datetime.datetime.now()
         if not quiet:
@@ -319,7 +318,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                         else:
                             # Otherwise, the bright source is an A team source. Probably the sun. We flag that time and channel.
                             # We can't really trust the other polarizations either
-                            for l in range(4):
+                            for l in range(nstokes):
                                 flaggedtimes.append((i,j,l))
                                 islanddata[i,j,l,:,:] = 0
     pblimit = float(config['Quality Control']['pbpercent'])
@@ -389,7 +388,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             detchan=1
             nongauss = False
             if gaussqc:
-                constraint = 1 
+                constraint = 2 
                 subxarr = np.linspace(0,10,11)
                 subyarr = np.linspace(0, 10,11)
                 subx, suby = np.meshgrid(subxarr, subyarr)
@@ -431,7 +430,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 flagsrc.append((i,c,s,ind))
             else:
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c,detchan,s))
+                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c+startchan,1,s))
             uniquesrcid += 1
             lastlabel = label
     if not quiet:
@@ -480,16 +479,18 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             i = whereislands[0][ind]
             c = whereislands[1][ind]
             s = whereislands[2][ind]
-            ndetchans = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)]
-            if ndetchans.size > 0:
-                chanpercent = srcarray['nchan'][(srcarray['id']==ind) & (srcarray['index']==i) & (srcarray['channel']==c) & (srcarray['stokes']==s)][0]/nchan
-                if ((i,c,s,ind) not in flagsrc) & (chanpercent > float(config['Quality Control']['minchanfraction'])):
-                    plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']))
+            if ((i,c,s,ind) not in flagsrc) :
+                plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),maskstokes=maskstokes)
+
+
+    correctedflaggedtimes = []
+    for i,c,s in flaggedtimes:
+        correctedflaggedtimes.append((i,c+startchan,s))
     if not quiet: 
         t2 = datetime.datetime.now()
         print(t2-t1)
     print("-------------------")
-    return srcarray, rmsdata, corrfluxlist, imagedata, islanddata, hdrlist, station, obslist, sRad, flaggedtimes
+    return srcarray, rmsdata, corrfluxlist, imagedata, islanddata, hdrlist, station, obslist, sRad, correctedflaggedtimes
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -527,6 +528,7 @@ if __name__ == "__main__":
     parser.add_argument("--minfreq",type=float)
     parser.add_argument("--maxfreq",type=float)
     parser.add_argument("--keepateam",action="store_true")
+    parser.add_argument("--chanchunk",type=int, default=10)
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -548,70 +550,90 @@ if __name__ == "__main__":
 
         for i,filename in enumerate(filelist):
             print(i+1,"out of",len(filelist), "elapsed:",datetime.datetime.now()-start_run)
-            try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq, keepateam=args.keepateam)
-                fullobslist.extend(obslist)
-            except Exception as e:
-                print(traceback.format_exc())
-                print("Issue with ",filename,"skipping.")
-            diffdata = np.copy(allimagedata)
-            diffdata[1:] = diffdata[1:] - diffdata[:-1]
-            if args.postgaussfit:
-                for s1 in srcarr:
-                    imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=int(60/5),constraint=2)
-                    if not diffFIT:
-                        print("Failed to fit gaussian")
-                        continue
-                    imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                    diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                    pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
-                    formattedoutput = []
-                    row = []
-                    numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
-                    if numdets==0:
-                        print("station could not fit a gaussian at detection time")
-                        continue
 
-
-                    np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
-                             imageflux=imageflux,
-                             diffFLUX1=diffFLUX,
-                             minrms=minrms,
-                             srcarray=srcarr,
-                             pixmeas=pixmeas,
-                             corrfluxlist=corrfluxlist)
-                    uniqueid+=1
+            if ".pims" in filename:
+                nchan = 1
+                nchanchunks=1
+                chanchunk = 1
+            elif ".oims" in filename:
+                with closing(OrvilleImageDB(filename,'r')) as db:
+                    nchan = db.header.nchan
+                chanchunk=args.chanchunk
+                nchanchunks = int(np.ceil(nchan/chanchunk))
+                
             else:
-                if srcarr.size > 0:
-                    outsrcs = srcarr[srcarr['nchan'] > (allimagedata.shape[1]*float(config['Quality Control']['minchanfraction']))]
+                print("unrecognized filename")
+                continue
 
-                    np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile"),
-                             minrms=minrms,
-                             srcarray=outsrcs,
-                             corrfluxlist=corrfluxlist,
-                             flaggedtimes=allflaggedtimes)
+            for ccno in range(nchanchunks):
+                print("Channel chunk",ccno+1,"out of",nchanchunks)
+                startchan = ccno*chanchunk
+                stopchan = min(startchan+chanchunk,nchan)
+                try:
+                    srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan,keepateam=args.keepateam)
+                    fullobslist.extend(obslist)
+                except Exception as e:
+                    print(traceback.format_exc())
+                    print("Issue with ",filename,"skipping.")
+                    continue
+                diffdata = np.copy(allimagedata)
+                diffdata[1:] = diffdata[1:] - diffdata[:-1]
+                if args.postgaussfit:
+                    for s1 in srcarr:
+                        imagefit, diffFIT, colnames, coldtypes, pixmeas =  sourcefitting(diffdata,allimagedata,allflaggedtimes,s1['ra'],s1['dec'],fullhdrlist,sRad,station,s1['index'],float(config['Quality Control']['statsep']),fitrange=int(60/5),constraint=2)
+                        if not diffFIT:
+                            print("Failed to fit gaussian")
+                            continue
+                        imageflux = np.array(imagefit,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                        diffFLUX = np.array(diffFIT,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                        pixmeas = np.array(pixmeas,dtype=[(name,dtype) for name,dtype in zip(colnames,coldtypes)])
+                        formattedoutput = []
+                        row = []
+                        numdets = np.sum((np.isin(s1['mjd'],diffFLUX['mjd'])))
+                        if numdets==0:
+                            print("station could not fit a gaussian at detection time")
+                            continue
 
-            for i in np.unique(srcarr['index']):
-                src = srcarr[srcarr['index']==i]
-                nsrcleft = len(src)
-                srcleft = src
-                while nsrcleft > 0:
-                    s1 = srcleft[0]
-                    seps = np.zeros(len(src),dtype=bool)
-                    for j,s in enumerate(src):
-                        if s==s1:
-                            seps[j]=True
-                        else:  
-                            pixdist = np.sqrt( (s1['x']-s['x'])**2 + (s1['y'] - s['y'])**2)
-                            seps[j] = pixdist < float(config['Quality Control']['statsep'])
-                    matching2 = src[seps]
-                    outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
-                    srcleft = srcleft[~np.isin(srcleft,matching2)]
-                    nsrcleft = srcleft.size
-            if args.targetsource:
-                for s in srcarr:
-                    if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['statsep']):
-                        print(s)
+
+                        np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"src{uniqueid}_fluxfile"),
+                                 imageflux=imageflux,
+                                 diffFLUX1=diffFLUX,
+                                 minrms=minrms,
+                                 srcarray=srcarr,
+                                 pixmeas=pixmeas,
+                                 corrfluxlist=corrfluxlist)
+                        uniqueid+=1
+                else:
+                    if srcarr.size > 0:
+                        outsrcs = srcarr[srcarr['nchan'] > (allimagedata.shape[1]*float(config['Quality Control']['minchanfraction']))]
+
+                        np.savez(filename.split('/')[-1].replace(":","-").replace(filename[-4:],f"fluxfile_subband{ccno}"),
+                                 minrms=minrms,
+                                 srcarray=outsrcs,
+                                 corrfluxlist=corrfluxlist,
+                                 flaggedtimes=allflaggedtimes)
+
+                for i in np.unique(srcarr['index']):
+                    src = srcarr[srcarr['index']==i]
+                    nsrcleft = len(src)
+                    srcleft = src
+                    while nsrcleft > 0:
+                        s1 = srcleft[0]
+                        seps = np.zeros(len(src),dtype=bool)
+                        for j,s in enumerate(src):
+                            if s==s1:
+                                seps[j]=True
+                            else:  
+                                pixdist = np.sqrt( (s1['x']-s['x'])**2 + (s1['y'] - s['y'])**2)
+                                seps[j] = pixdist < float(config['Quality Control']['statsep'])
+                        matching2 = src[seps]
+                        outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
+                        srcleft = srcleft[~np.isin(srcleft,matching2)]
+                        nsrcleft = srcleft.size
+                if args.targetsource:
+                    for s in srcarr:
+                        if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['statsep']):
+                            print(s)
         outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
         with open(outobsfile,"w") as f:
             for o in fullobslist:

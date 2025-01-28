@@ -227,9 +227,10 @@ def maskislands(imagedata, data, rmsdata,  ints, nchan, ngrid, flaggedtimes, nsi
             k=0
             islandcond = data[i,j,k] > (rmsdata[i,j,k]*nsigma)
             islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
-            for k in range(1,4):
-                islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] > 0) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] < 0) & (data[i,j,k] < 0))
-                islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
+            if data.shape[2]>1:
+                for k in range(1,data.shape[2]):
+                    islandcond = ((data[i,j,k] > (rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] > 0) & (data[i,j,k] > 0))| ((data[i,j,k] < (-rmsdata[i,j,k]*nsigma)) & (imagedata[i,j,k] < 0) & (data[i,j,k] < 0))
+                    islandmasks[i,j,k] = islandmasks[i,j,k] | islandcond 
     return flaggedtimes, islandmasks.astype(int)
 
 def oimsfitsout(imagedata, diffdata, index, hdrlist, station, outfile,chan):
@@ -445,7 +446,8 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 if magcond:
                     continue
                 fitdata = np.transpose(pbimagedata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
-                popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
+
+                popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2,maxfev=50)
                 xOUT = popt[1] + round(avx) - 2*constraint
                 yOUT = popt[2] + round(avy) - 2*constraint
                 # TIGHT position restrictions
@@ -466,6 +468,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 else: 
                     pass
                         # raise Exception("fit too far away")
+
                    #  print(popt,pcov,infodict,mesg,ier)
 
                 # fit diff data
@@ -490,7 +493,8 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 if magcond:
                     continue
                 fitdata = np.transpose(pbdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint + 1)]).ravel()
-                popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
+
+                popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2,maxfev=50)
                 xOUT = popt[1] + round(avx) - 2*constraint
                 yOUT = popt[2] + round(avy) - 2*constraint
                 # TIGHT position restrictions
@@ -511,6 +515,7 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
                 else:
                     continue
                     # raise Exception("fit too far away")
+
                    #  print(popt,pcov,infodict,mesg,ier)
     colnames = ["f0","f0err","x0","x0err","y0","y0err","b0","b0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
