@@ -50,7 +50,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
             cpurmsdata = gpurmsdata.copy('system')
         minrms[start:end] = cpurmsdata.min(axis=(-1,-2))[0:subints]
     return  minrms
-def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station, filename, positioncheck=False):
+def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, ngrid, station, filename, positioncheck=False, keepateam=False):
     # we can calibrate off of cyg a, cas a, virgo a, or tau a for now
     # We do all the masking of regions we don't want to detect transients from here
     # Also we are getting the max flux from the aforementioned a team sources for 
@@ -84,7 +84,11 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         alltauacoord[i,...] = srccoords[7]
     for srcno in range(4):
         currcond = ((xgrid-np.tile(allpixcoord[:,srcno,0],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2 + (ygrid-np.tile(allpixcoord[:,srcno,1],ngrid*ngrid).reshape(len(data),ngrid,ngrid))**2) < (masksize**2)
-        completemask = completemask | currcond
+        if keepateam:
+            if srcno in [2,3]:
+                completemask = completemask | currcond
+        else:
+            completemask = completemask | currcond
     noncalmask = np.copy(completemask)
     x = np.arange(ngrid) + 0.5
     y = np.arange(ngrid) + 0.5
@@ -96,8 +100,9 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         for p in pixcoord:
             if p[0]: 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
-                completemask[i] = completemask[i] | currcond
-                ateammask = ateammask | currcond
+                if not keepateam:
+                    completemask[i] = completemask[i] | currcond
+                    ateammask = ateammask | currcond
         if positioncheck:
             ctrx, ctry  = ngrid/2, ngrid/2
             p = allcygacoord[i]
@@ -113,7 +118,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                             posfile.write(f"{filename},{distratio},{poserr[0]}\n")
 
                 ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
+                if not keepateam:
+                    completemask[i] = completemask[i] | currcond
                 cygmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
@@ -130,7 +136,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
                         with open("casoffsets.csv","a") as posfile:
                             posfile.write(f"{filename},{distratio},{poserr[0]}\n")
                 ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
+                if not keepateam:
+                    completemask[i] = completemask[i] | currcond
                 casmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
@@ -140,7 +147,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             if ~np.isnan(p[0]): 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
+                if not keepateam:
+                    completemask[i] = completemask[i] | currcond
                 cygmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
@@ -149,7 +157,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
             if ~np.isnan(p[0]): 
                 currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
                 ateammask = ateammask | currcond
-                completemask[i] = completemask[i] | currcond
+                if not keepateam:
+                    completemask[i] = completemask[i] | currcond
                 casmask = np.where(currcond)
                 if np.sum(currcond) >0:
                     for c in range(nchan):
@@ -158,7 +167,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         if ~np.isnan(p[0]): 
             currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
             ateammask = ateammask | currcond
-            completemask[i] = completemask[i] | currcond
+            if not keepateam:
+                completemask[i] = completemask[i] | currcond
             virmask = np.where(currcond)
             if np.sum(currcond) >0:
                 for c in range(nchan):
@@ -167,7 +177,8 @@ def fluxcalmask(sRad, data, imagedata, hdrlist, minrms, sunpos, juppos, nchan, n
         if ~np.isnan(p[0]): 
             currcond = ((x-p[0])**2 + (y-p[1])**2) < (masksize**2)
             ateammask = ateammask | currcond
-            completemask[i] = completemask[i] | currcond
+            if not keepateam:
+                completemask[i] = completemask[i] | currcond
             taumask = np.where(currcond)
             if np.sum(currcond) >0:
                 for c in range(nchan):
