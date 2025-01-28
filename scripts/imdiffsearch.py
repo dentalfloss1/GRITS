@@ -83,7 +83,7 @@ def plotislands(islanddata):
     plt.show()
     plt.close()
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, keepateam=False):
     uniquesrcid=0
     srclist = []
     obslist = []
@@ -159,7 +159,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print("Compute RMS:",t2-t1)
     t1 = datetime.datetime.now()
     # Flux calibrate data and mask off A-Team
-    imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station, filename, positioncheck=positioncheck)
+    imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station, filename, positioncheck=positioncheck,keepateam=keepateam)
     t2 = datetime.datetime.now()
     if not quiet:
         print("calibrate:",t2-t1)
@@ -526,6 +526,7 @@ if __name__ == "__main__":
     parser.add_argument("--globfilelist", action="store_true")
     parser.add_argument("--minfreq",type=float)
     parser.add_argument("--maxfreq",type=float)
+    parser.add_argument("--keepateam",action="store_true")
     args = parser.parse_args()
     config = ConfigParser()
     set_device(args.device)
@@ -548,7 +549,7 @@ if __name__ == "__main__":
         for i,filename in enumerate(filelist):
             print(i+1,"out of",len(filelist), "elapsed:",datetime.datetime.now()-start_run)
             try:
-                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq)
+                srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq, keepateam=args.keepateam)
                 fullobslist.extend(obslist)
             except Exception as e:
                 print(traceback.format_exc())
