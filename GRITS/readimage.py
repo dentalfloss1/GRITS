@@ -146,7 +146,7 @@ def readpims(filename,hdronly=False,startind=None,stopind=None,maskstokes=None):
                 hdr['psize'] = psize
                 hdrlist.append(hdr)
                 thisdata = alldata.data
-                data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))[tuple(selstokes)]
+                data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))[tuple(selstokes),:,:]
             imagedata = np.copy(data)
             data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
