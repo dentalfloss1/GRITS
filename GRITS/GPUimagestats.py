@@ -13,13 +13,13 @@ import datetime
 # Set up center region for minrms calculation
 # We want a box in the center that does not go beyond the horizon. Also 
 # We need to account for the extra one pixel perimeter in the computations.
-def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
+def getminrms(sRad, datatomeas, ints, nchan, ngrid, station, chunking=400):
     boxhalflen = np.sin(np.pi/4)*sRad - 2
     fltmax = np.finfo('f4').max
-    imagedata[np.isnan(imagedata)] = fltmax
-    gpurmsdata = BFArray(np.full((chunking,nchan,imagedata.shape[2],ngrid,ngrid),floatmax,dtype='f4'),dtype='f32',space='cuda')
-    BFimagedata = BFArray(imagedata.astype('f8'),dtype='f64',space='system')
-    minrms = np.zeros((ints,nchan,imagedata.shape[2]),dtype='f4')
+    datatomeas[np.isnan(datatomeas)] = fltmax
+    gpurmsdata = BFArray(np.full((chunking,nchan,datatomeas.shape[2],ngrid,ngrid),floatmax,dtype='f4'),dtype='f32',space='cuda')
+    BFdatatomeas = BFArray(datatomeas.astype('f8'),dtype='f64',space='system')
+    minrms = np.zeros((ints,nchan,datatomeas.shape[2]),dtype='f4')
     for chunk in range(int(np.ceil(ints/chunking))):
         if chunk==0:
             start = 0
@@ -27,7 +27,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
         else:
             start=chunk*chunking 
             end=min(chunk*chunking + chunking ,ints)
-        idata = BFimagedata[start:end].copy(space='cuda')
+        idata = BFdatatomeas[start:end].copy(space='cuda')
         subints = end-start
         rmsbox =   int(round(30*(ngrid/128)**(1.7)))
         BFMap("""if ((i>%i) && (j>%i) && (i<%i) &&(j<%i)){
@@ -43,7 +43,7 @@ def getminrms(sRad, imagedata, ints, nchan, ngrid, station, chunking=400):
                  }
                  """ % (rmsbox,rmsbox,ngrid - rmsbox,ngrid-rmsbox,rmsbox,rmsbox,),
                  {"dat":idata, "rmsdat":gpurmsdata},
-                 axis_names=('time','chan','stokes','i','j'), shape=(subints,nchan,imagedata.shape[2],ngrid,ngrid))
+                 axis_names=('time','chan','stokes','i','j'), shape=(subints,nchan,datatomeas.shape[2],ngrid,ngrid))
         try:
             copy_array(cpurmsdata, gpurmsdata)
         except NameError:

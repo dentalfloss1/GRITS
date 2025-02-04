@@ -23,6 +23,8 @@ from lsl_toolkits.OrvilleImage.wcs import getSVwcs, getGENERICwcs
 from scipy.optimize import curve_fit
 from tqdm import tqdm
 
+from GRITS.constants import CYG_A, CAS_A, SGR_A, TAU_A, VIRGO_A, HERC_A, floatmax
+
 def gaussian_nobackground(xy, amplitude, xo, yo, sigma, theta):
     x, y = xy
     xo = float(xo)
@@ -520,5 +522,71 @@ def sourcefitting(data,imagedata,flaggedtimes,srcRA,srcDEC,hdrlist,sRad,station,
     colnames = ["f0","f0err","x0","x0err","y0","y0err","b0","b0err","mjd","freq","stokes","ra","dec"]
     coldtypes = ["f8","f8","f8","f8","f8","f8","f8","f8","f8","f8","i4","f8","f8"]
     return imagefit,diffFIT,colnames,coldtypes,pixmeas
+
+def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename, constraint=1):
+    fluxmeas = np.zeros((7,len(measdata),nchan))
+    subxarr = np.arange(4*constraint+1)
+    subyarr = np.arange(4*constraint+1)
+    subx, suby = np.meshgrid(subxarr, subyarr)
+    x = np.arange(ngrid) + 0.5
+    y = np.arange(ngrid) + 0.5
+    x,y = np.meshgrid(x,y)
+    masksize = 4
+    for i in range(len(measdata)):
+        src_ra = [src[0] for src in [SGR_A,HERC_A,sunpos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
+        src_dec = [src[1] for src in [SGR_A,HERC_A,sunpos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
+        srccoords = hdrtopixmask(hdrlist[i],ngrid,sRad,src_ra,src_dec,station)
+        for srcno,(targetx,targety) in enumerate(srccoords):
+            if ( (targetx-(ngrid/2))**2 + (targety-(ngrid/2))**2 ) > (0.8*sRad)**2:
+                continue
+            avx = targetx
+            avy = targety
+            if np.isnan(avx).any() or np.isnan(avy).any():
+                continue
+            for j in range(nchan):
+                k=0
+                hdr = hdrlist[i]
+                try:
+                    midfreq = (hdr['freq']  + j*hdr['bandwidth'])
+                except KeyError:
+                    midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] )
+                bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
+                fsize_gaussian = lambda xy, amplitude, xo, yo, bo: gaussian_nobackground(xy, amplitude, xo, yo, bo,0)
+                currcond = ((x-avx)**2 + (y-avy)**2) < (masksize**2)
+                currmask = np.where(currcond)
+                # Fit image data
+                f0 = measdata[i,j,k,currmask[0],currmask[1]].max()
+                x0 = avx - round(avx) + 2*constraint
+                y0 = avy - round(avy) + 2*constraint
+                initial_guess = [f0,x0,y0,bsizepix]
+                minf0 = min(f0*0.25,f0*10.0)
+                maxf0 = max(f0*0.25,f0*10.0)
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
+                invalidBounds=False
+                for b1,b2 in initbounds:
+                    if b1==b2:
+                       invalidBounds=True
+                if invalidBounds:
+                    continue
+                bounds0 = tuple([b[0] for b in initbounds])
+                bounds1 = tuple([b[1] for b in initbounds])
+                bounds = [bounds0,bounds1]
+                magcond = np.any([(np.abs(b2) > 1e12) for b1 in bounds for b2 in b1])
+                if magcond:
+                    continue
+                fitdata = np.transpose(measdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
+
+                # popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
+                try:
+                    popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,full_output=False,ftol=1e-2)
+                except RuntimeError:
+                    continue
+                xOUT = popt[1] + round(avx) - 2*constraint
+                yOUT = popt[2] + round(avy) - 2*constraint
+                # No overly elipitical beams
+                if (max(popt[-1],popt[-2])/min(popt[-1],popt[-2])) < 3:
+                    fluxmeas[srcno,i,j] = popt[0]
+    return fluxmeas
+
 
 
