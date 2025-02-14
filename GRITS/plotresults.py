@@ -131,7 +131,10 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
 
             XX,YY = pbcorr(hdr,ngrid,channel,hdr['psize'], station)
             pbdata = data[i,0,:,:]/((XX+YY)/2)
-            measI = pbdata[avy,avx]
+            if s==0:
+                measI = pbdata[avy,avx]
+            else:
+                measI = data[i,s,avy,avx]
             resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} meas:{np.nan_to_num(measI):.2e}"
             atnfmatches = (angsep(radec[0][0],radec[0][1],atnf['ra'],atnf['dec']) < catsep)
             
