@@ -542,6 +542,9 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
     y = np.arange(ngrid) + 0.5
     x,y = np.meshgrid(x,y)
     masksize = 4
+    indata = np.zeros((7,len(measdata),4*constraint+1,4*constraint+1))
+    model = np.zeros((7,len(measdata),4*constraint+1,4*constraint+1))
+    resid = np.zeros((7,len(measdata),4*constraint+1,4*constraint+1))
     for i in range(len(measdata)):
         src_ra = [src[0] for src in [SGR_A,HERC_A,sunpos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
         src_dec = [src[1] for src in [SGR_A,HERC_A,sunpos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
@@ -561,17 +564,17 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
                 except KeyError:
                     midfreq = (hdr['start_freq']  + j*hdr['bandwidth'] )
                 bsizepix = (2.2*74e6/midfreq/2)/hdr['psize']
-                fsize_gaussian = lambda xy, amplitude, xo, yo, bo: gaussian_nobackground(xy, amplitude, xo, yo, bo,0)
+                fsize_gaussian = lambda xy, amplitude, xo, yo, bx, by, sigma: egauss(xy, amplitude, xo, yo, bx, by, sigma)
                 currcond = ((x-avx)**2 + (y-avy)**2) < (masksize**2)
                 currmask = np.where(currcond)
                 # Fit image data
                 f0 = measdata[i,j,k,currmask[0],currmask[1]].max()
                 x0 = avx - round(avx) + 2*constraint
                 y0 = avy - round(avy) + 2*constraint
-                initial_guess = [f0,x0,y0,bsizepix]
+                initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi]
                 minf0 = min(f0*0.25,f0*10.0)
                 maxf0 = max(f0*0.25,f0*10.0)
-                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25)]
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25),(bsizepix*0.75,bsizepix*1.25),(0,2*np.pi)]
                 invalidBounds=False
                 for b1,b2 in initbounds:
                     if b1==b2:
@@ -584,19 +587,26 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
                 magcond = np.any([(np.abs(b2) > 1e12) for b1 in bounds for b2 in b1])
                 if magcond:
                     continue
-                fitdata = np.transpose(measdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)]).ravel()
+                fitdata = np.transpose(measdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)])
+                fitshape = fitdata.shape
+
 
                 # popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
                 try:
-                    popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,full_output=False,ftol=1e-2)
+                    popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata.ravel(), p0=initial_guess,full_output=False,ftol=1e-2)
                 except RuntimeError:
                     continue
                 xOUT = popt[1] + round(avx) - 2*constraint
                 yOUT = popt[2] + round(avy) - 2*constraint
                 # No overly elipitical beams
-                if (max(popt[-1],popt[-2])/min(popt[-1],popt[-2])) < 3:
+                if (max(popt[-2],popt[-3])/min(popt[-2],popt[-3])) < 1.5:
                     fluxmeas[srcno,i,j] = popt[0]
-    return fluxmeas
+                fitdataout = fitdata
+                modelout = fsize_gaussian((subx,suby),*popt).reshape(fitdata.shape)
+                indata[srcno,i] = fitdataout
+                model[srcno,i] = modelout
+                resid[srcno,i] = fitdataout-modelout
+    return fluxmeas, indata, model, resid
 
 
 
