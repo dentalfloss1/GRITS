@@ -545,11 +545,13 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
     indata = np.zeros((7,len(measdata),4*constraint+1,4*constraint+1))
     model = np.zeros((7,len(measdata),4*constraint+1,4*constraint+1))
     resid = np.zeros((7,len(measdata),4*constraint+1,4*constraint+1))
+    flags = []
     for i in range(len(measdata)):
         src_ra = [src[0] for src in [SGR_A,HERC_A,sunpos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
         src_dec = [src[1] for src in [SGR_A,HERC_A,sunpos[i],CYG_A,CAS_A,VIRGO_A,TAU_A]]
         srccoords = hdrtopixmask(hdrlist[i],ngrid,sRad,src_ra,src_dec,station)
         for srcno,(targetx,targety) in enumerate(srccoords):
+            sname = ["SGR A","HERC A","sun","CYG A","CAS A","VIRGO A","TAU A"][srcno]
             if ( (targetx-(ngrid/2))**2 + (targety-(ngrid/2))**2 ) > (0.8*sRad)**2:
                 continue
             avx = targetx
@@ -580,12 +582,14 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
                     if b1==b2:
                        invalidBounds=True
                 if invalidBounds:
+                    flags.append((i,j,sname,"b1==b2"))
                     continue
                 bounds0 = tuple([b[0] for b in initbounds])
                 bounds1 = tuple([b[1] for b in initbounds])
                 bounds = [bounds0,bounds1]
                 magcond = np.any([(np.abs(b2) > 1e12) for b1 in bounds for b2 in b1])
                 if magcond:
+                    flags.append((i,j,sname,"f0>1e12"))
                     continue
                 fitdata = np.transpose(measdata[i,j,k,(int(round(avy)) - 2*constraint):(int(round(avy)) + 2*constraint + 1),(int(round(avx)) - 2*constraint):(int(round(avx)) + 2*constraint+1)])
                 fitshape = fitdata.shape
@@ -595,18 +599,25 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
                 try:
                     popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata.ravel(), p0=initial_guess,full_output=False,ftol=1e-2)
                 except RuntimeError:
+                    flags.append((i,j,"fiterror"))
                     continue
                 xOUT = popt[1] + round(avx) - 2*constraint
                 yOUT = popt[2] + round(avy) - 2*constraint
-                # No overly elipitical beams
-                if (max(popt[-2],popt[-3])/min(popt[-2],popt[-3])) < 1.5:
+                # No overly elipitical beams, correct position within constraint
+                ellipCOND = ((max(popt[-2],popt[-3])/min(popt[-2],popt[-3])) < 1.5)
+                positionCOND = (np.sqrt((xOUT - avx)**2 + (yOUT - avy)**2) < constraint)
+                if  ellipCOND and positionCOND:
                     fluxmeas[srcno,i,j] = popt[0]
+                if not ellipCOND:
+                    flags.append((i,j,sname,"Ellipbeam"))
+                if not positionCOND:
+                    flags.append((i,j,sname,"Position offset"))
                 fitdataout = fitdata
                 modelout = fsize_gaussian((subx,suby),*popt).reshape(fitdata.shape)
                 indata[srcno,i] = fitdataout
                 model[srcno,i] = modelout
                 resid[srcno,i] = fitdataout-modelout
-    return fluxmeas, indata, model, resid
+    return fluxmeas, indata, model, resid, flags
 
 
 
