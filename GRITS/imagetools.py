@@ -576,7 +576,7 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
                 initial_guess = [f0,x0,y0,bsizepix,bsizepix,np.pi]
                 minf0 = min(f0*0.25,f0*10.0)
                 maxf0 = max(f0*0.25,f0*10.0)
-                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*1.25),(bsizepix*0.75,bsizepix*1.25),(0,2*np.pi)]
+                initbounds = [(minf0,maxf0),(x0-constraint,x0+constraint),(y0-constraint,y0+constraint),(bsizepix*0.75,bsizepix*2),(bsizepix*0.75,bsizepix*2),(0,2*np.pi)]
                 invalidBounds=False
                 for b1,b2 in initbounds:
                     if b1==b2:
