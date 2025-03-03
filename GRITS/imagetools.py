@@ -108,43 +108,48 @@ def calcbeamprops(az,alt,header,freq):
     return polarpatterns[0], polarpatterns[1]
 
 def pbcorr(header,imSize,chan,pScale,station):
-    sRad   = 360.0/pScale/np.pi / 2
-    w = getGENERICwcs(header, imSize)
-    x = np.arange(imSize) - 0.5
-    y = np.arange(imSize) - 0.5
-    x,y = np.meshgrid(x,y)
-    maskpix  = ((x-imSize/2.0)**2 + (y-imSize/2.0)**2) > ((0.95*sRad)**2)
-    x[maskpix] = imSize/2
-    y[maskpix] = imSize/2
-    sc = pixel_to_skycoord(x,y,wcs=w,mode='wcs')
-    # Need date and location for converting to altaz
-    mjd = int(header['start_time'])
-    mpm = int((header['start_time'] - mjd)*86400.0*1000.0)
-    tInt = header['int_len']*86400.0
-    dateObs = mjdmpm_to_datetime(mjd, mpm)
-    time = Time(dateObs.strftime("%Y-%m-%dT%H:%M:%S"),format="isot")
-    if station==b'LWASV':
-        GEOx,GEOy,GEOz = lsllwasv.geocentric_location
-        lwasv = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
-        aa = AltAz(location=lwasv, obstime=time)
-    elif station==b'LWA1':
-        lwa1 = EarthLocation.of_site('lwa1')
-        aa = AltAz(location=lwa1, obstime=time)
-    elif station==b'LWANA':
-        GEOx,GEOy,GEOz = lsllwana.geocentric_location
-        lwana = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
-        aa = AltAz(location=lwana, obstime=time)
-    else:
-        print(station,"unrecognized")
-    myaltaz = sc.transform_to(aa)
-    alt = myaltaz.alt.deg
-    az = myaltaz.az.deg
-    # Keep alt between 0 and 90, adjust az accordingly
-    negalt = alt < 0
-    alt[negalt] += 90
-    az[negalt] + 180
     freq = (int(header['start_freq'])  + ((int(chan)+1)*int(header['bandwidth'])/2))
-    XX,YY = calcbeamprops(az,alt,header,freq)
+    cachefile = f"pb_{freq}_{imSize}grid.npy"
+    if os.path.exists(cachefile):
+        XX,YY = np.load(cachefile)
+    else:
+        sRad   = 360.0/pScale/np.pi / 2
+        w = getGENERICwcs(header, imSize)
+        x = np.arange(imSize) - 0.5
+        y = np.arange(imSize) - 0.5
+        x,y = np.meshgrid(x,y)
+        maskpix  = ((x-imSize/2.0)**2 + (y-imSize/2.0)**2) > ((0.95*sRad)**2)
+        x[maskpix] = imSize/2
+        y[maskpix] = imSize/2
+        sc = pixel_to_skycoord(x,y,wcs=w,mode='wcs')
+        # Need date and location for converting to altaz
+        mjd = int(header['start_time'])
+        mpm = int((header['start_time'] - mjd)*86400.0*1000.0)
+        tInt = header['int_len']*86400.0
+        dateObs = mjdmpm_to_datetime(mjd, mpm)
+        time = Time(dateObs.strftime("%Y-%m-%dT%H:%M:%S"),format="isot")
+        if station==b'LWASV':
+            GEOx,GEOy,GEOz = lsllwasv.geocentric_location
+            lwasv = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
+            aa = AltAz(location=lwasv, obstime=time)
+        elif station==b'LWA1':
+            lwa1 = EarthLocation.of_site('lwa1')
+            aa = AltAz(location=lwa1, obstime=time)
+        elif station==b'LWANA':
+            GEOx,GEOy,GEOz = lsllwana.geocentric_location
+            lwana = EarthLocation.from_geocentric(x=GEOx,y=GEOy,z=GEOz,unit='m')
+            aa = AltAz(location=lwana, obstime=time)
+        else:
+            print(station,"unrecognized")
+        myaltaz = sc.transform_to(aa)
+        alt = myaltaz.alt.deg
+        az = myaltaz.az.deg
+        # Keep alt between 0 and 90, adjust az accordingly
+        negalt = alt < 0
+        alt[negalt] += 90
+        az[negalt] + 180
+        XX,YY = calcbeamprops(az,alt,header,freq)
+        np.save(cachefile,(XX,YY))
     return XX,YY
 
 
