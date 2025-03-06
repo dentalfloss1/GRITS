@@ -602,7 +602,7 @@ def measAteam(sRad, measdata, hdrlist,  sunpos, nchan, ngrid, station, filename,
 
                 # popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata, p0=initial_guess,bounds=bounds,full_output=False,ftol=1e-2)
                 try:
-                    popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata.ravel(), p0=initial_guess,full_output=False,ftol=1e-2)
+                    popt, pcov = curve_fit(fsize_gaussian, (subx, suby), fitdata.ravel(), p0=initial_guess,full_output=False)
                 except RuntimeError:
                     flags.append((i,j,"fiterror"))
                     continue
