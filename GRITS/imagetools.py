@@ -54,7 +54,9 @@ def angsep(ra1deg,dec1deg,ra2deg,dec2deg):
     ra2 = ra2deg*np.pi/180
     dec2 = dec2deg*np.pi/180
     try:
-        sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sep =  np.arccos(np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2))
     except Exception as e:
         if round((np.sin(dec1)*np.sin(dec2) + np.cos(dec1)*np.cos(dec2)*np.cos(ra1 - ra2)),1)==1.0:
             sep = 0
