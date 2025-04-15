@@ -499,27 +499,15 @@ if __name__ == "__main__":
         )
     parser.add_argument('filename', type=str, nargs='+',
                         help='filename to convert')
-    parser.add_argument('-b', '--background',type=float,
-                        default = 0,
-                        help='Uncorrected background flux')
     parser.add_argument('--configfile', type=str,
                         default='config.ini',
                         help="Configuration file.")
-    parser.add_argument('-c', '--corrfac', type=float,
-                        default=1,
-                        help="Flux correction multiplicative factor")
-    parser.add_argument('--channel', type=int,
-                        help="Only image this channel")
     parser.add_argument('--device', type=int, default=0,
                         help="Use this GPU device number")
     parser.add_argument('--noplot', action="store_true")
     parser.add_argument('-q','--quiet', action='store_true')
     parser.add_argument('--skip',type=int,default=0)
     parser.add_argument('--endearly',type=int,default=None)
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='be verbose during the conversion')
-    parser.add_argument("--targetsource", type=float, nargs=2,
-                        help='Look for source at this ra dec')
     parser.add_argument("--maskstokes",nargs="+",type=int, default=None)
     parser.add_argument("--positioncheck",action="store_true")
     parser.add_argument("--postgaussfit",action="store_true")
@@ -630,10 +618,6 @@ if __name__ == "__main__":
                         outsrc.append((src['isodate'],np.unique(len(matching2['channel']))))
                         srcleft = srcleft[~np.isin(srcleft,matching2)]
                         nsrcleft = srcleft.size
-                if args.targetsource:
-                    for s in srcarr:
-                        if angsep(s['ra'],s['dec'],args.targetsource[0],args.targetsource[1]) < float(config['Quality Control']['statsep']):
-                            print(s)
         outobsfile = f"obslist{datetime.datetime.now().timestamp()}.txt"
         with open(outobsfile,"w") as f:
             for o in fullobslist:
