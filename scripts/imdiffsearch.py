@@ -84,7 +84,7 @@ def plotislands(islanddata):
     plt.close()
 
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None, keepateam=False):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None, maskateam=False):
     if maskstokes is None:
         maskstokes = []
     uniquesrcid = 0
@@ -164,7 +164,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print("Compute RMS:",t2-t1)
     t1 = datetime.datetime.now()
     # Flux calibrate data and mask off A-Team
-    imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station, filename, positioncheck=positioncheck,keepateam=keepateam)
+    imagedata, data, corrfluxlist = fluxcalmask(sRad, data, imagedata, hdrlist, minrms[:,:,0], sunpos, juppos, nchan, ngrid, station, filename, positioncheck=positioncheck,maskateam=maskateam)
     t2 = datetime.datetime.now()
     if not quiet:
         print("calibrate:",t2-t1)
@@ -527,7 +527,7 @@ if __name__ == "__main__":
     parser.add_argument("--globfilelist", action="store_true")
     parser.add_argument("--minfreq",type=float)
     parser.add_argument("--maxfreq",type=float)
-    parser.add_argument("--keepateam",action="store_true")
+    parser.add_argument("--maskateam",action="store_true")
     parser.add_argument("--chanchunk",type=int, default=10)
     args = parser.parse_args()
     config = ConfigParser()
@@ -570,7 +570,7 @@ if __name__ == "__main__":
                 startchan = ccno*chanchunk
                 stopchan = min(startchan+chanchunk,nchan)
                 try:
-                    srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan,keepateam=args.keepateam)
+                    srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan,maskateam=args.maskateam)
                     fullobslist.extend(obslist)
                 except Exception as e:
                     print(traceback.format_exc())
