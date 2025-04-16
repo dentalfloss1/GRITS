@@ -480,7 +480,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             c = whereislands[1][ind]
             s = whereislands[2][ind]
             if ((i,c,s,ind) not in flagsrc) :
-                plotresults(i,c,s,filename,rmsdata[i,c,s],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),maskstokes=maskstokes)
+                plotresults(i,c,s,filename,rmsdata[i,c],islanddata[:,c,:,:,:],imagedata[:,c,:,:,:],data[:,c,:,:,:],hdrlist[i],sRad,station,catsep=float(config['Quality Control']['catsep']),maskstokes=maskstokes)
 
 
     correctedflaggedtimes = []

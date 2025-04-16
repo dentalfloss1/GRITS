@@ -75,7 +75,9 @@ def plotsource(index, plotfile, filename,  ra, dec, rms, corrfluxlist,channel,vm
 def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRad,station,catsep=5,chunkt=0,maskstokes=None):
     if maskstokes is None:
         maskstokes = []
-    vmax = rms*5
+        selstokes = [0,1,2,3]
+    else:
+        selstokes = [s for s in range(4) if s not in maskstokes]
     ints = data.shape[0]
     ngrid = data.shape[-1]
     skip = False
@@ -92,38 +94,26 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
     unmasked[1:] = unmasked[1:] - unmasked[:-1]
    #  for imno in range(ints-avgno):
    #      unmasked[imno+avgno] = imagedata[imno+avgno] - np.nanmedian(imagedata[imno:(imno+avgno)],axis=0)
-    stokesdataind = 0
-    for stokesno,sname in enumerate(['I','Q','U','V']):
-        if stokesno in maskstokes:
-            continue
+    stokesnames = ['I','Linear','Total','V']
+    for s_ind, s in enumerate(selstokes):
+        vmax = rms[s_ind]*5
         for timenum, t in enumerate(range(mintime,maxtime+1)):
-            # if (i==mintime):
-            #     currimage = imagedata[t,stokesno,:,:]-imagedata[maxtime+1,stokesno,:,:]
-            # else:
-            #     currimage = imagedata[t,stokesno,:,:]-imagedata[mintime-1,stokesno,:,:]
-            currimage = unmasked[t,stokesdataind,:,:]
-            if stokesno>0:
-                cmap='coolwarm'
-            else:
-                cmap='viridis'
-            axs[stokesno+2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap=cmap)
-            axs[stokesno+2,timenum].tick_params(axis='both',which='both',bottom=False,top=False,labelbottom=False)
+            currimage = unmasked[t,s_ind,:,:]
+            cmap='viridis'
+            axs[s+2,timenum].imshow(currimage,vmin=-vmax,vmax=vmax,origin='lower',cmap=cmap)
+            axs[s+2,timenum].tick_params(axis='both',which='both',bottom=False,top=False,labelbottom=False)
             if t==i:
-                axs[stokesno+2,timenum].set_title(f'{sname} diff')
+                axs[s+2,timenum].set_title(f'{stokesnames[s]} diff')
             # axs[0,timenum].imshow(data[t,chantoplot,0,:,:],vmin=0,vmax=vmax/100,origin='lower',extent=extent)
-        stokesdataind+=1
     uniquelabel =1
     ytextloc2 = ytextloc
-    stokesdataind = 0
-    for s in [0,1,2,3]:
-        if s in maskstokes:
-            continue
-        for label in np.unique(islands[i,stokesdataind,:,:][(~np.isnan(islands[i,stokesdataind,:,:])) & ( islands[i,stokesdataind,:,:] >0)]).astype(int):
-            yloc, xloc = np.where(islands[i,stokesdataind,:,:]==label)
+    for s_ind,s in enumerate(selstokes):
+        for label in np.unique(islands[i,s_ind,:,:][(~np.isnan(islands[i,s_ind,:,:])) & ( islands[i,s_ind,:,:] >0)]).astype(int):
+            yloc, xloc = np.where(islands[i,s_ind,:,:]==label)
             if yloc.size==0:
                 continue
             for x,y in zip(xloc,yloc):
-                if data[i,stokesdataind,y,x]==np.amax(data[i,stokesdataind,yloc,xloc]):
+                if data[i,s_ind,y,x]==np.amax(data[i,s_ind,yloc,xloc]):
                     avx = x
                     avy = y 
                     break
@@ -134,7 +124,7 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
             if s==0:
                 measI = pbdata[avy,avx]
             else:
-                measI = data[i,s,avy,avx]
+                measI = data[i,s_ind,avy,avx]
             resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} meas:{np.nan_to_num(measI):.2e}"
             atnfmatches = (angsep(radec[0][0],radec[0][1],atnf['ra'],atnf['dec']) < catsep)
             
@@ -144,9 +134,10 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
                     axs[1,4].text(0,ytextloc2, aresult,size=10)
                     ytextloc2-=0.15
                 
-            axs[0,2].text(0,ytextloc,resulttext,size=10)
-            ytextloc-=0.15
-            for anum in range(2,6,1):
+            if s_ind==detstokes:
+                axs[0,2].text(0,ytextloc,resulttext,size=10)
+                ytextloc-=0.15
+                anum = detstokes+2
                 for imind in range(5):
                     axs[anum,imind].annotate(str(uniquelabel),(avx+5,avy+5),alpha=0.25)
                     circle = plt.Circle((avx,avy),5,fill=False)
@@ -178,13 +169,13 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
         tInt = hdr['int_len']*86400.0
     dateObs = mjdmpm_to_datetime(mjd, mpm)
     nomaskimdiff = imagedata[i] - imagedata[i-1]
-    s2n = np.amax(np.abs(nomaskimdiff[detstokes]))/rms
-    fig.suptitle(f"{dateObs.isoformat()},rms:{rms:.2E},max S2N:{s2n}")
+    s2n = np.amax(np.abs(nomaskimdiff[detstokes]))/rms[detstokes]
+    fig.suptitle(f"{dateObs.isoformat()},rms:{rms[detstokes]:.2E},max S2N:{s2n}")
     try:
         midfreq = (hdr['freq']  + channel*hdr['bandwidth'] )*1e-6
     except KeyError:
         midfreq = (hdr['start_freq']  + channel*hdr['bandwidth'] )*1e-6
-    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-{midfreq:.2f}MHz-stokes{detstokes}.png").replace(".pims",f"-t{i+chunkt}-stokes{detstokes}.png").replace(':','-')
+    plotfile = filename.split('/')[-1].replace(".oims",f"-t{i+chunkt}-{midfreq:.2f}MHz-stokes{stokesnames[detstokes]}.png").replace(".pims",f"-t{i+chunkt}-stokes{stokesnames[detstokes]}.png").replace(':','-')
     plt.savefig(plotfile)
     plt.close()
 

@@ -101,6 +101,13 @@ def readoims(filename,hdronly=False,startind=None,stopind=None,startchan=None,st
                 hdr['start_freq'] = hdr['start_freq'] + hdr['bandwidth']*startchan
                 hdrlist.append(hdr)
                 data[i] = np.asarray(alldata.data)[startchan:stopchan,tuple(selstokes)]
+            for s_ind, s in enumerate(selstokes):
+                if s==1:
+                    data[:,:,s_ind] = np.sqrt(data[:,:,s_ind]**2 + data[:,:,s_ind]**2 )
+                if s==2:
+                    data[:,:,s_ind] = np.sqrt(data[:,:,s_ind]**2 + data[:,:,s_ind]**2 + data[:,:,s_ind]**2)
+                if s==3:
+                    data[:,:,s_ind] = np.abs(data[:,:,s_ind] )
             imagedata = np.copy(data)
             data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,station
@@ -147,6 +154,13 @@ def readpims(filename,hdronly=False,startind=None,stopind=None,maskstokes=None):
                 hdrlist.append(hdr)
                 thisdata = alldata.data
                 data[i,0] = np.copy(np.asarray(alldata.data).transpose(0,2,1))[tuple(selstokes),:,:]
+            for s_ind, s in enumerate(selstokes):
+                if s==1:
+                    data[:,:,s_ind] = np.sqrt(data[:,:,s_ind]**2 + data[:,:,s_ind]**2 )
+                if s==2:
+                    data[:,:,s_ind] = np.sqrt(data[:,:,s_ind]**2 + data[:,:,s_ind]**2 + data[:,:,s_ind]**2)
+                if s==3:
+                    data[:,:,s_ind] = np.abs(data[:,:,s_ind] )
             imagedata = np.copy(data)
             data[1:] = data[1:] - data[:-1]
             return ints,file_start,file_end,ngrid,psize,nchan,sRad,hdrlist,data,imagedata,db.header['station']
