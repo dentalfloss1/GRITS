@@ -135,6 +135,9 @@ def plotresults(i,channel,detstokes,filename, rms,islands,imagedata,data,hdr,sRa
                     ytextloc2-=0.15
                 
             if s_ind==detstokes:
+                fpk = data[i,s_ind,yloc,xloc].max()
+                ftot = np.sum( data[i,s_ind,yloc,xloc])
+                resulttext =  f"{channel},{s},{uniquelabel}, pos:{np.round(radec,2)},{(round(avx,0),round(avy,0))} fpk:{fpk:.2e} ftot:{ftot:.2e}"
                 axs[0,2].text(0,ytextloc,resulttext,size=10)
                 ytextloc-=0.15
                 anum = detstokes+2

@@ -84,7 +84,7 @@ def plotislands(islanddata):
     plt.close()
 
 
-def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False,gaussqc=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None, maskateam=False):
+def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstokes=None,positioncheck=False, minfreq=None, maxfreq=None, startchan=None, stopchan=None, maskateam=False):
     if maskstokes is None:
         maskstokes = []
     uniquesrcid = 0
@@ -353,6 +353,9 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             yloc, xloc = np.where(islanddata[i,c,s,:,:]==label)
             if yloc.size==0:
                 continue
+            fluxisland = data[i,c,s,yloc,xloc]
+            fpk = fluxisland.max()
+            ftot = np.sum(fluxisland)
             for x,y in zip(xloc,yloc):
                 if data[i,c,s,y,x]==np.amax(data[i,c,s,yloc,xloc]):
                     avx = x
@@ -394,7 +397,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
                 flagsrc.append((i,c,s,ind))
             else:
                 radec = hdrtoworld(hdr,ngrid,sRad,avx,avy,station)
-                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c+startchan,1,s))
+                srclist.append((ind, avx, avy,radec[0][0],radec[0][1],hdrlist[i]['start_time'],dateObs.isoformat(),c3,vlss,i,filename,c+startchan,1,s,fpk,ftot))
             uniquesrcid += 1
             lastlabel = label
     if not quiet:
@@ -422,7 +425,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         print(t3-t2)
 
 
-    srcarray =  np.array(srclist,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int)])           
+    srcarray =  np.array(srclist,dtype=[('id','i8'),('x','f8'),('y','f8'),('ra','f8'),('dec','f8'),('mjd','f8'),('isodate','<U32'),('3c',"<U9"),('VLSSr50',"<U9"),('index','i8'),('filename',"<U256"),('channel',int),("nchan",int),("stokes",int),('fpk','f8'),('ftot','f8')])           
     if not quiet:
         print("Grouping sources")
         t1 = datetime.datetime.now()
@@ -521,7 +524,7 @@ if __name__ == "__main__":
                 startchan = ccno*chanchunk
                 stopchan = min(startchan+chanchunk,nchan)
                 try:
-                    srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck,gaussqc=args.gaussqc, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan,maskateam=args.maskateam)
+                    srcarr, minrms, corrfluxlist, allimagedata, allisland, fullhdrlist, station, obslist, sRad,allflaggedtimes = main(filename,config,args.noplot,quiet=args.quiet,skip=args.skip,endearly=args.endearly,maskstokes=args.maskstokes,positioncheck=args.positioncheck, minfreq=args.minfreq, maxfreq=args.maxfreq,startchan=startchan,stopchan=stopchan,maskateam=args.maskateam)
                     fullobslist.extend(obslist)
                 except Exception as e:
                     print(traceback.format_exc())
