@@ -346,6 +346,7 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
         i = whereislands[0][ind]
         c = whereislands[1][ind]
         s = whereislands[2][ind]
+        XX,YY = beampatterns[c]
         hdr = hdrlist[i]
         lastlabel=-1
         flagsrc = []
@@ -353,7 +354,8 @@ def main(filename,config,noplot=False,quiet=False,skip=0,endearly=None,maskstoke
             yloc, xloc = np.where(islanddata[i,c,s,:,:]==label)
             if yloc.size==0:
                 continue
-            fluxisland = data[i,c,s,yloc,xloc]
+            pbdata = np.copy(data[i,c,s])/((XX+YY)/2)
+            fluxisland = pbdata[yloc,xloc]
             fpk = fluxisland.max()
             ftot = np.sum(fluxisland)
             for x,y in zip(xloc,yloc):
