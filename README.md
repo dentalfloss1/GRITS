@@ -61,5 +61,5 @@ The plotting adds significant overheads and should be avoided for large runs, if
 
 ### A note on searching polarization images
 
-There is a hope that by searching the polarization images (Stokes V) etc. that the confusion noise will be lower and that a transient search of such images will yield more transients. The default output of the LWA archival images produces stokes I, Q, U, and V images. The code then turns this into linear polarization, total polarization, and the absolute value of the stokes V, or circular, polarization. These polarization images have not be rigorously calibrated for leakage. We search the polarization images in the same way as the stokes I images: create a difference image and identify positive islands. 
+There is a hope that by searching the polarization images (Stokes V) etc. that the confusion noise will be lower and that a transient search of such images will yield more transients. The default output of the LWA archival images produces stokes I, Q, U, and V images. The code then turns the Q, U, and V images into linear polarization, total polarization, and the absolute value of the stokes V, or circular, polarization. These polarization images have not be rigorously calibrated for leakage. We search the polarization images in the same way as the stokes I images: create a difference image and identify positive islands. 
 
